@@ -45,6 +45,18 @@
         </div>
 
         @if ($activeTab === 'materi')
+            <div class="mt-5 border-t border-slate-300 pt-4">
+                <h4 class="text-sm font-semibold uppercase tracking-wide text-slate-700">Pindah Materi</h4>
+                <div class="mt-3 flex flex-wrap gap-2">
+                    @foreach ($moduleData['materials'] as $material)
+                        <a href="{{ route('dashboard.participant.modules.detail', ['module' => $moduleSlug, 'tab' => 'materi', 'material' => $material['slug']]) }}"
+                            class="rounded-full border px-3 py-1.5 text-xs font-semibold transition {{ $selectedMaterial['slug'] === $material['slug'] ? 'border-black bg-black text-white' : 'border-slate-300 text-slate-700 hover:bg-white' }}">
+                            {{ $material['title'] }}
+                        </a>
+                    @endforeach
+                </div>
+            </div>
+
             <div class="mt-6 rounded-xl border border-slate-300 bg-slate-50 p-4 sm:p-5">
                 <h3 class="text-lg font-bold text-slate-800">{{ $selectedMaterial['title'] }}</h3>
                 <div class="mt-3 grid gap-4 sm:grid-cols-[220px_1fr] sm:items-start">
@@ -53,18 +65,6 @@
                         {{ $selectedMaterial['thumbnailLabel'] }}
                     </div>
                     <p class="text-sm leading-relaxed text-slate-700">{{ $selectedMaterial['summary'] }}</p>
-                </div>
-
-                <div class="mt-5 border-t border-slate-300 pt-4">
-                    <h4 class="text-sm font-semibold uppercase tracking-wide text-slate-700">Pindah Materi</h4>
-                    <div class="mt-3 flex flex-wrap gap-2">
-                        @foreach ($moduleData['materials'] as $material)
-                            <a href="{{ route('dashboard.participant.modules.detail', ['module' => $moduleSlug, 'tab' => 'materi', 'material' => $material['slug']]) }}"
-                                class="rounded-full border px-3 py-1.5 text-xs font-semibold transition {{ $selectedMaterial['slug'] === $material['slug'] ? 'border-black bg-black text-white' : 'border-slate-300 text-slate-700 hover:bg-white' }}">
-                                {{ $material['title'] }}
-                            </a>
-                        @endforeach
-                    </div>
                 </div>
             </div>
         @elseif ($activeTab === 'video')

@@ -76,43 +76,361 @@ class AuthController extends Controller
             return redirect()->route('dashboard.participant.home');
         }
 
-        $dashboardConfig = [
-            'instructor' => [
-                'view' => 'dashboard.instructor.index',
-                'title' => 'Dashboard Pengajar',
-                'subtitle' => 'Kelola kelas, evaluasi tugas, dan aktivitas pembelajaran.',
-                'headerGradient' => 'from-emerald-700 to-teal-600',
-                'roleBadgeClasses' => 'bg-emerald-100 text-emerald-700',
-                'activeMenuClasses' => 'bg-emerald-100 text-emerald-800',
-                'menuItems' => [
-                    ['label' => 'Beranda', 'icon' => '[H]', 'url' => route('dashboard.index'), 'active' => true],
-                    ['label' => 'Daftar Kelas', 'icon' => '[K]', 'url' => '#', 'active' => false],
-                    ['label' => 'Penilaian', 'icon' => '[P]', 'url' => '#', 'active' => false],
-                    ['label' => 'Materi', 'icon' => '[M]', 'url' => '#', 'active' => false],
-                ],
-            ],
-            'manager' => [
-                'view' => 'dashboard.manager.index',
-                'title' => 'Dashboard Pengelola',
-                'subtitle' => 'Lihat ringkasan operasional dan performa keseluruhan program.',
-                'headerGradient' => 'from-slate-800 to-slate-600',
-                'roleBadgeClasses' => 'bg-slate-200 text-slate-700',
-                'activeMenuClasses' => 'bg-slate-200 text-slate-800',
-                'menuItems' => [
-                    ['label' => 'Beranda', 'icon' => '[H]', 'url' => route('dashboard.index'), 'active' => true],
-                    ['label' => 'Manajemen User', 'icon' => '[U]', 'url' => '#', 'active' => false],
-                    ['label' => 'Laporan', 'icon' => '[L]', 'url' => '#', 'active' => false],
-                    ['label' => 'Pengaturan', 'icon' => '[P]', 'url' => '#', 'active' => false],
-                ],
-            ],
-        ];
+        if ($role === 'instructor') {
+            return redirect()->route('dashboard.instructor.home');
+        }
 
-        $dashboard = $dashboardConfig[$role] ?? $dashboardConfig['participant'];
+        if ($role === 'manager') {
+            return redirect()->route('dashboard.manager.home');
+        }
 
-        return view($dashboard['view'], [
-            'user' => $user,
-            'dashboard' => $dashboard,
+        return redirect()->route('dashboard.participant.home');
+    }
+
+    public function managerHome(Request $request): View|RedirectResponse
+    {
+        $guard = $this->ensureManagerRole($request);
+
+        if ($guard) {
+            return $guard;
+        }
+
+        return view('dashboard.manager.index', [
+            'user' => $request->session()->get('auth_user'),
+            'dashboard' => $this->getManagerDashboardConfig('home'),
+            'stats' => $this->getManagerStats(),
+            'activities' => $this->getManagerActivities(),
         ]);
+    }
+
+    public function managerIndividualParticipants(Request $request): View|RedirectResponse
+    {
+        $guard = $this->ensureManagerRole($request);
+
+        if ($guard) {
+            return $guard;
+        }
+
+        return view('dashboard.manager.participants-individual', [
+            'user' => $request->session()->get('auth_user'),
+            'dashboard' => $this->getManagerDashboardConfig('participants-individual'),
+            'participants' => $this->getManagerIndividualParticipants(),
+        ]);
+    }
+
+    public function managerIndividualParticipantsUpdate(Request $request, string $participant): RedirectResponse
+    {
+        $guard = $this->ensureManagerRole($request);
+
+        if ($guard) {
+            return $guard;
+        }
+
+        $request->validate([
+            'status' => ['required', 'string', 'in:Aktif,Perlu Verifikasi,Nonaktif'],
+        ]);
+
+        return redirect()
+            ->route('dashboard.manager.participants.individual')
+            ->with('status', 'Status peserta individu ' . strtoupper($participant) . ' diperbarui (simulasi).');
+    }
+
+    public function managerGroupParticipants(Request $request): View|RedirectResponse
+    {
+        $guard = $this->ensureManagerRole($request);
+
+        if ($guard) {
+            return $guard;
+        }
+
+        return view('dashboard.manager.participants-group', [
+            'user' => $request->session()->get('auth_user'),
+            'dashboard' => $this->getManagerDashboardConfig('participants-group'),
+            'groups' => $this->getManagerGroupParticipants(),
+        ]);
+    }
+
+    public function managerGroupParticipantsUpdate(Request $request, string $group): RedirectResponse
+    {
+        $guard = $this->ensureManagerRole($request);
+
+        if ($guard) {
+            return $guard;
+        }
+
+        $request->validate([
+            'status' => ['required', 'string', 'in:Aktif,Perlu Verifikasi,Selesai'],
+        ]);
+
+        return redirect()
+            ->route('dashboard.manager.participants.group')
+            ->with('status', 'Status kelompok ' . strtoupper($group) . ' diperbarui (simulasi).');
+    }
+
+    public function managerInstructors(Request $request): View|RedirectResponse
+    {
+        $guard = $this->ensureManagerRole($request);
+
+        if ($guard) {
+            return $guard;
+        }
+
+        return view('dashboard.manager.instructors', [
+            'user' => $request->session()->get('auth_user'),
+            'dashboard' => $this->getManagerDashboardConfig('instructors'),
+            'instructors' => $this->getManagerInstructors(),
+        ]);
+    }
+
+    public function managerInstructorsUpdate(Request $request, string $instructor): RedirectResponse
+    {
+        $guard = $this->ensureManagerRole($request);
+
+        if ($guard) {
+            return $guard;
+        }
+
+        $request->validate([
+            'status' => ['required', 'string', 'in:Aktif,Cuti,Nonaktif'],
+        ]);
+
+        return redirect()
+            ->route('dashboard.manager.instructors')
+            ->with('status', 'Status pengajar ' . strtoupper($instructor) . ' diperbarui (simulasi).');
+    }
+
+    public function managerPrograms(Request $request): View|RedirectResponse
+    {
+        $guard = $this->ensureManagerRole($request);
+
+        if ($guard) {
+            return $guard;
+        }
+
+        return view('dashboard.manager.programs', [
+            'user' => $request->session()->get('auth_user'),
+            'dashboard' => $this->getManagerDashboardConfig('programs'),
+            'programs' => $this->getManagerPrograms(),
+        ]);
+    }
+
+    public function managerProgramsUpdate(Request $request, string $program): RedirectResponse
+    {
+        $guard = $this->ensureManagerRole($request);
+
+        if ($guard) {
+            return $guard;
+        }
+
+        $request->validate([
+            'status' => ['required', 'string', 'in:Aktif,Draf,Ditutup'],
+        ]);
+
+        return redirect()
+            ->route('dashboard.manager.programs')
+            ->with('status', 'Status program ' . strtoupper($program) . ' diperbarui (simulasi).');
+    }
+
+    public function managerReports(Request $request): View|RedirectResponse
+    {
+        $guard = $this->ensureManagerRole($request);
+
+        if ($guard) {
+            return $guard;
+        }
+
+        return view('dashboard.manager.reports', [
+            'user' => $request->session()->get('auth_user'),
+            'dashboard' => $this->getManagerDashboardConfig('reports'),
+            'reports' => $this->getManagerReportSummary(),
+            'monthlyParticipation' => $this->getManagerMonthlyParticipation(),
+        ]);
+    }
+
+    public function managerReportsExport(Request $request): RedirectResponse
+    {
+        $guard = $this->ensureManagerRole($request);
+
+        if ($guard) {
+            return $guard;
+        }
+
+        $request->validate([
+            'report_type' => ['required', 'string', 'in:partisipasi,kinerja,pengajar'],
+        ]);
+
+        return redirect()
+            ->route('dashboard.manager.reports')
+            ->with('status', 'Export laporan ' . strtoupper((string) $request->input('report_type')) . ' berhasil diproses (simulasi).');
+    }
+
+    public function managerSettings(Request $request): View|RedirectResponse
+    {
+        $guard = $this->ensureManagerRole($request);
+
+        if ($guard) {
+            return $guard;
+        }
+
+        return view('dashboard.manager.settings', [
+            'user' => $request->session()->get('auth_user'),
+            'dashboard' => $this->getManagerDashboardConfig('settings'),
+            'settingsData' => $this->getManagerSettingsData(),
+        ]);
+    }
+
+    public function managerSettingsUpdate(Request $request): RedirectResponse
+    {
+        $guard = $this->ensureManagerRole($request);
+
+        if ($guard) {
+            return $guard;
+        }
+
+        $request->validate([
+            'organization_name' => ['required', 'string', 'min:3', 'max:120'],
+            'support_email' => ['required', 'email'],
+            'timezone' => ['required', 'string'],
+        ]);
+
+        return redirect()
+            ->route('dashboard.manager.settings')
+            ->with('status', 'Pengaturan sistem berhasil diperbarui (simulasi).');
+    }
+
+    public function instructorHome(Request $request): View|RedirectResponse
+    {
+        $guard = $this->ensureInstructorRole($request);
+
+        if ($guard) {
+            return $guard;
+        }
+
+        $dashboard = $this->getInstructorDashboardConfig('home');
+
+        return view('dashboard.instructor.index', [
+            'user' => $request->session()->get('auth_user'),
+            'dashboard' => $dashboard,
+            'stats' => $this->getInstructorStats(),
+            'activities' => $this->getInstructorActivities(),
+        ]);
+    }
+
+    public function instructorModules(Request $request): View|RedirectResponse
+    {
+        $guard = $this->ensureInstructorRole($request);
+
+        if ($guard) {
+            return $guard;
+        }
+
+        return view('dashboard.instructor.modules', [
+            'user' => $request->session()->get('auth_user'),
+            'dashboard' => $this->getInstructorDashboardConfig('modules'),
+            'modules' => $this->getInstructorModules(),
+        ]);
+    }
+
+    public function instructorModulesUpdate(Request $request, string $module): RedirectResponse
+    {
+        $guard = $this->ensureInstructorRole($request);
+
+        if ($guard) {
+            return $guard;
+        }
+
+        $request->validate([
+            'status' => ['required', 'string', 'in:Draf,Aktif,Revisi'],
+        ]);
+
+        return redirect()
+            ->route('dashboard.instructor.modules')
+            ->with('status', 'Status modul ' . strtoupper($module) . ' diperbarui (simulasi).');
+    }
+
+    public function instructorParticipants(Request $request): View|RedirectResponse
+    {
+        $guard = $this->ensureInstructorRole($request);
+
+        if ($guard) {
+            return $guard;
+        }
+
+        $selected = (string) $request->query('participant', '');
+
+        return view('dashboard.instructor.participants', [
+            'user' => $request->session()->get('auth_user'),
+            'dashboard' => $this->getInstructorDashboardConfig('participants'),
+            'participants' => $this->getInstructorParticipants(),
+            'selectedParticipant' => $selected,
+        ]);
+    }
+
+    public function instructorForum(Request $request): View|RedirectResponse
+    {
+        $guard = $this->ensureInstructorRole($request);
+
+        if ($guard) {
+            return $guard;
+        }
+
+        $selected = (string) $request->query('thread', 't-01');
+
+        return view('dashboard.instructor.forum', [
+            'user' => $request->session()->get('auth_user'),
+            'dashboard' => $this->getInstructorDashboardConfig('forum'),
+            'threads' => $this->getInstructorThreads(),
+            'selectedThread' => $selected,
+        ]);
+    }
+
+    public function instructorForumReply(Request $request, string $thread): RedirectResponse
+    {
+        $guard = $this->ensureInstructorRole($request);
+
+        if ($guard) {
+            return $guard;
+        }
+
+        $request->validate([
+            'reply' => ['required', 'string', 'min:3', 'max:500'],
+        ]);
+
+        return redirect()
+            ->route('dashboard.instructor.forum', ['thread' => $thread])
+            ->with('status', 'Balasan thread berhasil dikirim (simulasi).');
+    }
+
+    public function instructorAssessments(Request $request): View|RedirectResponse
+    {
+        $guard = $this->ensureInstructorRole($request);
+
+        if ($guard) {
+            return $guard;
+        }
+
+        return view('dashboard.instructor.assessments', [
+            'user' => $request->session()->get('auth_user'),
+            'dashboard' => $this->getInstructorDashboardConfig('assessments'),
+            'submissions' => $this->getInstructorSubmissions(),
+        ]);
+    }
+
+    public function instructorAssessmentScore(Request $request, string $submission): RedirectResponse
+    {
+        $guard = $this->ensureInstructorRole($request);
+
+        if ($guard) {
+            return $guard;
+        }
+
+        $request->validate([
+            'score' => ['required', 'integer', 'min:0', 'max:100'],
+        ]);
+
+        return redirect()
+            ->route('dashboard.instructor.assessments')
+            ->with('status', 'Nilai untuk tugas ' . strtoupper($submission) . ' berhasil disimpan (simulasi).');
     }
 
     public function participantHome(Request $request): View|RedirectResponse
@@ -332,6 +650,374 @@ class AuthController extends Controller
         }
 
         return null;
+    }
+
+    private function ensureInstructorRole(Request $request): ?RedirectResponse
+    {
+        $user = $request->session()->get('auth_user');
+
+        if (($user['role'] ?? null) !== 'instructor') {
+            return redirect()->route('dashboard.index');
+        }
+
+        return null;
+    }
+
+    private function ensureManagerRole(Request $request): ?RedirectResponse
+    {
+        $user = $request->session()->get('auth_user');
+
+        if (($user['role'] ?? null) !== 'manager') {
+            return redirect()->route('dashboard.index');
+        }
+
+        return null;
+    }
+
+    private function getManagerDashboardConfig(string $activePage): array
+    {
+        $config = [
+            'home' => [
+                'title' => 'Dashboard - Pengelola',
+                'subtitle' => 'Ringkasan operasional peserta, pengajar, dan program berjalan.',
+            ],
+            'participants-individual' => [
+                'title' => 'Kelola Peserta Individu',
+                'subtitle' => 'Lihat data peserta individu dan kelola status administratifnya.',
+            ],
+            'participants-group' => [
+                'title' => 'Kelola Peserta Kelompok',
+                'subtitle' => 'Pantau performa pendaftaran kelompok dan validasi kelengkapan data.',
+            ],
+            'instructors' => [
+                'title' => 'Kelola Pengajar',
+                'subtitle' => 'Atur status pengajar aktif serta distribusi beban program.',
+            ],
+            'programs' => [
+                'title' => 'Kelola Program',
+                'subtitle' => 'Kelola katalog program, kuota peserta, dan status publikasi.',
+            ],
+            'reports' => [
+                'title' => 'Laporan',
+                'subtitle' => 'Tinjau ringkasan partisipasi dan ekspor laporan operasional.',
+            ],
+            'settings' => [
+                'title' => 'Pengaturan',
+                'subtitle' => 'Konfigurasi preferensi dasar sistem dan kontak operasional.',
+            ],
+        ];
+
+        $selected = $config[$activePage] ?? $config['home'];
+
+        return [
+            ...$selected,
+            'headerGradient' => 'from-[#1f2937] to-[#374151]',
+            'showNotification' => true,
+            'roleBadgeClasses' => 'bg-slate-200 text-slate-700',
+            'activeMenuClasses' => 'bg-slate-200 text-slate-900',
+            'menuItems' => [
+                [
+                    'label' => 'Dashboard',
+                    'icon' => 'dashboard',
+                    'url' => route('dashboard.manager.home'),
+                    'active' => $activePage === 'home',
+                ],
+                [
+                    'label' => 'Kelola Peserta Individu',
+                    'icon' => 'participant-individual',
+                    'url' => route('dashboard.manager.participants.individual'),
+                    'active' => $activePage === 'participants-individual',
+                ],
+                [
+                    'label' => 'Kelola Peserta Kelompok',
+                    'icon' => 'participant-group',
+                    'url' => route('dashboard.manager.participants.group'),
+                    'active' => $activePage === 'participants-group',
+                ],
+                [
+                    'label' => 'Kelola Pengajar',
+                    'icon' => 'instructor-manage',
+                    'url' => route('dashboard.manager.instructors'),
+                    'active' => $activePage === 'instructors',
+                ],
+                [
+                    'label' => 'Kelola Program',
+                    'icon' => 'program-manage',
+                    'url' => route('dashboard.manager.programs'),
+                    'active' => $activePage === 'programs',
+                ],
+                [
+                    'label' => 'Laporan',
+                    'icon' => 'reports',
+                    'url' => route('dashboard.manager.reports'),
+                    'active' => $activePage === 'reports',
+                ],
+                [
+                    'label' => 'Pengaturan',
+                    'icon' => 'settings',
+                    'url' => route('dashboard.manager.settings'),
+                    'active' => $activePage === 'settings',
+                ],
+            ],
+        ];
+    }
+
+    /**
+     * @return array<string, int>
+     */
+    private function getManagerStats(): array
+    {
+        return [
+            'individualParticipants' => 120,
+            'groupParticipants' => 34,
+            'activeInstructors' => 9,
+            'activePrograms' => 6,
+        ];
+    }
+
+    /**
+     * @return array<int, array<string, string>>
+     */
+    private function getManagerActivities(): array
+    {
+        return [
+            ['time' => '08:10', 'title' => 'Pendaftaran kelompok baru', 'description' => 'Kelompok Batik Lestari menunggu verifikasi berkas.'],
+            ['time' => '09:35', 'title' => 'Perubahan status program', 'description' => 'Program Teknik Warna Dasar ditandai aktif.'],
+            ['time' => '11:00', 'title' => 'Jadwal pengajar diperbarui', 'description' => 'Redistribusi jadwal pengajar untuk batch 4.'],
+            ['time' => '13:20', 'title' => 'Laporan partisipasi bulanan', 'description' => 'Ringkasan Maret siap diekspor.'],
+        ];
+    }
+
+    /**
+     * @return array<int, array<string, string|int>>
+     */
+    private function getManagerIndividualParticipants(): array
+    {
+        return [
+            ['id' => 'pi-01', 'name' => 'Nadia Putri', 'program' => 'Teknik Canting Dasar', 'progress' => 88, 'status' => 'Aktif'],
+            ['id' => 'pi-02', 'name' => 'Rafi Akbar', 'program' => 'Teknik Warna Dasar', 'progress' => 61, 'status' => 'Perlu Verifikasi'],
+            ['id' => 'pi-03', 'name' => 'Salsa Wicaksono', 'program' => 'Komposisi Motif', 'progress' => 75, 'status' => 'Aktif'],
+            ['id' => 'pi-04', 'name' => 'Tio Ramadhan', 'program' => 'Teknik Canting Dasar', 'progress' => 42, 'status' => 'Nonaktif'],
+        ];
+    }
+
+    /**
+     * @return array<int, array<string, string|int>>
+     */
+    private function getManagerGroupParticipants(): array
+    {
+        return [
+            ['id' => 'pg-01', 'group_name' => 'Batik Lestari', 'members' => 5, 'program' => 'Teknik Canting Dasar', 'status' => 'Aktif'],
+            ['id' => 'pg-02', 'group_name' => 'Motif Muda', 'members' => 4, 'program' => 'Teknik Warna Dasar', 'status' => 'Perlu Verifikasi'],
+            ['id' => 'pg-03', 'group_name' => 'Sanggar Nawasena', 'members' => 6, 'program' => 'Komposisi Motif', 'status' => 'Selesai'],
+        ];
+    }
+
+    /**
+     * @return array<int, array<string, string|int>>
+     */
+    private function getManagerInstructors(): array
+    {
+        return [
+            ['id' => 'ig-01', 'name' => 'Dewi Handayani', 'specialty' => 'Canting', 'active_classes' => 3, 'status' => 'Aktif'],
+            ['id' => 'ig-02', 'name' => 'Agus Pramono', 'specialty' => 'Pewarnaan', 'active_classes' => 2, 'status' => 'Aktif'],
+            ['id' => 'ig-03', 'name' => 'Lina Saputri', 'specialty' => 'Motif', 'active_classes' => 0, 'status' => 'Cuti'],
+        ];
+    }
+
+    /**
+     * @return array<int, array<string, string|int>>
+     */
+    private function getManagerPrograms(): array
+    {
+        return [
+            ['id' => 'pr-01', 'title' => 'Teknik Canting Dasar', 'quota' => 60, 'enrolled' => 48, 'status' => 'Aktif'],
+            ['id' => 'pr-02', 'title' => 'Teknik Warna Dasar', 'quota' => 50, 'enrolled' => 37, 'status' => 'Aktif'],
+            ['id' => 'pr-03', 'title' => 'Komposisi Motif Modern', 'quota' => 40, 'enrolled' => 22, 'status' => 'Draf'],
+        ];
+    }
+
+    /**
+     * @return array<string, int|string>
+     */
+    private function getManagerReportSummary(): array
+    {
+        return [
+            'total_registration' => 154,
+            'completion_rate' => '84%',
+            'avg_attendance' => '89%',
+            'instructor_utilization' => '78%',
+        ];
+    }
+
+    /**
+     * @return array<int, array<string, string|int>>
+     */
+    private function getManagerMonthlyParticipation(): array
+    {
+        return [
+            ['month' => 'Jan', 'value' => 92],
+            ['month' => 'Feb', 'value' => 105],
+            ['month' => 'Mar', 'value' => 114],
+            ['month' => 'Apr', 'value' => 128],
+            ['month' => 'Mei', 'value' => 134],
+            ['month' => 'Jun', 'value' => 121],
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function getManagerSettingsData(): array
+    {
+        return [
+            'organization_name' => 'LPK Kama Praja Madiun',
+            'support_email' => 'support@lmsbatik.test',
+            'timezone' => 'Asia/Jakarta',
+        ];
+    }
+
+    private function getInstructorDashboardConfig(string $activePage): array
+    {
+        $config = [
+            'home' => [
+                'title' => 'Dashboard - Penguji',
+                'subtitle' => 'Ringkasan performa kelas dan aktivitas penilaian terbaru.',
+            ],
+            'modules' => [
+                'title' => 'Kelola Modul',
+                'subtitle' => 'Atur status, konten, dan kualitas modul pembelajaran.',
+            ],
+            'participants' => [
+                'title' => 'Daftar Peserta',
+                'subtitle' => 'Pantau progres peserta dan lihat aktivitas pembelajaran.',
+            ],
+            'forum' => [
+                'title' => 'Forum Diskusi',
+                'subtitle' => 'Kelola thread, jawab pertanyaan, dan jaga kualitas diskusi.',
+            ],
+            'assessments' => [
+                'title' => 'Penilaian Tugas',
+                'subtitle' => 'Review dan beri nilai pada tugas yang telah dikumpulkan.',
+            ],
+        ];
+
+        $selected = $config[$activePage] ?? $config['home'];
+
+        return [
+            ...$selected,
+            'headerGradient' => 'from-[#0f4c81] to-[#1f6d8f]',
+            'showNotification' => true,
+            'roleBadgeClasses' => 'bg-sky-100 text-sky-700',
+            'activeMenuClasses' => 'bg-sky-100 text-sky-900',
+            'menuItems' => [
+                [
+                    'label' => 'Dashboard',
+                    'icon' => 'dashboard',
+                    'url' => route('dashboard.instructor.home'),
+                    'active' => $activePage === 'home',
+                ],
+                [
+                    'label' => 'Kelola Modul',
+                    'icon' => 'module',
+                    'url' => route('dashboard.instructor.modules'),
+                    'active' => $activePage === 'modules',
+                ],
+                [
+                    'label' => 'Daftar Peserta',
+                    'icon' => 'participants',
+                    'url' => route('dashboard.instructor.participants'),
+                    'active' => $activePage === 'participants',
+                ],
+                [
+                    'label' => 'Forum Diskusi',
+                    'icon' => 'forum',
+                    'url' => route('dashboard.instructor.forum'),
+                    'active' => $activePage === 'forum',
+                ],
+                [
+                    'label' => 'Penilaian Tugas',
+                    'icon' => 'assessment',
+                    'url' => route('dashboard.instructor.assessments'),
+                    'active' => $activePage === 'assessments',
+                ],
+            ],
+        ];
+    }
+
+    /**
+     * @return array<string, int>
+     */
+    private function getInstructorStats(): array
+    {
+        return [
+            'totalModules' => 12,
+            'activeParticipants' => 48,
+            'pendingReviews' => 9,
+            'discussionThreads' => 17,
+        ];
+    }
+
+    /**
+     * @return array<int, array<string, string>>
+     */
+    private function getInstructorActivities(): array
+    {
+        return [
+            ['time' => '08:20', 'title' => 'Tugas baru dari Rani', 'description' => 'Modul Teknik Canting Dasar menunggu penilaian.'],
+            ['time' => '09:15', 'title' => 'Modul diperbarui', 'description' => 'Konten Teknik Warna Dasar versi 2.1 dipublikasikan.'],
+            ['time' => '10:40', 'title' => 'Diskusi baru', 'description' => 'Thread tentang fiksasi warna ditandai prioritas.'],
+            ['time' => '11:05', 'title' => 'Pengumuman kelas', 'description' => 'Sesi praktik tambahan dijadwalkan hari Jumat.'],
+        ];
+    }
+
+    /**
+     * @return array<int, array<string, string|int>>
+     */
+    private function getInstructorModules(): array
+    {
+        return [
+            ['id' => 'm-01', 'title' => 'Teknik Canting Dasar', 'category' => 'Dasar', 'lessons' => 8, 'participants' => 48, 'status' => 'Aktif', 'updated_at' => '17 Mar 2026'],
+            ['id' => 'm-02', 'title' => 'Teknik Warna Dasar', 'category' => 'Praktik', 'lessons' => 10, 'participants' => 44, 'status' => 'Aktif', 'updated_at' => '15 Mar 2026'],
+            ['id' => 'm-03', 'title' => 'Komposisi Motif Modern', 'category' => 'Lanjutan', 'lessons' => 6, 'participants' => 29, 'status' => 'Revisi', 'updated_at' => '12 Mar 2026'],
+        ];
+    }
+
+    /**
+     * @return array<int, array<string, string|int>>
+     */
+    private function getInstructorParticipants(): array
+    {
+        return [
+            ['id' => 'p-01', 'name' => 'Anita Wijaya', 'batch' => 'Batch 3', 'progress' => 82, 'last_activity' => '2 jam lalu'],
+            ['id' => 'p-02', 'name' => 'Bima Pradana', 'batch' => 'Batch 3', 'progress' => 71, 'last_activity' => '1 jam lalu'],
+            ['id' => 'p-03', 'name' => 'Citra Kurnia', 'batch' => 'Batch 2', 'progress' => 91, 'last_activity' => '30 menit lalu'],
+            ['id' => 'p-04', 'name' => 'Deni Santoso', 'batch' => 'Batch 2', 'progress' => 66, 'last_activity' => '3 jam lalu'],
+        ];
+    }
+
+    /**
+     * @return array<int, array<string, string|int>>
+     */
+    private function getInstructorThreads(): array
+    {
+        return [
+            ['id' => 't-01', 'title' => 'Tips menjaga konsistensi malam', 'author' => 'Anita Wijaya', 'replies' => 12, 'last_message' => '20 menit lalu', 'excerpt' => 'Bagaimana cara menjaga aliran malam tetap stabil saat membuat garis panjang?'],
+            ['id' => 't-02', 'title' => 'Rasio campuran warna untuk gradasi', 'author' => 'Bima Pradana', 'replies' => 7, 'last_message' => '1 jam lalu', 'excerpt' => 'Adakah rasio standar untuk membuat gradasi warna biru ke hijau?'],
+            ['id' => 't-03', 'title' => 'Referensi motif kontemporer', 'author' => 'Citra Kurnia', 'replies' => 5, 'last_message' => 'Kemarin', 'excerpt' => 'Mohon rekomendasi referensi motif modern yang tetap mempertahankan unsur tradisional.'],
+        ];
+    }
+
+    /**
+     * @return array<int, array<string, string|int|null>>
+     */
+    private function getInstructorSubmissions(): array
+    {
+        return [
+            ['id' => 's-01', 'participant' => 'Anita Wijaya', 'module' => 'Teknik Canting Dasar', 'submitted_at' => '16 Mar 2026, 14:20', 'status' => 'Menunggu', 'score' => null],
+            ['id' => 's-02', 'participant' => 'Bima Pradana', 'module' => 'Teknik Warna Dasar', 'submitted_at' => '16 Mar 2026, 11:05', 'status' => 'Revisi', 'score' => 74],
+            ['id' => 's-03', 'participant' => 'Citra Kurnia', 'module' => 'Komposisi Motif Modern', 'submitted_at' => '15 Mar 2026, 16:40', 'status' => 'Menunggu', 'score' => null],
+        ];
     }
 
     /**
