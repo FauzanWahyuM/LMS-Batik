@@ -311,8 +311,10 @@ class AuthController extends Controller
         return view('dashboard.instructor.index', [
             'user' => $request->session()->get('auth_user'),
             'dashboard' => $dashboard,
-            'stats' => $this->getInstructorStats(),
-            'activities' => $this->getInstructorActivities(),
+            'summary' => $this->getInstructorDashboardSummary(),
+            'activeParticipants' => $this->getInstructorHomeParticipants(),
+            'availableModules' => $this->getInstructorHomeModules(),
+            'pendingWorks' => $this->getInstructorPendingWorks(),
         ]);
     }
 
@@ -324,14 +326,37 @@ class AuthController extends Controller
             return $guard;
         }
 
-        return view('dashboard.instructor.modules', [
+        $search = $request->query('search', '');
+        $modules = $this->getInstructorModulesList();
+
+        if ($search) {
+            $modules = array_filter($modules, function ($module) use ($search) {
+                return stripos($module['title'], $search) !== false;
+            });
+        }
+
+        return view('dashboard.instructor.modules-list', [
             'user' => $request->session()->get('auth_user'),
             'dashboard' => $this->getInstructorDashboardConfig('modules'),
-            'modules' => $this->getInstructorModules(),
+            'modules' => $modules,
         ]);
     }
 
-    public function instructorModulesUpdate(Request $request, string $module): RedirectResponse
+    public function instructorModulesCreate(Request $request): View|RedirectResponse
+    {
+        $guard = $this->ensureInstructorRole($request);
+
+        if ($guard) {
+            return $guard;
+        }
+
+        return view('dashboard.instructor.modules-create', [
+            'user' => $request->session()->get('auth_user'),
+            'dashboard' => $this->getInstructorDashboardConfig('modules'),
+        ]);
+    }
+
+    public function instructorModulesStore(Request $request): RedirectResponse
     {
         $guard = $this->ensureInstructorRole($request);
 
@@ -340,12 +365,97 @@ class AuthController extends Controller
         }
 
         $request->validate([
-            'status' => ['required', 'string', 'in:Draf,Aktif,Revisi'],
+            'title' => ['required', 'string', 'min:3', 'max:255'],
+            'duration' => ['required', 'string', 'min:3', 'max:100'],
+            'description' => ['nullable', 'string', 'max:1000'],
+            'cover' => ['nullable', 'image', 'max:2048'],
         ]);
 
         return redirect()
             ->route('dashboard.instructor.modules')
-            ->with('status', 'Status modul ' . strtoupper($module) . ' diperbarui (simulasi).');
+            ->with('status', 'Modul baru berhasil dibuat (simulasi).');
+    }
+
+    public function instructorModulesDetail(Request $request, string $module): View|RedirectResponse
+    {
+        $guard = $this->ensureInstructorRole($request);
+
+        if ($guard) {
+            return $guard;
+        }
+
+        $moduleData = $this->getInstructorModuleDetail($module);
+
+        if (!$moduleData) {
+            return redirect()->route('dashboard.instructor.modules');
+        }
+
+        return view('dashboard.instructor.modules-detail', [
+            'user' => $request->session()->get('auth_user'),
+            'dashboard' => $this->getInstructorDashboardConfig('modules'),
+            'module' => $moduleData,
+        ]);
+    }
+
+    public function instructorModulesEdit(Request $request, string $module): View|RedirectResponse
+    {
+        $guard = $this->ensureInstructorRole($request);
+
+        if ($guard) {
+            return $guard;
+        }
+
+        $moduleData = $this->getInstructorModuleDetail($module);
+
+        if (!$moduleData) {
+            return redirect()->route('dashboard.instructor.modules');
+        }
+
+        return view('dashboard.instructor.modules-edit', [
+            'user' => $request->session()->get('auth_user'),
+            'dashboard' => $this->getInstructorDashboardConfig('modules'),
+            'module' => $moduleData,
+        ]);
+    }
+
+    public function instructorModulesEditStore(Request $request, string $module): RedirectResponse
+    {
+        $guard = $this->ensureInstructorRole($request);
+
+        if ($guard) {
+            return $guard;
+        }
+
+        $request->validate([
+            'title' => ['required', 'string', 'min:3', 'max:255'],
+            'duration' => ['required', 'string', 'min:3', 'max:100'],
+            'description' => ['nullable', 'string', 'max:1000'],
+            'cover' => ['nullable', 'image', 'max:2048'],
+            'chapters' => ['nullable', 'array'],
+            'chapters.*.title' => ['nullable', 'string', 'max:255'],
+            'chapters.*.description' => ['nullable', 'string', 'max:500'],
+            'chapters.*.content' => ['nullable', 'string'],
+            'chapters.*.video' => ['nullable', 'url'],
+            'chapters.*.assignment' => ['nullable', 'string'],
+            'chapters.*.assignment_deadline' => ['nullable', 'string'],
+        ]);
+
+        return redirect()
+            ->route('dashboard.instructor.modules.detail', ['module' => $module])
+            ->with('status', 'Modul berhasil diperbarui (simulasi).');
+    }
+
+    public function instructorModulesDelete(Request $request, string $module): RedirectResponse
+    {
+        $guard = $this->ensureInstructorRole($request);
+
+        if ($guard) {
+            return $guard;
+        }
+
+        return redirect()
+            ->route('dashboard.instructor.modules')
+            ->with('status', 'Modul berhasil dihapus (simulasi).');
     }
 
     public function instructorParticipants(Request $request): View|RedirectResponse
@@ -948,26 +1058,56 @@ class AuthController extends Controller
     /**
      * @return array<string, int>
      */
-    private function getInstructorStats(): array
+    private function getInstructorDashboardSummary(): array
     {
+        $activeParticipants = $this->getInstructorHomeParticipants();
+        $availableModules = $this->getInstructorHomeModules();
+        $pendingWorks = $this->getInstructorPendingWorks();
+
         return [
-            'totalModules' => 12,
-            'activeParticipants' => 48,
-            'pendingReviews' => 9,
-            'discussionThreads' => 17,
+            'activeParticipants' => count($activeParticipants),
+            'pendingReviews' => count($pendingWorks),
+            'totalModules' => count($availableModules),
         ];
     }
 
     /**
      * @return array<int, array<string, string>>
      */
-    private function getInstructorActivities(): array
+    private function getInstructorHomeParticipants(): array
     {
         return [
-            ['time' => '08:20', 'title' => 'Tugas baru dari Rani', 'description' => 'Modul Teknik Canting Dasar menunggu penilaian.'],
-            ['time' => '09:15', 'title' => 'Modul diperbarui', 'description' => 'Konten Teknik Warna Dasar versi 2.1 dipublikasikan.'],
-            ['time' => '10:40', 'title' => 'Diskusi baru', 'description' => 'Thread tentang fiksasi warna ditandai prioritas.'],
-            ['time' => '11:05', 'title' => 'Pengumuman kelas', 'description' => 'Sesi praktik tambahan dijadwalkan hari Jumat.'],
+            ['id' => 'p-01', 'name' => 'Anita Wijaya', 'program_type' => 'Teknik Canting Dasar', 'status' => 'Aktif'],
+            ['id' => 'p-02', 'name' => 'Bima Pradana', 'program_type' => 'Teknik Warna Dasar', 'status' => 'Aktif'],
+            ['id' => 'p-03', 'name' => 'Citra Kurnia', 'program_type' => 'Komposisi Motif Modern', 'status' => 'Aktif'],
+            ['id' => 'p-04', 'name' => 'Deni Santoso', 'program_type' => 'Teknik Canting Dasar', 'status' => 'Butuh Pendampingan'],
+            ['id' => 'p-05', 'name' => 'Eka Lestari', 'program_type' => 'Teknik Warna Dasar', 'status' => 'Aktif'],
+        ];
+    }
+
+    /**
+     * @return array<int, array<string, string>>
+     */
+    private function getInstructorHomeModules(): array
+    {
+        return [
+            ['id' => 'm-01', 'title' => 'Teknik Canting Dasar', 'summary' => 'Dasar penguasaan alat, malam, dan kontrol garis canting.', 'status' => 'Aktif'],
+            ['id' => 'm-02', 'title' => 'Teknik Warna Dasar', 'summary' => 'Pencampuran warna, proses fiksasi, dan hasil warna konsisten.', 'status' => 'Aktif'],
+            ['id' => 'm-03', 'title' => 'Komposisi Motif Modern', 'summary' => 'Perancangan motif kontemporer dengan akar visual tradisional.', 'status' => 'Perlu Revisi'],
+            ['id' => 'm-04', 'title' => 'Finishing dan Quality Control', 'summary' => 'Tahap akhir pengerjaan batik dan standar kualitas hasil karya.', 'status' => 'Aktif'],
+        ];
+    }
+
+    /**
+     * @return array<int, array<string, string>>
+     */
+    private function getInstructorPendingWorks(): array
+    {
+        return [
+            ['id' => 's-01', 'participant' => 'Anita Wijaya', 'module' => 'Teknik Canting Dasar', 'submitted_at' => '16 Mar 2026, 14:20', 'status' => 'Menunggu Penilaian'],
+            ['id' => 's-03', 'participant' => 'Citra Kurnia', 'module' => 'Komposisi Motif Modern', 'submitted_at' => '15 Mar 2026, 16:40', 'status' => 'Menunggu Penilaian'],
+            ['id' => 's-04', 'participant' => 'Eka Lestari', 'module' => 'Teknik Warna Dasar', 'submitted_at' => '15 Mar 2026, 09:30', 'status' => 'Menunggu Penilaian'],
+            ['id' => 's-05', 'participant' => 'Deni Santoso', 'module' => 'Finishing dan Quality Control', 'submitted_at' => '14 Mar 2026, 18:05', 'status' => 'Menunggu Penilaian'],
         ];
     }
 
@@ -1105,6 +1245,155 @@ class AuthController extends Controller
                 ],
             ],
         ];
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    private function getInstructorModulesList(): array
+    {
+        return [
+            [
+                'id' => 'm-01',
+                'title' => 'Teknik Canting Dasar',
+                'duration' => '72 Jam',
+                'chapters' => 8,
+                'participants' => 48,
+                'status' => 'Aktif',
+                'updated_at' => '17 Mar 2026',
+                'cover' => null,
+                'description' => 'Pelajari dasar-dasar teknik canting, termasuk penyiapan alat, bahan, dan penguasaan kontrol garis.',
+            ],
+            [
+                'id' => 'm-02',
+                'title' => 'Teknik Warna Dasar',
+                'duration' => '120 Jam',
+                'chapters' => 10,
+                'participants' => 44,
+                'status' => 'Aktif',
+                'updated_at' => '15 Mar 2026',
+                'cover' => null,
+                'description' => 'Mendalami teknik pewarnaan batik, pencampuran warna, dan proses fiksasi untuk hasil yang konsisten.',
+            ],
+            [
+                'id' => 'm-03',
+                'title' => 'Komposisi Motif Modern',
+                'duration' => '96 Jam',
+                'chapters' => 6,
+                'participants' => 29,
+                'status' => 'Perlu Revisi',
+                'updated_at' => '12 Mar 2026',
+                'cover' => null,
+                'description' => 'Eksplorasi desain motif kontemporer sambil mempertahankan nilai tradisional dan nuansa budaya.',
+            ],
+            [
+                'id' => 'm-04',
+                'title' => 'Finishing dan Quality Control',
+                'duration' => '48 Jam',
+                'chapters' => 5,
+                'participants' => 22,
+                'status' => 'Aktif',
+                'updated_at' => '10 Mar 2026',
+                'cover' => null,
+                'description' => 'Tahap akhir produksi batik: finishing, packing, dan standar kontrol kualitas internasional.',
+            ],
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function getInstructorModuleDetail(string $moduleId): ?array
+    {
+        $modules = $this->getInstructorModulesList();
+
+        foreach ($modules as $module) {
+            if ($module['id'] === $moduleId) {
+                return [
+                    ...$module,
+                    'chapters' => $this->getModuleChapters($moduleId),
+                ];
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    private function getModuleChapters(string $moduleId): array
+    {
+        $allChapters = [
+            'm-01' => [
+                [
+                    'id' => 'ch-01',
+                    'title' => 'Bab 1 - Persiapan Alat dan Bahan',
+                    'description' => 'Pengenalan alat utama dan bahan batik serta cara penyiapannya.',
+                    'content' => 'Pada bab ini, Anda akan mempelajari berbagai jenis alat canting (canting kompleks dan canting sederhana), bahan malam, kain, dan pewarna yang digunakan dalam batik modern.',
+                    'images' => [],
+                    'video' => null,
+                    'assignment' => 'Bersiaplah dan dokumentasikan semua alat dan bahan yang ada di studio Anda.',
+                    'assignment_deadline' => '30 Mar 2026',
+                ],
+                [
+                    'id' => 'ch-02',
+                    'title' => 'Bab 2 - Dasar Teknik Garis Canting',
+                    'description' => 'Penguasaan dasar dalam memegang dan menggerakkan canting.',
+                    'content' => 'Pelajari teknik memegang canting dengan benar, cara mengontrol aliran malam, dan latihan membuat berbagai jenis garis untuk meningkatkan presisi.',
+                    'images' => [],
+                    'video' => 'https://www.youtube.com/embed/dQw4w9WgXcQ',
+                    'assignment' => 'Praktik membuat 10 variasi garis canting pada kain uji coba.',
+                    'assignment_deadline' => '5 Apr 2026',
+                ],
+                [
+                    'id' => 'ch-03',
+                    'title' => 'Bab 3 - Pembuatan Pola dan Design',
+                    'description' => 'Merancang pola batik sebelum proses canting.',
+                    'content' => 'Teknik membuat pola dengan pensil, cetak, atau metode transfer lainnya. Pahami prinsip komposisi dan keseimbangan dalam desain batik.',
+                    'images' => [],
+                    'video' => null,
+                    'assignment' => 'Buatlah 3 pola desain batik tradisional di atas kain.',
+                    'assignment_deadline' => '10 Apr 2026',
+                ],
+            ],
+            'm-02' => [
+                [
+                    'id' => 'ch-01',
+                    'title' => 'Bab 1 - Pengenalan Warna Dasar',
+                    'description' => 'Teori warna dan pemahaman dasar kombinasi warna dalam batik.',
+                    'content' => 'Pelajari teori warna primer, sekunder, tersier, serta psikologi warna dalam penerapannya pada batik tradisional dan modern.',
+                    'images' => [],
+                    'video' => null,
+                    'assignment' => 'Membuat palet warna dengan 5 kombinasi warna berbeda.',
+                    'assignment_deadline' => '12 Apr 2026',
+                ],
+                [
+                    'id' => 'ch-02',
+                    'title' => 'Bab 2 - Teknik Pencampuran Warna',
+                    'description' => 'Cara mencampur pewarna untuk hasil yang optimal.',
+                    'content' => 'Teknik pencampuran pewarna alami dan sintetis, perbandingan proporsi, dan faktor-faktor yang mempengaruhi hasil warna akhir.',
+                    'images' => [],
+                    'video' => 'https://www.youtube.com/embed/dQw4w9WgXcQ',
+                    'assignment' => 'Lakukan percobaan 5 gradasi warna dari gelap ke terang.',
+                    'assignment_deadline' => '18 Apr 2026',
+                ],
+            ],
+            'm-03' => [
+                [
+                    'id' => 'ch-01',
+                    'title' => 'Bab 1 - Filosofi Motif Tradisional',
+                    'description' => 'Memahami makna dan filosofi di balik motif batik tradisional.',
+                    'content' => 'Eksplorasi motif klasik seperti Parang, Kawung, Semen, dan filosofi serta sejarah di baliknya untuk inspirasi desain modern.',
+                    'images' => [],
+                    'video' => null,
+                    'assignment' => 'Riset dan catat 5 motif tradisional beserta filosofinya.',
+                    'assignment_deadline' => '20 Apr 2026',
+                ],
+            ],
+        ];
+
+        return $allChapters[$moduleId] ?? [];
     }
 
     public function logout(Request $request): RedirectResponse

@@ -39,7 +39,12 @@ Route::middleware('simple.auth')->group(function (): void {
 	Route::prefix('/dashboard/penguji')->name('dashboard.instructor.')->group(function (): void {
 		Route::get('/', [AuthController::class, 'instructorHome'])->name('home');
 		Route::get('/kelola-modul', [AuthController::class, 'instructorModules'])->name('modules');
-		Route::post('/kelola-modul/{module}/update', [AuthController::class, 'instructorModulesUpdate'])->name('modules.update');
+		Route::get('/kelola-modul/create', [AuthController::class, 'instructorModulesCreate'])->name('modules.create');
+		Route::post('/kelola-modul', [AuthController::class, 'instructorModulesStore'])->name('modules.store');
+		Route::get('/kelola-modul/{module}/detail', [AuthController::class, 'instructorModulesDetail'])->name('modules.detail');
+		Route::get('/kelola-modul/{module}/edit', [AuthController::class, 'instructorModulesEdit'])->name('modules.edit');
+		Route::post('/kelola-modul/{module}', [AuthController::class, 'instructorModulesEditStore'])->name('modules.update');
+		Route::delete('/kelola-modul/{module}', [AuthController::class, 'instructorModulesDelete'])->name('modules.delete');
 		Route::get('/daftar-peserta', [AuthController::class, 'instructorParticipants'])->name('participants');
 		Route::get('/forum-diskusi', [AuthController::class, 'instructorForum'])->name('forum');
 		Route::post('/forum-diskusi/{thread}/reply', [AuthController::class, 'instructorForumReply'])->name('forum.reply');
