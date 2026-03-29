@@ -46,9 +46,12 @@ Route::middleware('simple.auth')->group(function (): void {
 		Route::post('/kelola-modul/{module}', [AuthController::class, 'instructorModulesEditStore'])->name('modules.update');
 		Route::delete('/kelola-modul/{module}', [AuthController::class, 'instructorModulesDelete'])->name('modules.delete');
 		Route::get('/daftar-peserta', [AuthController::class, 'instructorParticipants'])->name('participants');
+		Route::get('/daftar-peserta/individu', [AuthController::class, 'instructorParticipantsIndividualDetail'])->name('participants.individual.detail');
+		Route::get('/daftar-peserta/kelompok', [AuthController::class, 'instructorParticipantsGroupDetail'])->name('participants.group.detail');
 		Route::get('/forum-diskusi', [AuthController::class, 'instructorForum'])->name('forum');
 		Route::post('/forum-diskusi/{thread}/reply', [AuthController::class, 'instructorForumReply'])->name('forum.reply');
 		Route::get('/penilaian-tugas', [AuthController::class, 'instructorAssessments'])->name('assessments');
+		Route::get('/penilaian-tugas/{submission}/detail', [AuthController::class, 'instructorAssessmentsDetail'])->name('assessments.detail');
 		Route::post('/penilaian-tugas/{submission}/score', [AuthController::class, 'instructorAssessmentScore'])->name('assessments.score');
 	});
 
@@ -59,5 +62,6 @@ Route::middleware('simple.auth')->group(function (): void {
 		Route::post('/modul/{module}/tugas/upload', [AuthController::class, 'uploadParticipantTask'])->name('modules.tasks.upload');
 		Route::get('/forum', [AuthController::class, 'participantForum'])->name('forum');
 		Route::get('/galeri', [AuthController::class, 'participantGallery'])->name('gallery');
+		Route::get('/galeri/upload', [AuthController::class, 'participantGalleryUpload'])->name('gallery.upload');
 	});
 });

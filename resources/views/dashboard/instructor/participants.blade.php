@@ -1,56 +1,143 @@
 @extends('dashboard.layouts.app')
 
 @section('dashboard-content')
-    <section class="grid gap-6 xl:grid-cols-3">
-        <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm xl:col-span-2">
-            <h2 class="text-lg font-bold text-slate-900">Daftar Peserta</h2>
-            <div class="mt-4 overflow-x-auto">
-                <table class="min-w-full divide-y divide-slate-200 text-left text-sm">
-                    <thead>
-                        <tr class="text-xs uppercase tracking-wider text-slate-500">
-                            <th class="px-3 py-3">Nama</th>
-                            <th class="px-3 py-3">Batch</th>
-                            <th class="px-3 py-3">Progres</th>
-                            <th class="px-3 py-3">Aktivitas</th>
-                            <th class="px-3 py-3">Aksi</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-slate-100">
-                        @foreach ($participants as $participant)
-                            <tr class="text-slate-700">
-                                <td class="px-3 py-3 font-semibold text-slate-900">{{ $participant['name'] }}</td>
-                                <td class="px-3 py-3">{{ $participant['batch'] }}</td>
-                                <td class="px-3 py-3">{{ $participant['progress'] }}%</td>
-                                <td class="px-3 py-3">{{ $participant['last_activity'] }}</td>
-                                <td class="px-3 py-3">
-                                    <a href="{{ route('dashboard.instructor.participants', ['participant' => $participant['id']]) }}"
-                                        class="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-100">Lihat</a>
-                                </td>
+    <div class="space-y-6">
+        <!-- Peserta Individu -->
+        <article class="rounded-xl border border-slate-200 bg-white shadow-sm">
+            <div class="border-b border-slate-200 px-6 py-5">
+                <h2 class="text-lg font-bold text-slate-900">Peserta Individu</h2>
+            </div>
+            <div class="overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="min-w-full text-left text-sm">
+                        <thead>
+                            <tr class="border-b border-slate-200 bg-slate-50">
+                                <th class="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-slate-600">No</th>
+                                <th class="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-slate-600">Nama</th>
                             </tr>
-                        @endforeach
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody class="divide-y divide-slate-200">
+                            @forelse ($individualParticipants ?? [] as $index => $participant)
+                                <tr class="{{ $index % 2 === 0 ? 'bg-white' : 'bg-slate-50' }} hover:bg-blue-50 transition">
+                                    <td class="px-6 py-4 text-slate-600">{{ $index + 1 }}</td>
+                                    <td class="px-6 py-4 font-medium text-slate-900">{{ $participant['name'] }}</td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="2" class="px-6 py-8 text-center text-slate-500">Tidak ada peserta
+                                        individu</td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <!-- Pagination Controls -->
+            <div class="border-t border-slate-200 px-6 py-4">
+                <div class="flex items-center justify-between">
+                    <a href="{{ route('dashboard.instructor.participants.individual.detail') }}"
+                        class="text-sm font-semibold text-blue-600 hover:text-blue-700 transition">
+                        Lihat detail
+                    </a>
+                    <div class="flex items-center gap-1">
+                        <button
+                            class="flex items-center justify-center rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-600 transition hover:bg-slate-100 disabled:opacity-50"
+                            disabled>
+                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7">
+                                </path>
+                            </svg>
+                        </button>
+                        <div class="flex gap-0.5">
+                            <button
+                                class="h-10 w-10 rounded-lg border border-slate-300 bg-blue-50 text-sm font-semibold text-blue-600 transition hover:bg-blue-100">1</button>
+                            <button
+                                class="h-10 w-10 rounded-lg border border-slate-300 text-sm font-semibold text-slate-600 transition hover:bg-slate-100">2</button>
+                            <button class="h-10 w-10 rounded-lg border border-slate-300 text-sm text-slate-500">...</button>
+                            <button
+                                class="h-10 w-10 rounded-lg border border-slate-300 text-sm font-semibold text-slate-600 transition hover:bg-slate-100">5</button>
+                        </div>
+                        <button
+                            class="flex items-center justify-center rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-600 transition hover:bg-slate-100">
+                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7">
+                                </path>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
             </div>
         </article>
 
-        <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            <h2 class="text-lg font-bold text-slate-900">Detail Peserta</h2>
-            @php
-                $detail = collect($participants)->firstWhere('id', $selectedParticipant) ?? $participants[0];
-            @endphp
-            <div class="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
-                <p class="text-sm font-bold text-slate-900">{{ $detail['name'] }}</p>
-                <p class="mt-1 text-xs text-slate-500">{{ $detail['batch'] }}</p>
-                <p class="mt-4 text-sm text-slate-600">Progres pembelajaran</p>
-                <p class="mt-1 text-2xl font-bold text-slate-900">{{ $detail['progress'] }}%</p>
-                <p class="mt-2 text-xs text-slate-500">Aktivitas terakhir: {{ $detail['last_activity'] }}</p>
-                <div class="mt-4 h-2 overflow-hidden rounded-full bg-slate-200">
-                    <div class="h-full rounded-full bg-sky-600" style="width: {{ $detail['progress'] }}%"></div>
+        <!-- Peserta Kelompok -->
+        <article class="rounded-xl border border-slate-200 bg-white shadow-sm">
+            <div class="border-b border-slate-200 px-6 py-5">
+                <h2 class="text-lg font-bold text-slate-900">Peserta Kelompok</h2>
+            </div>
+            <div class="overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="min-w-full text-left text-sm">
+                        <thead>
+                            <tr class="border-b border-slate-200 bg-slate-50">
+                                <th class="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-slate-600">No</th>
+                                <th class="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-slate-600">Nama
+                                </th>
+                                <th class="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-slate-600">Kelompok
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-200">
+                            @forelse ($groupParticipants ?? [] as $index => $participant)
+                                <tr class="{{ $index % 2 === 0 ? 'bg-white' : 'bg-slate-50' }} hover:bg-blue-50 transition">
+                                    <td class="px-6 py-4 text-slate-600">{{ $index + 1 }}</td>
+                                    <td class="px-6 py-4 font-medium text-slate-900">{{ $participant['name'] }}</td>
+                                    <td class="px-6 py-4 text-slate-600">{{ $participant['group'] ?? 'N/A' }}</td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="3" class="px-6 py-8 text-center text-slate-500">Tidak ada peserta
+                                        kelompok</td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
                 </div>
-                <a href="{{ route('dashboard.instructor.assessments') }}"
-                    class="mt-5 inline-block rounded-lg bg-slate-900 px-3 py-2 text-xs font-semibold text-white hover:bg-slate-700">Lihat
-                    tugas peserta</a>
+            </div>
+            <!-- Pagination Controls -->
+            <div class="border-t border-slate-200 px-6 py-4">
+                <div class="flex items-center justify-between">
+                    <a href="{{ route('dashboard.instructor.participants.group.detail') }}"
+                        class="text-sm font-semibold text-blue-600 hover:text-blue-700 transition">
+                        Lihat detail
+                    </a>
+                    <div class="flex items-center gap-1">
+                        <button
+                            class="flex items-center justify-center rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-600 transition hover:bg-slate-100 disabled:opacity-50"
+                            disabled>
+                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7">
+                                </path>
+                            </svg>
+                        </button>
+                        <div class="flex gap-0.5">
+                            <button
+                                class="h-10 w-10 rounded-lg border border-slate-300 bg-blue-50 text-sm font-semibold text-blue-600 transition hover:bg-blue-100">1</button>
+                            <button
+                                class="h-10 w-10 rounded-lg border border-slate-300 text-sm font-semibold text-slate-600 transition hover:bg-slate-100">2</button>
+                            <button class="h-10 w-10 rounded-lg border border-slate-300 text-sm text-slate-500">...</button>
+                            <button
+                                class="h-10 w-10 rounded-lg border border-slate-300 text-sm font-semibold text-slate-600 transition hover:bg-slate-100">5</button>
+                        </div>
+                        <button
+                            class="flex items-center justify-center rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-600 transition hover:bg-slate-100">
+                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7">
+                                </path>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
             </div>
         </article>
-    </section>
+    </div>
 @endsection

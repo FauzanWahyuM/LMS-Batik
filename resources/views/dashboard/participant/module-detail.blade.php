@@ -92,7 +92,7 @@
 
                 <form action="{{ route('dashboard.participant.modules.tasks.upload', ['module' => $moduleSlug]) }}"
                     method="POST" enctype="multipart/form-data"
-                    class="mx-auto mt-6 max-w-2xl rounded-none border-2 border-slate-700 bg-white p-6">
+                    class="mx-auto mt-6 max-w-2xl rounded-lg border-2 border-slate-700 bg-white p-6">
                     @csrf
                     <p class="text-center text-lg font-bold text-slate-800">Upload Tugas</p>
 

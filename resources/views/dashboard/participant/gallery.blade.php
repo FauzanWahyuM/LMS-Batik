@@ -9,7 +9,7 @@
                 <button
                     class="rounded-lg bg-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-300 transition">Cari</button>
             </div>
-            <a href="#"
+            <a href="{{ route('dashboard.participant.gallery.upload') }}"
                 class="rounded-lg bg-slate-800 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-700 transition">Upload
                 Karya</a>
         </div>

@@ -471,8 +471,39 @@ class AuthController extends Controller
         return view('dashboard.instructor.participants', [
             'user' => $request->session()->get('auth_user'),
             'dashboard' => $this->getInstructorDashboardConfig('participants'),
-            'participants' => $this->getInstructorParticipants(),
+            'individualParticipants' => $this->getInstructorIndividualParticipants(),
+            'groupParticipants' => $this->getInstructorGroupParticipants(),
             'selectedParticipant' => $selected,
+        ]);
+    }
+
+    public function instructorParticipantsIndividualDetail(Request $request): View|RedirectResponse
+    {
+        $guard = $this->ensureInstructorRole($request);
+
+        if ($guard) {
+            return $guard;
+        }
+
+        return view('dashboard.instructor.participants-individual-detail', [
+            'user' => $request->session()->get('auth_user'),
+            'dashboard' => $this->getInstructorDashboardConfig('participants'),
+            'individualParticipants' => $this->getInstructorIndividualParticipants(),
+        ]);
+    }
+
+    public function instructorParticipantsGroupDetail(Request $request): View|RedirectResponse
+    {
+        $guard = $this->ensureInstructorRole($request);
+
+        if ($guard) {
+            return $guard;
+        }
+
+        return view('dashboard.instructor.participants-group-detail', [
+            'user' => $request->session()->get('auth_user'),
+            'dashboard' => $this->getInstructorDashboardConfig('participants'),
+            'groupParticipants' => $this->getInstructorGroupParticipants(),
         ]);
     }
 
@@ -523,6 +554,28 @@ class AuthController extends Controller
             'user' => $request->session()->get('auth_user'),
             'dashboard' => $this->getInstructorDashboardConfig('assessments'),
             'submissions' => $this->getInstructorSubmissions(),
+        ]);
+    }
+
+    public function instructorAssessmentsDetail(Request $request, string $submission): View|RedirectResponse
+    {
+        $guard = $this->ensureInstructorRole($request);
+
+        if ($guard) {
+            return $guard;
+        }
+
+        $submissions = $this->getInstructorSubmissions();
+        $currentSubmission = collect($submissions)->firstWhere('id', $submission);
+
+        if (!$currentSubmission) {
+            return redirect()->route('dashboard.instructor.assessments');
+        }
+
+        return view('dashboard.instructor.assessments-detail', [
+            'user' => $request->session()->get('auth_user'),
+            'dashboard' => $this->getInstructorDashboardConfig('assessments'),
+            'submission' => $currentSubmission,
         ]);
     }
 
@@ -675,6 +728,17 @@ class AuthController extends Controller
         return $this->renderParticipantPage($request, 'gallery');
     }
 
+    public function participantGalleryUpload(Request $request): View|RedirectResponse
+    {
+        $guard = $this->ensureParticipantRole($request);
+
+        if ($guard) {
+            return $guard;
+        }
+
+        return $this->renderParticipantPage($request, 'gallery-upload');
+    }
+
     private function renderParticipantPage(Request $request, string $page): View
     {
         $user = $request->session()->get('auth_user');
@@ -711,6 +775,12 @@ class AuthController extends Controller
                 'view' => 'dashboard.participant.gallery',
                 'title' => 'Galeri Karya',
                 'subtitle' => 'Kelola dan tampilkan hasil karya terbaik Anda.',
+                'headerGradient' => 'from-slate-900 to-blue-900',
+            ],
+            'gallery-upload' => [
+                'view' => 'dashboard.participant.upload-gallery',
+                'title' => 'Upload Karya',
+                'subtitle' => 'Bagikan karya batik terbaik Anda dengan komunitas.',
                 'headerGradient' => 'from-slate-900 to-blue-900',
             ],
         ];
@@ -1133,6 +1203,34 @@ class AuthController extends Controller
             ['id' => 'p-02', 'name' => 'Bima Pradana', 'batch' => 'Batch 3', 'progress' => 71, 'last_activity' => '1 jam lalu'],
             ['id' => 'p-03', 'name' => 'Citra Kurnia', 'batch' => 'Batch 2', 'progress' => 91, 'last_activity' => '30 menit lalu'],
             ['id' => 'p-04', 'name' => 'Deni Santoso', 'batch' => 'Batch 2', 'progress' => 66, 'last_activity' => '3 jam lalu'],
+        ];
+    }
+
+    /**
+     * @return array<int, array<string, string>>
+     */
+    private function getInstructorIndividualParticipants(): array
+    {
+        return [
+            ['id' => 'p-01', 'name' => 'Anita Wijaya'],
+            ['id' => 'p-02', 'name' => 'Bima Pradana'],
+            ['id' => 'p-03', 'name' => 'Citra Kurnia'],
+            ['id' => 'p-04', 'name' => 'Deni Santoso'],
+            ['id' => 'p-05', 'name' => 'Eka Putri'],
+        ];
+    }
+
+    /**
+     * @return array<int, array<string, string>>
+     */
+    private function getInstructorGroupParticipants(): array
+    {
+        return [
+            ['id' => 'g-01', 'name' => 'Kelompok A', 'group' => 'Lembaga A'],
+            ['id' => 'g-02', 'name' => 'Kelompok A', 'group' => 'Lembaga A'],
+            ['id' => 'g-03', 'name' => 'Kelompok B', 'group' => 'Lembaga B'],
+            ['id' => 'g-04', 'name' => 'Kelompok B', 'group' => 'Lembaga B'],
+            ['id' => 'g-05', 'name' => 'Kelompok C', 'group' => 'Lembaga C'],
         ];
     }
 
