@@ -10,9 +10,9 @@
             </div>
             <p class="mt-1 text-right text-xs text-slate-500">79% selesai</p>
 
-            <div class="mt-6 flex justify-end">
+            <div class="mt-6 flex flex-col sm:justify-end">
                 <a href="{{ route('dashboard.participant.modules.detail', ['module' => 'modul-1', 'tab' => 'materi', 'material' => 'bab-1-persiapan-alat-bahan']) }}"
-                    class="rounded-full bg-black px-6 py-2 text-xs font-semibold text-white hover:bg-slate-800 transition">Lihat
+                    class="w-full sm:w-auto inline-flex items-center justify-center rounded-full bg-black px-6 py-2 text-xs sm:text-sm font-semibold text-white hover:bg-slate-800 transition">Lihat
                     Modul</a>
             </div>
 
@@ -61,9 +61,9 @@
             </div>
             <p class="mt-1 text-right text-xs text-slate-500">79% selesai</p>
 
-            <div class="mt-6 flex justify-end">
+            <div class="mt-6 flex flex-col sm:justify-end">
                 <a href="{{ route('dashboard.participant.modules.detail', ['module' => 'modul-2', 'tab' => 'materi', 'material' => 'bab-1-pengenalan-warna']) }}"
-                    class="rounded-full bg-black px-6 py-2 text-xs font-semibold text-white hover:bg-slate-800 transition">Lihat
+                    class="w-full sm:w-auto inline-flex items-center justify-center rounded-full bg-black px-6 py-2 text-xs sm:text-sm font-semibold text-white hover:bg-slate-800 transition">Lihat
                     Modul</a>
             </div>
 

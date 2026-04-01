@@ -20,7 +20,7 @@
 
 <body class="min-h-screen kp-bg-pattern flex items-center justify-center font-sans text-slate-800 p-4 sm:p-6 lg:p-8">
 
-    <div class="w-full max-w-[950px] rounded-[1.5rem] bg-white shadow-2xl overflow-hidden grid lg:grid-cols-[1fr_1.2fr]">
+    <div class="w-full max-w-[950px] rounded-3xl bg-white shadow-2xl overflow-hidden grid lg:grid-cols-[1fr_1.2fr]">
 
         <aside
             class="p-10 flex flex-col justify-between text-white relative min-h-[300px] lg:min-h-[600px] bg-cover bg-center overflow-hidden"
@@ -37,7 +37,7 @@
             </div>
 
             <div
-                class="absolute bottom-0 left-0 right-0 h-1/2 bg-gradient-to-t from-slate-900/80 to-transparent pointer-events-none z-0">
+                class="absolute bottom-0 left-0 right-0 h-1/2 bg-linear-to-t from-slate-900/80 to-transparent pointer-events-none z-0">
             </div>
         </aside>
 
@@ -61,7 +61,7 @@
                 </div>
                 <h1 class="text-2xl font-bold text-slate-800 tracking-tight">Selamat Datang Kembali</h1>
                 <p class="text-sm text-slate-500 mt-2">
-                    Silakan masukkan email dan kata sandi Anda untuk melanjutkan.
+                    Silakan masukkan username dan kata sandi Anda untuk melanjutkan.
                 </p>
             </div>
 
@@ -93,21 +93,41 @@
                 @csrf
 
                 <div>
-                    <label for="email" class="mb-1.5 block text-sm font-semibold text-slate-700">
-                        Alamat Email
+                    <label for="username" class="mb-1.5 block text-sm font-semibold text-slate-700">
+                        Username
                     </label>
-                    <input id="email" name="email" type="email" value="{{ old('email') }}" required
+                    <input id="username" name="username" type="text" value="{{ old('username') }}" required
                         class="w-full rounded-lg border border-slate-200 bg-slate-50/50 px-4 py-3 text-sm transition-all focus:bg-white focus:border-amber-500 focus:outline-none focus:ring-4 focus:ring-amber-500/10 placeholder-slate-400"
-                        placeholder="Contoh: nama@email.com">
+                        placeholder="Contoh: manager01">
                 </div>
 
                 <div>
                     <label for="password" class="mb-1.5 block text-sm font-semibold text-slate-700">
                         Kata Sandi
                     </label>
-                    <input id="password" name="password" type="password" required
-                        class="w-full rounded-lg border border-slate-200 bg-slate-50/50 px-4 py-3 text-sm transition-all focus:bg-white focus:border-amber-500 focus:outline-none focus:ring-4 focus:ring-amber-500/10 placeholder-slate-400"
-                        placeholder="••••••••">
+                    <div class="relative">
+                        <input id="password" name="password" type="password" required
+                            class="w-full rounded-lg border border-slate-200 bg-slate-50/50 px-4 py-3 pr-11 text-sm transition-all focus:bg-white focus:border-amber-500 focus:outline-none focus:ring-4 focus:ring-amber-500/10 placeholder-slate-400"
+                            placeholder="••••••••">
+                        <button type="button" data-password-toggle data-password-target="password"
+                            class="absolute inset-y-0 right-0 flex items-center justify-center px-3 text-slate-500 transition hover:text-slate-700"
+                            aria-label="Tampilkan kata sandi">
+                            <svg data-icon="show" class="h-5 w-5" fill="none" stroke="currentColor"
+                                viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                            </svg>
+                            <svg data-icon="hide" class="hidden h-5 w-5" fill="none" stroke="currentColor"
+                                viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M13.875 18.825A10.05 10.05 0 0112 19c-4.477 0-8.268-2.943-9.542-7a9.956 9.956 0 012.31-3.95M9.88 9.88a3 3 0 104.24 4.24" />
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M6.1 6.1A9.955 9.955 0 0112 5c4.478 0 8.268 2.943 9.542 7a9.973 9.973 0 01-4.132 5.411M3 3l18 18" />
+                            </svg>
+                        </button>
+                    </div>
                 </div>
 
                 <div class="pt-4">
@@ -123,17 +143,17 @@
                 <div class="space-y-1.5">
                     <div class="flex justify-between items-center border-b border-slate-200/60 pb-1.5">
                         <span>Peserta (Murid)</span>
-                        <span class="font-medium text-slate-700">participant@lmsbatik.test <span
+                        <span class="font-medium text-slate-700">participant01 <span
                                 class="text-slate-400 font-normal">/</span> participant123</span>
                     </div>
                     <div class="flex justify-between items-center border-b border-slate-200/60 pb-1.5">
                         <span>Pengajar</span>
-                        <span class="font-medium text-slate-700">instructor@lmsbatik.test <span
+                        <span class="font-medium text-slate-700">instructor01 <span
                                 class="text-slate-400 font-normal">/</span> instructor123</span>
                     </div>
                     <div class="flex justify-between items-center">
                         <span>Pengelola</span>
-                        <span class="font-medium text-slate-700">manager@lmsbatik.test <span
+                        <span class="font-medium text-slate-700">manager01 <span
                                 class="text-slate-400 font-normal">/</span> manager123</span>
                     </div>
                 </div>
@@ -141,6 +161,36 @@
 
         </section>
     </div>
+    <script>
+        (function() {
+            const toggleButtons = document.querySelectorAll('[data-password-toggle]');
+
+            toggleButtons.forEach(function(button) {
+                button.addEventListener('click', function() {
+                    const targetId = button.getAttribute('data-password-target');
+                    const input = document.getElementById(targetId);
+
+                    if (!input) {
+                        return;
+                    }
+
+                    const isHidden = input.type === 'password';
+                    input.type = isHidden ? 'text' : 'password';
+
+                    const showIcon = button.querySelector('[data-icon="show"]');
+                    const hideIcon = button.querySelector('[data-icon="hide"]');
+
+                    if (showIcon && hideIcon) {
+                        showIcon.classList.toggle('hidden', isHidden);
+                        hideIcon.classList.toggle('hidden', !isHidden);
+                    }
+
+                    button.setAttribute('aria-label', isHidden ? 'Sembunyikan kata sandi' :
+                        'Tampilkan kata sandi');
+                });
+            });
+        })();
+    </script>
 </body>
 
 </html>

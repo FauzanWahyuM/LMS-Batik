@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Illuminate\View\View;
 
 class AuthController extends Controller
@@ -11,21 +12,24 @@ class AuthController extends Controller
     /**
      * Hardcoded users for temporary authentication simulation.
      *
-     * @var array<string, array{name: string, password: string, role: string}>
+     * @var array<string, array{name: string, email: string, password: string, role: string}>
      */
     private array $users = [
-        'participant@lmsbatik.test' => [
+        'participant01' => [
             'name' => 'Demo Participant',
+            'email' => 'participant@lmsbatik.test',
             'password' => 'participant123',
             'role' => 'participant',
         ],
-        'instructor@lmsbatik.test' => [
+        'instructor01' => [
             'name' => 'Demo Instructor',
+            'email' => 'instructor@lmsbatik.test',
             'password' => 'instructor123',
             'role' => 'instructor',
         ],
-        'manager@lmsbatik.test' => [
+        'manager01' => [
             'name' => 'Demo Manager',
+            'email' => 'manager@lmsbatik.test',
             'password' => 'manager123',
             'role' => 'manager',
         ],
@@ -43,22 +47,23 @@ class AuthController extends Controller
     public function login(Request $request): RedirectResponse
     {
         $credentials = $request->validate([
-            'email' => ['required', 'email'],
+            'username' => ['required', 'string'],
             'password' => ['required', 'string'],
         ]);
 
-        $email = strtolower(trim($credentials['email']));
-        $user = $this->users[$email] ?? null;
+        $username = strtolower(trim($credentials['username']));
+        $user = $this->users[$username] ?? null;
 
         if ((! $user) || ($user['password'] !== $credentials['password'])) {
             return back()
-                ->withErrors(['email' => 'Email atau password tidak valid.'])
+                ->withErrors(['username' => 'Username atau password tidak valid.'])
                 ->withInput($request->except('password'));
         }
 
         $request->session()->put('auth_user', [
             'name' => $user['name'],
-            'email' => $email,
+            'username' => $username,
+            'email' => $user['email'],
             'role' => $user['role'],
         ]);
 
@@ -111,11 +116,101 @@ class AuthController extends Controller
             return $guard;
         }
 
+        $sentParticipantIds = $request->session()->get('manager_sent_individual_ids', []);
+        $pendingParticipants = $this->getManagerPendingIndividualValidations();
+        $pendingParticipants = array_values(array_filter($pendingParticipants, function (array $participant) use ($sentParticipantIds): bool {
+            return !in_array($participant['id'], $sentParticipantIds, true);
+        }));
+
+        $managedParticipants = $this->getManagerIndividualParticipants();
+        $managedParticipantIds = array_column($managedParticipants, 'id');
+
+        foreach ($this->getManagerPendingIndividualValidations() as $participant) {
+            if (in_array($participant['id'], $sentParticipantIds, true) && !in_array($participant['id'], $managedParticipantIds, true)) {
+                $managedParticipants[] = [
+                    'id' => $participant['id'],
+                    'name' => $participant['name'],
+                    'program' => $participant['program'],
+                    'progress' => 0,
+                    'status' => 'Aktif',
+                ];
+            }
+        }
+
         return view('dashboard.manager.participants-individual', [
             'user' => $request->session()->get('auth_user'),
             'dashboard' => $this->getManagerDashboardConfig('participants-individual'),
-            'participants' => $this->getManagerIndividualParticipants(),
+            'participants' => $managedParticipants,
+            'pendingParticipants' => $pendingParticipants,
+            'generatedCredential' => $request->session()->get('manager_generated_credential'),
         ]);
+    }
+
+    public function managerIndividualParticipantsGenerateCredential(Request $request, string $participant): RedirectResponse
+    {
+        $guard = $this->ensureManagerRole($request);
+
+        if ($guard) {
+            return $guard;
+        }
+
+        $selectedParticipant = collect($this->getManagerPendingIndividualValidations())->firstWhere('id', $participant);
+
+        if (!$selectedParticipant) {
+            return redirect()
+                ->route('dashboard.manager.participants.individual')
+                ->withErrors(['credential' => 'Data peserta untuk validasi tidak ditemukan.']);
+        }
+
+        $username = strtolower(Str::slug($selectedParticipant['name'], ''));
+        $username = substr($username, 0, 10) . rand(10, 99);
+        $password = Str::upper(Str::random(2)) . rand(10, 99) . Str::lower(Str::random(3)) . '!';
+
+        $request->session()->put('manager_generated_credential', [
+            'participant_id' => $selectedParticipant['id'],
+            'participant_name' => $selectedParticipant['name'],
+            'participant_whatsapp' => $selectedParticipant['whatsapp'],
+            'username' => $username,
+            'password' => $password,
+        ]);
+
+        return redirect()
+            ->route('dashboard.manager.participants.individual')
+            ->with('status', 'Username dan password awal berhasil digenerate. Silakan kirim via WhatsApp.');
+    }
+
+    public function managerIndividualParticipantsSendCredential(Request $request, string $participant): RedirectResponse
+    {
+        $guard = $this->ensureManagerRole($request);
+
+        if ($guard) {
+            return $guard;
+        }
+
+        $request->validate([
+            'username' => ['required', 'string', 'min:4', 'max:30'],
+            'password' => ['required', 'string', 'min:6', 'max:30'],
+        ]);
+
+        $generatedCredential = $request->session()->get('manager_generated_credential');
+
+        if (!$generatedCredential || (($generatedCredential['participant_id'] ?? '') !== $participant)) {
+            return redirect()
+                ->route('dashboard.manager.participants.individual')
+                ->withErrors(['credential' => 'Silakan generate kredensial terlebih dahulu sebelum mengirim via WhatsApp.']);
+        }
+
+        $sentParticipantIds = $request->session()->get('manager_sent_individual_ids', []);
+        if (!in_array($participant, $sentParticipantIds, true)) {
+            $sentParticipantIds[] = $participant;
+        }
+
+        $request->session()->put('manager_sent_individual_ids', $sentParticipantIds);
+        $request->session()->forget('manager_generated_credential');
+
+        return redirect()
+            ->route('dashboard.manager.participants.individual')
+            ->with('status', 'Kredensial login awal berhasil dikirim via WhatsApp (simulasi). Peserta dipindahkan ke daftar kelola peserta.');
     }
 
     public function managerIndividualParticipantsUpdate(Request $request, string $participant): RedirectResponse
@@ -127,7 +222,7 @@ class AuthController extends Controller
         }
 
         $request->validate([
-            'status' => ['required', 'string', 'in:Aktif,Perlu Verifikasi,Nonaktif'],
+            'status' => ['required', 'string', 'in:Aktif,Lulus,Nonaktif'],
         ]);
 
         return redirect()
@@ -143,10 +238,167 @@ class AuthController extends Controller
             return $guard;
         }
 
+        $sentGroupIds = $request->session()->get('manager_sent_group_ids', []);
+        $pendingGroups = $this->getManagerPendingGroupValidations();
+        $pendingGroups = array_values(array_filter($pendingGroups, function (array $group) use ($sentGroupIds): bool {
+            return !in_array($group['id'], $sentGroupIds, true);
+        }));
+
+        $managedGroups = $this->getManagerGroupParticipants();
+        $managedGroupIds = array_column($managedGroups, 'id');
+
+        foreach ($this->getManagerPendingGroupValidations() as $group) {
+            if (in_array($group['id'], $sentGroupIds, true) && !in_array($group['id'], $managedGroupIds, true)) {
+                $managedGroups[] = [
+                    'id' => $group['id'],
+                    'group_name' => $group['group_name'],
+                    'members' => $group['members'],
+                    'program' => $group['program'],
+                    'status' => 'Aktif',
+                ];
+            }
+        }
+
         return view('dashboard.manager.participants-group', [
             'user' => $request->session()->get('auth_user'),
             'dashboard' => $this->getManagerDashboardConfig('participants-group'),
-            'groups' => $this->getManagerGroupParticipants(),
+            'groups' => $managedGroups,
+            'pendingGroups' => $pendingGroups,
+            'generatedGroupCredential' => $request->session()->get('manager_generated_group_credential'),
+            'groupExportMeta' => $request->session()->get('manager_group_last_export'),
+        ]);
+    }
+
+    public function managerGroupParticipantsGenerateCredential(Request $request, string $group): RedirectResponse
+    {
+        $guard = $this->ensureManagerRole($request);
+
+        if ($guard) {
+            return $guard;
+        }
+
+        $selectedGroup = collect($this->getManagerPendingGroupValidations())->firstWhere('id', $group);
+
+        if (!$selectedGroup) {
+            return redirect()
+                ->route('dashboard.manager.participants.group')
+                ->withErrors(['group_credential' => 'Data kelompok untuk validasi tidak ditemukan.']);
+        }
+
+        $credentials = [];
+        $prefix = strtolower(Str::slug($selectedGroup['group_name'], ''));
+        $prefix = substr($prefix ?: 'group', 0, 8);
+
+        for ($index = 1; $index <= (int) $selectedGroup['members']; $index++) {
+            $credentials[] = [
+                'member_no' => $index,
+                'username' => $prefix . str_pad((string) $index, 2, '0', STR_PAD_LEFT) . rand(1, 9),
+                'password' => Str::upper(Str::random(2)) . rand(10, 99) . Str::lower(Str::random(2)) . '!',
+            ];
+        }
+
+        $request->session()->put('manager_generated_group_credential', [
+            'group_id' => $selectedGroup['id'],
+            'group_name' => $selectedGroup['group_name'],
+            'pic_name' => $selectedGroup['pic_name'],
+            'pic_whatsapp' => $selectedGroup['pic_phone'],
+            'pic_email' => $selectedGroup['pic_email'],
+            'credentials' => $credentials,
+        ]);
+
+        return redirect()
+            ->route('dashboard.manager.participants.group')
+            ->with('status', 'Kredensial anggota kelompok berhasil digenerate. Lanjutkan export Excel dan kirim ke PIC.');
+    }
+
+    public function managerGroupParticipantsSendCredential(Request $request, string $group): RedirectResponse
+    {
+        $guard = $this->ensureManagerRole($request);
+
+        if ($guard) {
+            return $guard;
+        }
+
+        $generated = $request->session()->get('manager_generated_group_credential');
+
+        if (!$generated || (($generated['group_id'] ?? '') !== $group)) {
+            return redirect()
+                ->route('dashboard.manager.participants.group')
+                ->withErrors(['group_credential' => 'Silakan generate kredensial kelompok terlebih dahulu.']);
+        }
+
+        $csvRows = [
+            ['Group', 'PIC', 'PIC WhatsApp', 'PIC Email', 'Member No', 'Username', 'Password'],
+        ];
+
+        foreach ($generated['credentials'] as $credential) {
+            $csvRows[] = [
+                $generated['group_name'],
+                $generated['pic_name'],
+                $generated['pic_whatsapp'],
+                $generated['pic_email'],
+                (string) $credential['member_no'],
+                $credential['username'],
+                $credential['password'],
+            ];
+        }
+
+        $csvContent = '';
+        foreach ($csvRows as $row) {
+            $csvContent .= implode(',', array_map(function (string $value): string {
+                return '"' . str_replace('"', '""', $value) . '"';
+            }, $row)) . "\n";
+        }
+
+        $filename = 'group-credentials-' . $group . '-' . now()->format('YmdHis') . '.csv';
+        $directory = storage_path('app/private/exports');
+        if (!is_dir($directory)) {
+            mkdir($directory, 0777, true);
+        }
+
+        $path = $directory . DIRECTORY_SEPARATOR . $filename;
+        file_put_contents($path, $csvContent);
+
+        $sentGroupIds = $request->session()->get('manager_sent_group_ids', []);
+        if (!in_array($group, $sentGroupIds, true)) {
+            $sentGroupIds[] = $group;
+        }
+
+        $request->session()->put('manager_sent_group_ids', $sentGroupIds);
+        $request->session()->put('manager_group_last_export', [
+            'group_id' => $group,
+            'group_name' => $generated['group_name'],
+            'pic_name' => $generated['pic_name'],
+            'path' => $path,
+            'filename' => $filename,
+        ]);
+        $request->session()->forget('manager_generated_group_credential');
+
+        return redirect()
+            ->route('dashboard.manager.participants.group')
+            ->with('status', 'Kredensial berhasil diexport (CSV kompatibel Excel) dan dikirim ke PIC via WhatsApp (simulasi). Data kelompok dipindahkan ke kelola peserta kelompok.');
+    }
+
+    public function managerGroupParticipantsDownloadCredentialExport(Request $request)
+    {
+        $guard = $this->ensureManagerRole($request);
+
+        if ($guard) {
+            return $guard;
+        }
+
+        $exportMeta = $request->session()->get('manager_group_last_export');
+        $path = $exportMeta['path'] ?? null;
+        $filename = $exportMeta['filename'] ?? 'group-credentials.csv';
+
+        if (!$path || !file_exists($path)) {
+            return redirect()
+                ->route('dashboard.manager.participants.group')
+                ->withErrors(['group_credential' => 'File export belum tersedia. Silakan kirim kredensial kelompok terlebih dahulu.']);
+        }
+
+        return response()->download($path, $filename, [
+            'Content-Type' => 'text/csv',
         ]);
     }
 
@@ -159,7 +411,7 @@ class AuthController extends Controller
         }
 
         $request->validate([
-            'status' => ['required', 'string', 'in:Aktif,Perlu Verifikasi,Selesai'],
+            'status' => ['required', 'string', 'in:Aktif,Lulus,Nonaktif'],
         ]);
 
         return redirect()
@@ -178,8 +430,64 @@ class AuthController extends Controller
         return view('dashboard.manager.instructors', [
             'user' => $request->session()->get('auth_user'),
             'dashboard' => $this->getManagerDashboardConfig('instructors'),
-            'instructors' => $this->getManagerInstructors(),
+            'instructors' => $this->getManagerManagedInstructors($request),
         ]);
+    }
+
+    public function managerInstructorsStore(Request $request): RedirectResponse
+    {
+        $guard = $this->ensureManagerRole($request);
+
+        if ($guard) {
+            return $guard;
+        }
+
+        $payload = $request->validate([
+            'name' => ['required', 'string', 'min:3', 'max:120'],
+            'username' => ['nullable', 'string', 'min:4', 'max:30'],
+            'password' => ['nullable', 'string', 'min:6', 'max:50'],
+            'email' => ['required', 'email'],
+            'phone' => ['required', 'string', 'min:8', 'max:20'],
+            'address' => ['required', 'string', 'min:5', 'max:255'],
+            'education' => ['required', 'string', 'min:2', 'max:100'],
+            'certificate' => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:2048'],
+        ]);
+
+        $username = trim((string) ($payload['username'] ?? ''));
+        $password = trim((string) ($payload['password'] ?? ''));
+
+        if ($username === '') {
+            $username = substr(strtolower(Str::slug($payload['name'], '')), 0, 10) . rand(10, 99);
+        }
+
+        if ($password === '') {
+            $password = Str::upper(Str::random(2)) . rand(10, 99) . Str::lower(Str::random(3)) . '!';
+        }
+
+        $certificateName = null;
+        if ($request->hasFile('certificate')) {
+            $certificateName = (string) $request->file('certificate')->getClientOriginalName();
+        }
+
+        $instructors = $this->getManagerManagedInstructors($request);
+        $instructors[] = [
+            'id' => 'ig-' . strtolower(Str::random(6)),
+            'name' => $payload['name'],
+            'username' => $username,
+            'password' => $password,
+            'email' => $payload['email'],
+            'phone' => $payload['phone'],
+            'address' => $payload['address'],
+            'education' => $payload['education'],
+            'certificate' => $certificateName,
+            'status' => 'Aktif',
+        ];
+
+        $request->session()->put('manager_instructors_data', $instructors);
+
+        return redirect()
+            ->route('dashboard.manager.instructors')
+            ->with('status', 'Pengajar baru berhasil ditambahkan dan tampil di daftar.');
     }
 
     public function managerInstructorsUpdate(Request $request, string $instructor): RedirectResponse
@@ -191,12 +499,102 @@ class AuthController extends Controller
         }
 
         $request->validate([
-            'status' => ['required', 'string', 'in:Aktif,Cuti,Nonaktif'],
+            'status' => ['required', 'string', 'in:Aktif,Nonaktif'],
         ]);
+
+        $instructors = $this->getManagerManagedInstructors($request);
+        $updatedInstructors = array_map(function (array $item) use ($instructor, $request): array {
+            if ($item['id'] === $instructor) {
+                $item['status'] = (string) $request->input('status');
+            }
+
+            return $item;
+        }, $instructors);
+
+        $request->session()->put('manager_instructors_data', array_values($updatedInstructors));
 
         return redirect()
             ->route('dashboard.manager.instructors')
             ->with('status', 'Status pengajar ' . strtoupper($instructor) . ' diperbarui (simulasi).');
+    }
+
+    public function managerInstructorsEdit(Request $request, string $instructor): RedirectResponse
+    {
+        $guard = $this->ensureManagerRole($request);
+
+        if ($guard) {
+            return $guard;
+        }
+
+        $payload = $request->validate([
+            'name' => ['required', 'string', 'min:3', 'max:120'],
+            'username' => ['required', 'string', 'min:4', 'max:30'],
+            'password' => ['required', 'string', 'min:6', 'max:50'],
+            'email' => ['required', 'email'],
+            'phone' => ['required', 'string', 'min:8', 'max:20'],
+            'address' => ['required', 'string', 'min:5', 'max:255'],
+            'education' => ['required', 'string', 'min:2', 'max:100'],
+            'certificate' => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:2048'],
+            'status' => ['required', 'string', 'in:Aktif,Nonaktif'],
+        ]);
+
+        $certificateName = null;
+        if ($request->hasFile('certificate')) {
+            $certificateName = (string) $request->file('certificate')->getClientOriginalName();
+        }
+
+        $instructors = $this->getManagerManagedInstructors($request);
+        $found = false;
+        $updated = array_map(function (array $item) use ($instructor, $payload, $certificateName, &$found): array {
+            if ($item['id'] === $instructor) {
+                $found = true;
+                $item['name'] = $payload['name'];
+                $item['username'] = $payload['username'];
+                $item['password'] = $payload['password'];
+                $item['email'] = $payload['email'];
+                $item['phone'] = $payload['phone'];
+                $item['address'] = $payload['address'];
+                $item['education'] = $payload['education'];
+                if ($certificateName !== null) {
+                    $item['certificate'] = $certificateName;
+                }
+                $item['status'] = $payload['status'];
+            }
+
+            return $item;
+        }, $instructors);
+
+        if (!$found) {
+            return redirect()
+                ->route('dashboard.manager.instructors')
+                ->withErrors(['instructors' => 'Data pengajar tidak ditemukan untuk diedit.']);
+        }
+
+        $request->session()->put('manager_instructors_data', array_values($updated));
+
+        return redirect()
+            ->route('dashboard.manager.instructors')
+            ->with('status', 'Data pengajar berhasil diperbarui.');
+    }
+
+    public function managerInstructorsDelete(Request $request, string $instructor): RedirectResponse
+    {
+        $guard = $this->ensureManagerRole($request);
+
+        if ($guard) {
+            return $guard;
+        }
+
+        $instructors = $this->getManagerManagedInstructors($request);
+        $remaining = array_values(array_filter($instructors, function (array $item) use ($instructor): bool {
+            return $item['id'] !== $instructor;
+        }));
+
+        $request->session()->put('manager_instructors_data', $remaining);
+
+        return redirect()
+            ->route('dashboard.manager.instructors')
+            ->with('status', 'Data pengajar berhasil dihapus.');
     }
 
     public function managerPrograms(Request $request): View|RedirectResponse
@@ -207,11 +605,117 @@ class AuthController extends Controller
             return $guard;
         }
 
+        $search = strtolower(trim((string) $request->query('search', '')));
+        $programs = $this->getManagerManagedPrograms($request);
+
+        if ($search !== '') {
+            $programs = array_values(array_filter($programs, function (array $program) use ($search): bool {
+                return (strpos(strtolower((string) $program['name']), $search) !== false)
+                    || (strpos(strtolower((string) $program['description']), $search) !== false);
+            }));
+        }
+
         return view('dashboard.manager.programs', [
             'user' => $request->session()->get('auth_user'),
             'dashboard' => $this->getManagerDashboardConfig('programs'),
-            'programs' => $this->getManagerPrograms(),
+            'programs' => $programs,
+            'search' => (string) $request->query('search', ''),
         ]);
+    }
+
+    public function managerProgramsStore(Request $request): RedirectResponse
+    {
+        $guard = $this->ensureManagerRole($request);
+
+        if ($guard) {
+            return $guard;
+        }
+
+        $payload = $request->validate([
+            'name' => ['required', 'string', 'min:3', 'max:120'],
+            'duration' => ['required', 'string', 'min:2', 'max:60'],
+            'description' => ['required', 'string', 'min:10', 'max:500'],
+            'cost' => ['required', 'integer', 'min:0'],
+        ]);
+
+        $programs = $this->getManagerManagedPrograms($request);
+        $programs[] = [
+            'id' => 'pr-' . strtolower(Str::random(6)),
+            'name' => $payload['name'],
+            'duration' => $payload['duration'],
+            'description' => $payload['description'],
+            'cost' => (int) $payload['cost'],
+            'status' => 'Aktif',
+        ];
+
+        $request->session()->put('manager_programs_data', $programs);
+
+        return redirect()
+            ->route('dashboard.manager.programs')
+            ->with('status', 'Program baru berhasil ditambahkan.');
+    }
+
+    public function managerProgramsEdit(Request $request, string $program): RedirectResponse
+    {
+        $guard = $this->ensureManagerRole($request);
+
+        if ($guard) {
+            return $guard;
+        }
+
+        $payload = $request->validate([
+            'name' => ['required', 'string', 'min:3', 'max:120'],
+            'duration' => ['required', 'string', 'min:2', 'max:60'],
+            'description' => ['required', 'string', 'min:10', 'max:500'],
+            'cost' => ['required', 'integer', 'min:0'],
+        ]);
+
+        $programs = $this->getManagerManagedPrograms($request);
+        $found = false;
+
+        $updated = array_map(function (array $item) use ($program, $payload, &$found): array {
+            if ($item['id'] === $program) {
+                $found = true;
+                $item['name'] = $payload['name'];
+                $item['duration'] = $payload['duration'];
+                $item['description'] = $payload['description'];
+                $item['cost'] = (int) $payload['cost'];
+            }
+
+            return $item;
+        }, $programs);
+
+        if (!$found) {
+            return redirect()
+                ->route('dashboard.manager.programs')
+                ->withErrors(['programs' => 'Program tidak ditemukan untuk diedit.']);
+        }
+
+        $request->session()->put('manager_programs_data', array_values($updated));
+
+        return redirect()
+            ->route('dashboard.manager.programs')
+            ->with('status', 'Program berhasil diperbarui.');
+    }
+
+    public function managerProgramsDelete(Request $request, string $program): RedirectResponse
+    {
+        $guard = $this->ensureManagerRole($request);
+
+        if ($guard) {
+            return $guard;
+        }
+
+        $programs = $this->getManagerManagedPrograms($request);
+        $remaining = array_values(array_filter($programs, function (array $item) use ($program): bool {
+            return $item['id'] !== $program;
+        }));
+
+        $request->session()->put('manager_programs_data', $remaining);
+
+        return redirect()
+            ->route('dashboard.manager.programs')
+            ->with('status', 'Program berhasil dihapus.');
     }
 
     public function managerProgramsUpdate(Request $request, string $program): RedirectResponse
@@ -239,11 +743,41 @@ class AuthController extends Controller
             return $guard;
         }
 
+        $month = (int) $request->query('month', now()->month);
+        $year = (int) $request->query('year', now()->year);
+
+        // Validate month and year
+        if ($month < 1 || $month > 12) {
+            $month = now()->month;
+        }
+
+        $monthlyData = $this->getMonthlyReportData($month, $year);
+        $yearMonths = $this->getAvailableYears();
+
+        $monthNames = [
+            1 => 'Januari',
+            2 => 'Februari',
+            3 => 'Maret',
+            4 => 'April',
+            5 => 'Mei',
+            6 => 'Juni',
+            7 => 'Juli',
+            8 => 'Agustus',
+            9 => 'September',
+            10 => 'Oktober',
+            11 => 'November',
+            12 => 'Desember',
+        ];
+
         return view('dashboard.manager.reports', [
             'user' => $request->session()->get('auth_user'),
             'dashboard' => $this->getManagerDashboardConfig('reports'),
-            'reports' => $this->getManagerReportSummary(),
-            'monthlyParticipation' => $this->getManagerMonthlyParticipation(),
+            'monthlyData' => $monthlyData,
+            'selectedMonth' => $month,
+            'selectedYear' => $year,
+            'availableYears' => $yearMonths,
+            'allMonthsData' => $this->getAllMonthsData($year),
+            'monthNames' => $monthNames,
         ]);
     }
 
@@ -255,13 +789,21 @@ class AuthController extends Controller
             return $guard;
         }
 
-        $request->validate([
-            'report_type' => ['required', 'string', 'in:partisipasi,kinerja,pengajar'],
-        ]);
+        $month = (int) $request->input('month', now()->month);
+        $year = (int) $request->input('year', now()->year);
+        $exportType = $request->input('export_type', 'pdf');
 
-        return redirect()
-            ->route('dashboard.manager.reports')
-            ->with('status', 'Export laporan ' . strtoupper((string) $request->input('report_type')) . ' berhasil diproses (simulasi).');
+        if ($exportType === 'pdf') {
+            $filename = 'Laporan-' . $this->getMonthName($month) . '-' . $year . '.pdf';
+            return redirect()
+                ->route('dashboard.manager.reports')
+                ->with('status', 'Laporan bulan ' . $this->getMonthName($month) . ' ' . $year . ' berhasil diunduh (simulasi).');
+        } else {
+            $filename = 'Laporan-Tahunan-' . $year . '.csv';
+            return redirect()
+                ->route('dashboard.manager.reports')
+                ->with('status', 'Laporan tahunan ' . $year . ' berhasil diunduh (simulasi).');
+        }
     }
 
     public function managerSettings(Request $request): View|RedirectResponse
@@ -287,15 +829,50 @@ class AuthController extends Controller
             return $guard;
         }
 
-        $request->validate([
+        $validated = $request->validate([
             'organization_name' => ['required', 'string', 'min:3', 'max:120'],
             'support_email' => ['required', 'email'],
             'timezone' => ['required', 'string'],
+            'logo' => ['nullable', 'image', 'max:2048', 'mimes:jpeg,png,jpg,webp'],
+            'logo_fit' => ['nullable', 'string', 'in:contain,cover,fill'],
+            'contact_googlemaps' => ['nullable', 'url'],
+            'contact_whatsapp' => ['nullable', 'string', 'regex:/^\+?[0-9]{7,15}$/'],
+            'contact_facebook' => ['nullable', 'url'],
+            'contact_instagram' => ['nullable', 'url'],
+            'contact_youtube' => ['nullable', 'url'],
         ]);
+
+        // Store in session for demo purposes
+        $currentSettings = $request->session()->get('manager_settings', []);
+        
+        // Handle logo upload if provided
+        if ($request->hasFile('logo')) {
+            $logoFile = $request->file('logo');
+            $logoName = 'logo-' . now()->timestamp . '.' . $logoFile->getClientOriginalExtension();
+            $logoFile->storeAs('logos', $logoName, 'public');
+            $currentSettings['logo_filename'] = $logoName;
+        }
+
+        // Update basic settings
+        $currentSettings['organization_name'] = $validated['organization_name'];
+        $currentSettings['support_email'] = $validated['support_email'];
+        $currentSettings['timezone'] = $validated['timezone'];
+        $currentSettings['logo_fit'] = $validated['logo_fit'] ?? 'contain';
+
+        // Update contact information
+        $currentSettings['contacts'] = [
+            'googlemaps' => $validated['contact_googlemaps'] ?? '',
+            'whatsapp' => $validated['contact_whatsapp'] ?? '',
+            'facebook' => $validated['contact_facebook'] ?? '',
+            'instagram' => $validated['contact_instagram'] ?? '',
+            'youtube' => $validated['contact_youtube'] ?? '',
+        ];
+
+        $request->session()->put('manager_settings', $currentSettings);
 
         return redirect()
             ->route('dashboard.manager.settings')
-            ->with('status', 'Pengaturan sistem berhasil diperbarui (simulasi).');
+            ->with('status', 'Pengaturan dan kontak berhasil diperbarui (simulasi).');
     }
 
     public function instructorHome(Request $request): View|RedirectResponse
@@ -975,9 +1552,42 @@ class AuthController extends Controller
     {
         return [
             ['id' => 'pi-01', 'name' => 'Nadia Putri', 'program' => 'Teknik Canting Dasar', 'progress' => 88, 'status' => 'Aktif'],
-            ['id' => 'pi-02', 'name' => 'Rafi Akbar', 'program' => 'Teknik Warna Dasar', 'progress' => 61, 'status' => 'Perlu Verifikasi'],
+            ['id' => 'pi-02', 'name' => 'Rafi Akbar', 'program' => 'Teknik Warna Dasar', 'progress' => 61, 'status' => 'Lulus'],
             ['id' => 'pi-03', 'name' => 'Salsa Wicaksono', 'program' => 'Komposisi Motif', 'progress' => 75, 'status' => 'Aktif'],
             ['id' => 'pi-04', 'name' => 'Tio Ramadhan', 'program' => 'Teknik Canting Dasar', 'progress' => 42, 'status' => 'Nonaktif'],
+        ];
+    }
+
+    /**
+     * @return array<int, array<string, string>>
+     */
+    private function getManagerPendingIndividualValidations(): array
+    {
+        return [
+            [
+                'id' => 'pv-01',
+                'registration_date' => '2026-03-27',
+                'name' => 'Rama Langit',
+                'email' => 'rama@contoh.id',
+                'phone' => '087756123789',
+                'address' => 'Jl. Merdeka 10, Pekalongan',
+                'education' => 'SMA',
+                'motivation' => 'Ingin belajar teknik canting agar dapat memulai usaha kecil batik rumahan.',
+                'program' => 'Teknik Canting Dasar',
+                'whatsapp' => '087756123789',
+            ],
+            [
+                'id' => 'pv-02',
+                'registration_date' => '2026-03-29',
+                'name' => 'Aisyah Nur',
+                'email' => 'aisyah@contoh.id',
+                'phone' => '081378990122',
+                'address' => 'Jl. Veteran 2, Yogyakarta',
+                'education' => 'S1',
+                'motivation' => 'Meningkatkan kemampuan desain motif untuk kebutuhan produk UMKM.',
+                'program' => 'Teknik Warna Dasar',
+                'whatsapp' => '081378990122',
+            ],
         ];
     }
 
@@ -988,8 +1598,41 @@ class AuthController extends Controller
     {
         return [
             ['id' => 'pg-01', 'group_name' => 'Batik Lestari', 'members' => 5, 'program' => 'Teknik Canting Dasar', 'status' => 'Aktif'],
-            ['id' => 'pg-02', 'group_name' => 'Motif Muda', 'members' => 4, 'program' => 'Teknik Warna Dasar', 'status' => 'Perlu Verifikasi'],
-            ['id' => 'pg-03', 'group_name' => 'Sanggar Nawasena', 'members' => 6, 'program' => 'Komposisi Motif', 'status' => 'Selesai'],
+            ['id' => 'pg-02', 'group_name' => 'Motif Muda', 'members' => 4, 'program' => 'Teknik Warna Dasar', 'status' => 'Lulus'],
+            ['id' => 'pg-03', 'group_name' => 'Sanggar Nawasena', 'members' => 6, 'program' => 'Komposisi Motif', 'status' => 'Nonaktif'],
+        ];
+    }
+
+    /**
+     * @return array<int, array<string, string|int>>
+     */
+    private function getManagerPendingGroupValidations(): array
+    {
+        return [
+            [
+                'id' => 'gv-01',
+                'registration_date' => '2026-03-26',
+                'group_name' => 'Lembaga A',
+                'pic_name' => 'Anonymouse',
+                'pic_email' => 'lembagaA@email.com',
+                'pic_phone' => '081234567890',
+                'pic_address' => 'Jl. XXY',
+                'members' => 20,
+                'official_letter' => 'suratresmi.pdf',
+                'program' => '2 Januari 2026',
+            ],
+            [
+                'id' => 'gv-02',
+                'registration_date' => '2026-03-30',
+                'group_name' => 'Lembaga B',
+                'pic_name' => 'Siti Nur',
+                'pic_email' => 'lembagaB@email.com',
+                'pic_phone' => '082145678900',
+                'pic_address' => 'Jl. Mawar 1',
+                'members' => 15,
+                'official_letter' => 'pengajuan-lembagaB.pdf',
+                'program' => '8 Januari 2026',
+            ],
         ];
     }
 
@@ -999,10 +1642,48 @@ class AuthController extends Controller
     private function getManagerInstructors(): array
     {
         return [
-            ['id' => 'ig-01', 'name' => 'Dewi Handayani', 'specialty' => 'Canting', 'active_classes' => 3, 'status' => 'Aktif'],
-            ['id' => 'ig-02', 'name' => 'Agus Pramono', 'specialty' => 'Pewarnaan', 'active_classes' => 2, 'status' => 'Aktif'],
-            ['id' => 'ig-03', 'name' => 'Lina Saputri', 'specialty' => 'Motif', 'active_classes' => 0, 'status' => 'Cuti'],
+            [
+                'id' => 'ig-01',
+                'name' => 'Anonymouse',
+                'username' => 'anonymouse321',
+                'password' => 'AK12xyz!',
+                'email' => 'anonymouse@gmail.com',
+                'phone' => '0877956624',
+                'address' => 'Lorem ipsum dolor sit amet consectetur.',
+                'education' => 'SMAN 1 Purwokerto',
+                'certificate' => 'sertifikat-anonymouse.pdf',
+                'status' => 'Aktif',
+            ],
+            [
+                'id' => 'ig-02',
+                'name' => 'Anonymouse B',
+                'username' => 'anonymouseb17',
+                'password' => 'DF45mno!',
+                'email' => 'anonymouseb@gmail.com',
+                'phone' => '082178889900',
+                'address' => 'Jl. Melati 2',
+                'education' => 'S1 Pendidikan Seni',
+                'certificate' => null,
+                'status' => 'Nonaktif',
+            ],
         ];
+    }
+
+    /**
+     * @return array<int, array<string, string|null>>
+     */
+    private function getManagerManagedInstructors(Request $request): array
+    {
+        $sessionData = $request->session()->get('manager_instructors_data');
+
+        if (is_array($sessionData)) {
+            return $sessionData;
+        }
+
+        $defaults = $this->getManagerInstructors();
+        $request->session()->put('manager_instructors_data', $defaults);
+
+        return $defaults;
     }
 
     /**
@@ -1011,37 +1692,222 @@ class AuthController extends Controller
     private function getManagerPrograms(): array
     {
         return [
-            ['id' => 'pr-01', 'title' => 'Teknik Canting Dasar', 'quota' => 60, 'enrolled' => 48, 'status' => 'Aktif'],
-            ['id' => 'pr-02', 'title' => 'Teknik Warna Dasar', 'quota' => 50, 'enrolled' => 37, 'status' => 'Aktif'],
-            ['id' => 'pr-03', 'title' => 'Komposisi Motif Modern', 'quota' => 40, 'enrolled' => 22, 'status' => 'Draf'],
-        ];
-    }
-
-    /**
-     * @return array<string, int|string>
-     */
-    private function getManagerReportSummary(): array
-    {
-        return [
-            'total_registration' => 154,
-            'completion_rate' => '84%',
-            'avg_attendance' => '89%',
-            'instructor_utilization' => '78%',
+            [
+                'id' => 'pr-01',
+                'name' => 'Program Individu',
+                'duration' => '2 Januari 2026',
+                'description' => 'Deskripsi: Lorem ipsum dolor sit amet consectetur.',
+                'cost' => 350000,
+                'status' => 'Aktif',
+            ],
+            [
+                'id' => 'pr-02',
+                'name' => 'Program Kelompok',
+                'duration' => '2 Januari 2026',
+                'description' => 'Deskripsi: Lorem ipsum dolor sit amet consectetur.',
+                'cost' => 500000,
+                'status' => 'Aktif',
+            ],
         ];
     }
 
     /**
      * @return array<int, array<string, string|int>>
      */
-    private function getManagerMonthlyParticipation(): array
+    private function getManagerManagedPrograms(Request $request): array
+    {
+        $sessionData = $request->session()->get('manager_programs_data');
+
+        if (is_array($sessionData)) {
+            return $sessionData;
+        }
+
+        $defaults = $this->getManagerPrograms();
+        $request->session()->put('manager_programs_data', $defaults);
+
+        return $defaults;
+    }
+
+    /**
+     * @return array<string, int|string>
+     */
+    /**
+     * Get monthly report data with all required fields
+     */
+    private function getMonthlyReportData(int $month, int $year): array
+    {
+        $individualParticipants = $this->getEnhancedIndividualParticipants();
+        $groupParticipants = $this->getEnhancedGroupParticipants();
+        $instructors = $this->getManagerInstructors();
+
+        // Filter by month/year
+        $monthIndividual = [];
+        $monthGroup = [];
+        $registrationByDate = [];
+
+        foreach ($individualParticipants as $participant) {
+            $regDate = $this->parseDate($participant['registration_date'] ?? '');
+            if ($regDate['month'] === $month && $regDate['year'] === $year) {
+                $monthIndividual[] = $participant;
+                $dateKey = $regDate['day'];
+                $registrationByDate[$dateKey] = ($registrationByDate[$dateKey] ?? 0) + 1;
+            }
+        }
+
+        foreach ($groupParticipants as $group) {
+            $regDate = $this->parseDate($group['registration_date'] ?? '');
+            if ($regDate['month'] === $month && $regDate['year'] === $year) {
+                $monthGroup[] = $group;
+                $dateKey = $regDate['day'];
+                $registrationByDate[$dateKey] = ($registrationByDate[$dateKey] ?? 0) + ($group['members'] ?? 0);
+            }
+        }
+
+        // Calculate totals
+        $totalIndividual = count($monthIndividual);
+        $totalGroup = count($monthGroup);
+        $totalGroupMembers = array_sum(array_column($monthGroup, 'members'));
+        $totalParticipants = $totalIndividual + $totalGroupMembers;
+
+        // Calculate profit/cost
+        $individualCost = 125000; // IDR
+        $groupCost = 100000; // IDR per member
+        $totalProfit = ($totalIndividual * $individualCost) + ($totalGroupMembers * $groupCost);
+
+        // Find peak registration date
+        $peakDate = 'N/A';
+        $peakCount = 0;
+        foreach ($registrationByDate as $day => $count) {
+            if ($count > $peakCount) {
+                $peakCount = $count;
+                $peakDate = $day . ' ' . $this->getMonthName($month) . ' ' . $year;
+            }
+        }
+
+        // Calculate instructor salary (commission-based)
+        $instructorSalaries = [];
+        foreach ($instructors as $instructor) {
+            $instructorSalaries[] = [
+                'name' => $instructor['name'],
+                'status' => $instructor['status'],
+                'base_salary' => 2000000,
+                'classes_handled' => rand(2, 5),
+                'commission' => rand(500000, 2000000),
+                'total' => 2000000 + rand(500000, 2000000),
+            ];
+        }
+
+        return [
+            'month' => $month,
+            'year' => $year,
+            'month_name' => $this->getMonthName($month),
+            'total_individual_registrations' => $totalIndividual,
+            'total_group_registrations' => $totalGroup,
+            'total_group_members' => $totalGroupMembers,
+            'total_participants' => $totalParticipants,
+            'individual_cost' => $individualCost,
+            'group_cost' => $groupCost,
+            'total_cost' => $totalIndividual * $individualCost,
+            'group_income' => $totalGroupMembers * $groupCost,
+            'total_profit' => $totalProfit,
+            'peak_registration_date' => $peakDate,
+            'instructor_salaries' => $instructorSalaries,
+            'individual_participants' => $monthIndividual,
+            'group_participants' => $monthGroup,
+        ];
+    }
+
+    /**
+     * Get all months data for a specific year
+     */
+    private function getAllMonthsData(int $year): array
+    {
+        $monthsData = [];
+        for ($month = 1; $month <= 12; $month++) {
+            $data = $this->getMonthlyReportData($month, $year);
+            $monthsData[] = [
+                'month' => $month,
+                'month_name' => $this->getMonthName($month),
+                'total_registrations' => $data['total_participants'],
+                'total_profit' => $data['total_profit'],
+            ];
+        }
+        return $monthsData;
+    }
+
+    /**
+     * Get available years (current year and 2 future years)
+     */
+    private function getAvailableYears(): array
+    {
+        $years = [];
+        $currentYear = now()->year;
+        for ($i = $currentYear; $i <= $currentYear + 2; $i++) {
+            $years[] = $i;
+        }
+        return $years;
+    }
+
+    /**
+     * Parse date string format YYYY-MM-DD
+     */
+    private function parseDate(string $date): array
+    {
+        $parts = explode('-', $date);
+        return [
+            'year' => (int) ($parts[0] ?? now()->year),
+            'month' => (int) ($parts[1] ?? now()->month),
+            'day' => (int) ($parts[2] ?? 1),
+        ];
+    }
+
+    /**
+     * Get month name in Indonesian
+     */
+    private function getMonthName(int $month): string
+    {
+        $months = [
+            1 => 'Januari',
+            2 => 'Februari',
+            3 => 'Maret',
+            4 => 'April',
+            5 => 'Mei',
+            6 => 'Juni',
+            7 => 'Juli',
+            8 => 'Agustus',
+            9 => 'September',
+            10 => 'Oktober',
+            11 => 'November',
+            12 => 'Desember',
+        ];
+        return $months[$month] ?? 'Invalid';
+    }
+
+    /**
+     * Get enhanced individual participants with registration dates and costs
+     */
+    private function getEnhancedIndividualParticipants(): array
     {
         return [
-            ['month' => 'Jan', 'value' => 92],
-            ['month' => 'Feb', 'value' => 105],
-            ['month' => 'Mar', 'value' => 114],
-            ['month' => 'Apr', 'value' => 128],
-            ['month' => 'Mei', 'value' => 134],
-            ['month' => 'Jun', 'value' => 121],
+            ['id' => 'pi-01', 'name' => 'Nadia Putri', 'program' => 'Teknik Canting Dasar', 'progress' => 88, 'status' => 'Aktif', 'registration_date' => '2026-03-15', 'cost' => 125000],
+            ['id' => 'pi-02', 'name' => 'Rafi Akbar', 'program' => 'Teknik Warna Dasar', 'progress' => 61, 'status' => 'Lulus', 'registration_date' => '2026-03-18', 'cost' => 125000],
+            ['id' => 'pi-03', 'name' => 'Salsa Wicaksono', 'program' => 'Komposisi Motif', 'progress' => 75, 'status' => 'Aktif', 'registration_date' => '2026-03-12', 'cost' => 125000],
+            ['id' => 'pi-04', 'name' => 'Tio Ramadhan', 'program' => 'Teknik Canting Dasar', 'progress' => 42, 'status' => 'Nonaktif', 'registration_date' => '2026-02-22', 'cost' => 125000],
+            ['id' => 'pi-05', 'name' => 'Siti Nurhaliza', 'program' => 'Teknik Warna Dasar', 'progress' => 95, 'status' => 'Lulus', 'registration_date' => '2026-01-10', 'cost' => 125000],
+            ['id' => 'pi-06', 'name' => 'Bambang Saputra', 'program' => 'Komposisi Motif', 'progress' => 80, 'status' => 'Aktif', 'registration_date' => '2026-03-25', 'cost' => 125000],
+        ];
+    }
+
+    /**
+     * Get enhanced group participants with registration dates and costs
+     */
+    private function getEnhancedGroupParticipants(): array
+    {
+        return [
+            ['id' => 'pg-01', 'group_name' => 'Batik Lestari', 'members' => 5, 'program' => 'Teknik Canting Dasar', 'status' => 'Aktif', 'registration_date' => '2026-03-20'],
+            ['id' => 'pg-02', 'group_name' => 'Motif Muda', 'members' => 4, 'program' => 'Teknik Warna Dasar', 'status' => 'Lulus', 'registration_date' => '2026-02-14'],
+            ['id' => 'pg-03', 'group_name' => 'Sanggar Nawasena', 'members' => 6, 'program' => 'Komposisi Motif', 'status' => 'Nonaktif', 'registration_date' => '2026-01-28'],
+            ['id' => 'pg-04', 'group_name' => 'Kuncup Batik', 'members' => 8, 'program' => 'Teknik Canting Dasar', 'status' => 'Aktif', 'registration_date' => '2026-03-10'],
         ];
     }
 
@@ -1054,6 +1920,15 @@ class AuthController extends Controller
             'organization_name' => 'LPK Kama Praja Madiun',
             'support_email' => 'support@lmsbatik.test',
             'timezone' => 'Asia/Jakarta',
+            'logo_filename' => 'komunitasbatik.png',
+            'logo_fit' => 'contain',
+            'contacts' => [
+                'googlemaps' => 'https://maps.google.com/?q=LPK+Kama+Praja+Madiun',
+                'whatsapp' => '+6287876543210',
+                'facebook' => 'https://facebook.com/kamapraja.madiun',
+                'instagram' => 'https://instagram.com/kamapraja.madiun',
+                'youtube' => 'https://youtube.com/@kamapraja.madiun',
+            ],
         ];
     }
 

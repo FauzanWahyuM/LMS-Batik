@@ -26,21 +26,21 @@
     <section class="mt-5 rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
         <h2 class="text-center text-2xl font-bold text-slate-800">Akses Cepat</h2>
 
-        <div class="mt-5 grid gap-4 sm:grid-cols-2">
+        <div class="mt-5 grid gap-3 sm:gap-4 sm:grid-cols-2">
             <a href="{{ route('dashboard.participant.modules') }}"
-                class="flex min-h-14 items-center justify-center rounded-xl border border-cyan-500/60 bg-cyan-50 px-4 py-3 text-center text-sm font-semibold text-slate-800 shadow-sm transition hover:bg-cyan-100">
+                class="flex min-h-12 sm:min-h-14 items-center justify-center rounded-xl border border-cyan-500/60 bg-cyan-50 px-3 sm:px-4 py-2 sm:py-3 text-center text-xs sm:text-sm font-semibold text-slate-800 shadow-sm transition hover:bg-cyan-100">
                 Lanjutkan Modul Terakhir
             </a>
             <a href="{{ route('dashboard.participant.forum') }}"
-                class="flex min-h-14 items-center justify-center rounded-xl border border-cyan-500/60 bg-cyan-50 px-4 py-3 text-center text-sm font-semibold text-slate-800 shadow-sm transition hover:bg-cyan-100">
+                class="flex min-h-12 sm:min-h-14 items-center justify-center rounded-xl border border-cyan-500/60 bg-cyan-50 px-3 sm:px-4 py-2 sm:py-3 text-center text-xs sm:text-sm font-semibold text-slate-800 shadow-sm transition hover:bg-cyan-100">
                 Forum Diskusi
             </a>
             <a href="{{ route('dashboard.participant.gallery') }}"
-                class="flex min-h-14 items-center justify-center rounded-xl border border-cyan-500/60 bg-cyan-50 px-4 py-3 text-center text-sm font-semibold text-slate-800 shadow-sm transition hover:bg-cyan-100">
+                class="flex min-h-12 sm:min-h-14 items-center justify-center rounded-xl border border-cyan-500/60 bg-cyan-50 px-3 sm:px-4 py-2 sm:py-3 text-center text-xs sm:text-sm font-semibold text-slate-800 shadow-sm transition hover:bg-cyan-100">
                 Upload Hasil Karya
             </a>
             <a href="{{ route('dashboard.participant.gallery') }}"
-                class="flex min-h-14 items-center justify-center rounded-xl border border-cyan-500/60 bg-cyan-50 px-4 py-3 text-center text-sm font-semibold text-slate-800 shadow-sm transition hover:bg-cyan-100">
+                class="flex min-h-12 sm:min-h-14 items-center justify-center rounded-xl border border-cyan-500/60 bg-cyan-50 px-3 sm:px-4 py-2 sm:py-3 text-center text-xs sm:text-sm font-semibold text-slate-800 shadow-sm transition hover:bg-cyan-100">
                 Lihat Galeri Karya
             </a>
         </div>

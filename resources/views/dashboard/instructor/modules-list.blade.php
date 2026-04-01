@@ -7,9 +7,9 @@
             <div class="flex-1">
                 <form method="GET" action="{{ route('dashboard.instructor.modules') }}" class="flex gap-2">
                     <input type="text" name="search" placeholder="Cari modul..." value="{{ request('search', '') }}"
-                        class="w-full rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700 placeholder-slate-500 focus:border-slate-500 focus:outline-none">
+                        class="w-full rounded-lg border border-slate-300 bg-white px-4 py-2 text-xs sm:text-sm text-slate-700 placeholder-slate-500 focus:border-slate-500 focus:outline-none">
                     <button type="submit"
-                        class="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100">
+                        class="rounded-lg border border-slate-300 bg-white px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold text-slate-700 transition hover:bg-slate-100">
                         Cari
                     </button>
                 </form>

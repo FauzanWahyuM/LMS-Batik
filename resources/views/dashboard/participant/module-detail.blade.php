@@ -12,7 +12,7 @@
         <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <h2 class="text-center text-xl font-bold text-slate-800 sm:text-left">Modul Pembelajaran</h2>
             <a href="{{ route('dashboard.participant.modules') }}"
-                class="inline-flex items-center justify-center rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100">
+                class="w-full sm:w-auto inline-flex items-center justify-center rounded-lg border border-slate-300 bg-white px-4 py-2 text-xs sm:text-sm font-semibold text-slate-700 transition hover:bg-slate-100">
                 Kembali
             </a>
         </div>
@@ -108,9 +108,9 @@
                         @enderror
                     </div>
 
-                    <div class="mt-5 flex justify-end">
+                    <div class="mt-5 flex flex-col sm:flex-row sm:justify-end">
                         <button type="submit"
-                            class="inline-flex items-center rounded-full bg-black px-5 py-2 text-sm font-semibold text-white transition hover:bg-slate-800">
+                            class="w-full sm:w-auto inline-flex items-center justify-center rounded-full bg-black px-5 py-2 text-xs sm:text-sm font-semibold text-white transition hover:bg-slate-800">
                             Kirim Tugas
                         </button>
                     </div>
@@ -134,7 +134,7 @@
                 <h3 class="text-center text-3xl font-bold text-slate-800">Forum Diskusi</h3>
 
                 <div class="mx-auto mt-5 max-w-4xl space-y-3">
-                    <form class="flex items-center gap-2">
+                    <form class="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-2">
                         <div class="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-slate-400 bg-white">
                             <svg class="h-4 w-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"
@@ -142,9 +142,9 @@
                             </svg>
                         </div>
                         <input type="text" placeholder="Input komentar/Pertanyaan"
-                            class="h-8 flex-1 rounded-full border border-slate-400 bg-white px-3 text-xs text-slate-700 focus:border-slate-600 focus:outline-none">
+                            class="flex-1 h-8 rounded-full border border-slate-400 bg-white px-3 text-xs text-slate-700 focus:border-slate-600 focus:outline-none">
                         <button type="button"
-                            class="inline-flex h-8 items-center gap-1 rounded-full border border-slate-500 px-4 text-xs font-semibold text-slate-700 transition hover:bg-slate-100">
+                            class="w-full sm:w-auto inline-flex items-center justify-center gap-1 h-8 rounded-full border border-slate-500 px-4 text-xs font-semibold text-slate-700 transition hover:bg-slate-100">
                             Kirim
                             <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />

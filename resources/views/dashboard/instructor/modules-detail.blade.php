@@ -22,13 +22,13 @@
                         <p><span class="font-semibold text-slate-900">Update:</span> {{ $module['updated_at'] }}</p>
                     </div>
                 </div>
-                <div class="flex gap-2">
+                <div class="flex flex-col gap-2 sm:flex-row sm:gap-3">
                     <a href="{{ route('dashboard.instructor.modules.edit', ['module' => $module['id']]) }}"
-                        class="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800">
+                        class="w-full sm:w-auto rounded-lg bg-slate-900 px-4 py-2 sm:py-1.5 text-xs sm:text-sm font-semibold text-white text-center transition hover:bg-slate-800">
                         Edit Modul
                     </a>
                     <a href="{{ route('dashboard.instructor.modules') }}"
-                        class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100">
+                        class="w-full sm:w-auto rounded-lg border border-slate-300 px-4 py-2 sm:py-1.5 text-xs sm:text-sm font-semibold text-slate-700 text-center transition hover:bg-slate-100">
                         Kembali
                     </a>
                 </div>
@@ -110,7 +110,7 @@
                 <p class="mt-3 text-sm font-semibold text-slate-600">Modul belum memiliki bab</p>
                 <p class="mt-1 text-xs text-slate-500">Mulai dengan menambahkan bab melalui halaman edit.</p>
                 <a href="{{ route('dashboard.instructor.modules.edit', ['module' => $module['id']]) }}"
-                    class="mt-4 inline-block rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800">
+                    class="mt-4 w-full sm:w-auto inline-block rounded-lg bg-slate-900 px-4 py-2 text-xs sm:text-sm font-semibold text-white transition hover:bg-slate-800">
                     Edit dan Tambah Bab
                 </a>
             </div>

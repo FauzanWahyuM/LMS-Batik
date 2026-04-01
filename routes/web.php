@@ -23,12 +23,23 @@ Route::middleware('simple.auth')->group(function (): void {
 	Route::prefix('/dashboard/pengelola')->name('dashboard.manager.')->group(function (): void {
 		Route::get('/', [AuthController::class, 'managerHome'])->name('home');
 		Route::get('/kelola-peserta-individu', [AuthController::class, 'managerIndividualParticipants'])->name('participants.individual');
+		Route::post('/kelola-peserta-individu/{participant}/generate-credential', [AuthController::class, 'managerIndividualParticipantsGenerateCredential'])->name('participants.individual.generate-credential');
+		Route::post('/kelola-peserta-individu/{participant}/send-credential', [AuthController::class, 'managerIndividualParticipantsSendCredential'])->name('participants.individual.send-credential');
 		Route::post('/kelola-peserta-individu/{participant}/status', [AuthController::class, 'managerIndividualParticipantsUpdate'])->name('participants.individual.update');
 		Route::get('/kelola-peserta-kelompok', [AuthController::class, 'managerGroupParticipants'])->name('participants.group');
+		Route::post('/kelola-peserta-kelompok/{group}/generate-credential', [AuthController::class, 'managerGroupParticipantsGenerateCredential'])->name('participants.group.generate-credential');
+		Route::post('/kelola-peserta-kelompok/{group}/send-credential', [AuthController::class, 'managerGroupParticipantsSendCredential'])->name('participants.group.send-credential');
+		Route::get('/kelola-peserta-kelompok/download-export', [AuthController::class, 'managerGroupParticipantsDownloadCredentialExport'])->name('participants.group.download-export');
 		Route::post('/kelola-peserta-kelompok/{group}/status', [AuthController::class, 'managerGroupParticipantsUpdate'])->name('participants.group.update');
 		Route::get('/kelola-pengajar', [AuthController::class, 'managerInstructors'])->name('instructors');
+		Route::post('/kelola-pengajar/create', [AuthController::class, 'managerInstructorsStore'])->name('instructors.store');
 		Route::post('/kelola-pengajar/{instructor}/status', [AuthController::class, 'managerInstructorsUpdate'])->name('instructors.update');
+		Route::post('/kelola-pengajar/{instructor}/edit', [AuthController::class, 'managerInstructorsEdit'])->name('instructors.edit');
+		Route::post('/kelola-pengajar/{instructor}/delete', [AuthController::class, 'managerInstructorsDelete'])->name('instructors.delete');
 		Route::get('/kelola-program', [AuthController::class, 'managerPrograms'])->name('programs');
+		Route::post('/kelola-program/create', [AuthController::class, 'managerProgramsStore'])->name('programs.store');
+		Route::post('/kelola-program/{program}/edit', [AuthController::class, 'managerProgramsEdit'])->name('programs.edit');
+		Route::post('/kelola-program/{program}/delete', [AuthController::class, 'managerProgramsDelete'])->name('programs.delete');
 		Route::post('/kelola-program/{program}/status', [AuthController::class, 'managerProgramsUpdate'])->name('programs.update');
 		Route::get('/laporan', [AuthController::class, 'managerReports'])->name('reports');
 		Route::post('/laporan/export', [AuthController::class, 'managerReportsExport'])->name('reports.export');
