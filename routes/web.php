@@ -22,6 +22,8 @@ Route::middleware('simple.auth')->group(function (): void {
 
 	Route::prefix('/dashboard/pengelola')->name('dashboard.manager.')->group(function (): void {
 		Route::get('/', [AuthController::class, 'managerHome'])->name('home');
+		Route::get('/profil', [AuthController::class, 'managerProfile'])->name('profile');
+		Route::post('/profil/update', [AuthController::class, 'managerProfileUpdate'])->name('profile.update');
 		Route::get('/kelola-peserta-individu', [AuthController::class, 'managerIndividualParticipants'])->name('participants.individual');
 		Route::post('/kelola-peserta-individu/{participant}/generate-credential', [AuthController::class, 'managerIndividualParticipantsGenerateCredential'])->name('participants.individual.generate-credential');
 		Route::post('/kelola-peserta-individu/{participant}/send-credential', [AuthController::class, 'managerIndividualParticipantsSendCredential'])->name('participants.individual.send-credential');
@@ -49,6 +51,8 @@ Route::middleware('simple.auth')->group(function (): void {
 
 	Route::prefix('/dashboard/penguji')->name('dashboard.instructor.')->group(function (): void {
 		Route::get('/', [AuthController::class, 'instructorHome'])->name('home');
+		Route::get('/profil', [AuthController::class, 'instructorProfile'])->name('profile');
+		Route::post('/profil/update', [AuthController::class, 'instructorProfileUpdate'])->name('profile.update');
 		Route::get('/kelola-modul', [AuthController::class, 'instructorModules'])->name('modules');
 		Route::get('/kelola-modul/create', [AuthController::class, 'instructorModulesCreate'])->name('modules.create');
 		Route::post('/kelola-modul', [AuthController::class, 'instructorModulesStore'])->name('modules.store');
@@ -68,6 +72,8 @@ Route::middleware('simple.auth')->group(function (): void {
 
 	Route::prefix('/dashboard/peserta')->name('dashboard.participant.')->group(function (): void {
 		Route::get('/', [AuthController::class, 'participantHome'])->name('home');
+		Route::get('/profil', [AuthController::class, 'participantProfile'])->name('profile');
+		Route::post('/profil/update', [AuthController::class, 'participantProfileUpdate'])->name('profile.update');
 		Route::get('/modul', [AuthController::class, 'participantModules'])->name('modules');
 		Route::get('/modul/{module}', [AuthController::class, 'participantModuleDetail'])->name('modules.detail');
 		Route::post('/modul/{module}/tugas/upload', [AuthController::class, 'uploadParticipantTask'])->name('modules.tasks.upload');

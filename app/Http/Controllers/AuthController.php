@@ -12,8 +12,91 @@ class AuthController extends Controller
     /**
      * Hardcoded users for temporary authentication simulation.
      *
-     * @var array<string, array{name: string, email: string, password: string, role: string}>
+      * @var array<string, array{name: string, email: string, password: string, role: string}>
      */
+
+    /**
+     * @return array<string, string>
+     */
+    private function getManagerProfileData(Request $request): array
+    {
+        $authUser = $request->session()->get('auth_user', []);
+        $defaults = [
+            'photo' => '',
+            'full_name' => (string) ($authUser['name'] ?? 'Demo Manager'),
+            'username' => (string) ($authUser['username'] ?? 'manager01'),
+            'password' => 'manager123',
+            'email' => (string) ($authUser['email'] ?? 'manager@lmsbatik.test'),
+            'phone' => '081234567890',
+            'address' => 'Kantor LPK Kama Praja Madiun',
+            'role_label' => 'Admin',
+        ];
+
+        $sessionData = $request->session()->get('profile_manager_data', []);
+
+        if (!is_array($sessionData)) {
+            return $defaults;
+        }
+
+        return array_merge($defaults, $sessionData);
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function getInstructorProfileData(Request $request): array
+    {
+        $authUser = $request->session()->get('auth_user', []);
+        $defaults = [
+            'photo' => '',
+            'full_name' => (string) ($authUser['name'] ?? 'Demo Instructor'),
+            'username' => (string) ($authUser['username'] ?? 'instructor01'),
+            'password' => 'instructor123',
+            'email' => (string) ($authUser['email'] ?? 'instructor@lmsbatik.test'),
+            'phone' => '081298765432',
+            'address' => 'Jl. Batik Madiun No. 21',
+            'role_label' => 'Pengajar',
+        ];
+
+        $sessionData = $request->session()->get('profile_instructor_data', []);
+
+        if (!is_array($sessionData)) {
+            return $defaults;
+        }
+
+        return array_merge($defaults, $sessionData);
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function getParticipantProfileData(Request $request): array
+    {
+        $authUser = $request->session()->get('auth_user', []);
+        $defaults = [
+            'photo' => '',
+            'participant_type' => 'individual',
+            'full_name' => (string) ($authUser['name'] ?? 'Demo Participant'),
+            'username' => (string) ($authUser['username'] ?? 'participant01'),
+            'password' => 'participant123',
+            'email' => (string) ($authUser['email'] ?? 'participant@lmsbatik.test'),
+            'phone' => '081300112233',
+            'address' => 'Jl. Karya Batik No. 8',
+            'motivation' => 'Ingin memperdalam teknik membatik untuk usaha mandiri.',
+            'group_name' => '',
+            'pic_name' => '',
+            'role_label' => 'Peserta Individu',
+        ];
+
+        $sessionData = $request->session()->get('profile_participant_data', []);
+
+        if (!is_array($sessionData)) {
+            return $defaults;
+        }
+
+        return array_merge($defaults, $sessionData);
+    }
+
     private array $users = [
         'participant01' => [
             'name' => 'Demo Participant',
@@ -875,6 +958,70 @@ class AuthController extends Controller
             ->with('status', 'Pengaturan dan kontak berhasil diperbarui (simulasi).');
     }
 
+    public function managerProfile(Request $request): View|RedirectResponse
+    {
+        $guard = $this->ensureManagerRole($request);
+
+        if ($guard) {
+            return $guard;
+        }
+
+        return view('dashboard.manager.profile', [
+            'user' => $request->session()->get('auth_user'),
+            'dashboard' => $this->getManagerDashboardConfig('profile'),
+            'profile' => $this->getManagerProfileData($request),
+        ]);
+    }
+
+    public function managerProfileUpdate(Request $request): RedirectResponse
+    {
+        $guard = $this->ensureManagerRole($request);
+
+        if ($guard) {
+            return $guard;
+        }
+
+        $validated = $request->validate([
+            'photo' => ['nullable', 'image', 'max:2048'],
+            'full_name' => ['required', 'string', 'min:3', 'max:120'],
+            'username' => ['required', 'string', 'min:4', 'max:40'],
+            'password' => ['required', 'string', 'min:6', 'max:40'],
+            'email' => ['required', 'email'],
+            'phone' => ['required', 'string', 'min:7', 'max:20'],
+            'address' => ['required', 'string', 'min:5', 'max:255'],
+            'role_label' => ['required', 'string', 'min:3', 'max:40'],
+        ]);
+
+        $profile = $this->getManagerProfileData($request);
+
+        if ($request->hasFile('photo')) {
+            $photo = $request->file('photo');
+            $photoName = 'manager-' . now()->timestamp . '.' . $photo->getClientOriginalExtension();
+            $photo->storeAs('profiles', $photoName, 'public');
+            $profile['photo'] = $photoName;
+        }
+
+        $profile['full_name'] = $validated['full_name'];
+        $profile['username'] = $validated['username'];
+        $profile['password'] = $validated['password'];
+        $profile['email'] = $validated['email'];
+        $profile['phone'] = $validated['phone'];
+        $profile['address'] = $validated['address'];
+        $profile['role_label'] = $validated['role_label'];
+
+        $request->session()->put('profile_manager_data', $profile);
+
+        $authUser = $request->session()->get('auth_user', []);
+        $authUser['name'] = $validated['full_name'];
+        $authUser['username'] = $validated['username'];
+        $authUser['email'] = $validated['email'];
+        $request->session()->put('auth_user', $authUser);
+
+        return redirect()
+            ->route('dashboard.manager.profile')
+            ->with('status', 'Profil admin berhasil diperbarui.');
+    }
+
     public function instructorHome(Request $request): View|RedirectResponse
     {
         $guard = $this->ensureInstructorRole($request);
@@ -893,6 +1040,70 @@ class AuthController extends Controller
             'availableModules' => $this->getInstructorHomeModules(),
             'pendingWorks' => $this->getInstructorPendingWorks(),
         ]);
+    }
+
+    public function instructorProfile(Request $request): View|RedirectResponse
+    {
+        $guard = $this->ensureInstructorRole($request);
+
+        if ($guard) {
+            return $guard;
+        }
+
+        return view('dashboard.instructor.profile', [
+            'user' => $request->session()->get('auth_user'),
+            'dashboard' => $this->getInstructorDashboardConfig('profile'),
+            'profile' => $this->getInstructorProfileData($request),
+        ]);
+    }
+
+    public function instructorProfileUpdate(Request $request): RedirectResponse
+    {
+        $guard = $this->ensureInstructorRole($request);
+
+        if ($guard) {
+            return $guard;
+        }
+
+        $validated = $request->validate([
+            'photo' => ['nullable', 'image', 'max:2048'],
+            'full_name' => ['required', 'string', 'min:3', 'max:120'],
+            'username' => ['required', 'string', 'min:4', 'max:40'],
+            'password' => ['required', 'string', 'min:6', 'max:40'],
+            'email' => ['required', 'email'],
+            'phone' => ['required', 'string', 'min:7', 'max:20'],
+            'address' => ['required', 'string', 'min:5', 'max:255'],
+            'role_label' => ['required', 'string', 'min:3', 'max:40'],
+        ]);
+
+        $profile = $this->getInstructorProfileData($request);
+
+        if ($request->hasFile('photo')) {
+            $photo = $request->file('photo');
+            $photoName = 'instructor-' . now()->timestamp . '.' . $photo->getClientOriginalExtension();
+            $photo->storeAs('profiles', $photoName, 'public');
+            $profile['photo'] = $photoName;
+        }
+
+        $profile['full_name'] = $validated['full_name'];
+        $profile['username'] = $validated['username'];
+        $profile['password'] = $validated['password'];
+        $profile['email'] = $validated['email'];
+        $profile['phone'] = $validated['phone'];
+        $profile['address'] = $validated['address'];
+        $profile['role_label'] = $validated['role_label'];
+
+        $request->session()->put('profile_instructor_data', $profile);
+
+        $authUser = $request->session()->get('auth_user', []);
+        $authUser['name'] = $validated['full_name'];
+        $authUser['username'] = $validated['username'];
+        $authUser['email'] = $validated['email'];
+        $request->session()->put('auth_user', $authUser);
+
+        return redirect()
+            ->route('dashboard.instructor.profile')
+            ->with('status', 'Profil pengajar berhasil diperbarui.');
     }
 
     public function instructorModules(Request $request): View|RedirectResponse
@@ -1184,6 +1395,86 @@ class AuthController extends Controller
         return $this->renderParticipantPage($request, 'home');
     }
 
+    public function participantProfile(Request $request): View|RedirectResponse
+    {
+        $guard = $this->ensureParticipantRole($request);
+
+        if ($guard) {
+            return $guard;
+        }
+
+        return view('dashboard.participant.profile', [
+            'user' => $request->session()->get('auth_user'),
+            'dashboard' => $this->getParticipantDashboardConfig('profile'),
+            'profile' => $this->getParticipantProfileData($request),
+        ]);
+    }
+
+    public function participantProfileUpdate(Request $request): RedirectResponse
+    {
+        $guard = $this->ensureParticipantRole($request);
+
+        if ($guard) {
+            return $guard;
+        }
+
+        $validated = $request->validate([
+            'photo' => ['nullable', 'image', 'max:2048'],
+            'participant_type' => ['required', 'in:individual,group'],
+            'full_name' => ['required', 'string', 'min:3', 'max:120'],
+            'username' => ['required', 'string', 'min:4', 'max:40'],
+            'password' => ['required', 'string', 'min:6', 'max:40'],
+            'email' => ['required', 'email'],
+            'phone' => ['required', 'string', 'min:7', 'max:20'],
+            'address' => ['required', 'string', 'min:5', 'max:255'],
+            'motivation' => ['nullable', 'string', 'max:255'],
+            'group_name' => ['nullable', 'string', 'max:120'],
+            'pic_name' => ['nullable', 'string', 'max:120'],
+            'role_label' => ['required', 'string', 'min:3', 'max:40'],
+        ]);
+
+        if ($validated['participant_type'] === 'individual' && empty($validated['motivation'])) {
+            return back()->withErrors(['motivation' => 'Motivasi singkat wajib diisi untuk peserta individu.'])->withInput();
+        }
+
+        if ($validated['participant_type'] === 'group' && (empty($validated['group_name']) || empty($validated['pic_name']))) {
+            return back()->withErrors(['group_name' => 'Nama kelompok/lembaga dan nama PIC wajib diisi untuk peserta kelompok.'])->withInput();
+        }
+
+        $profile = $this->getParticipantProfileData($request);
+
+        if ($request->hasFile('photo')) {
+            $photo = $request->file('photo');
+            $photoName = 'participant-' . now()->timestamp . '.' . $photo->getClientOriginalExtension();
+            $photo->storeAs('profiles', $photoName, 'public');
+            $profile['photo'] = $photoName;
+        }
+
+        $profile['participant_type'] = $validated['participant_type'];
+        $profile['full_name'] = $validated['full_name'];
+        $profile['username'] = $validated['username'];
+        $profile['password'] = $validated['password'];
+        $profile['email'] = $validated['email'];
+        $profile['phone'] = $validated['phone'];
+        $profile['address'] = $validated['address'];
+        $profile['motivation'] = $validated['motivation'] ?? '';
+        $profile['group_name'] = $validated['group_name'] ?? '';
+        $profile['pic_name'] = $validated['pic_name'] ?? '';
+        $profile['role_label'] = $validated['role_label'];
+
+        $request->session()->put('profile_participant_data', $profile);
+
+        $authUser = $request->session()->get('auth_user', []);
+        $authUser['name'] = $validated['full_name'];
+        $authUser['username'] = $validated['username'];
+        $authUser['email'] = $validated['email'];
+        $request->session()->put('auth_user', $authUser);
+
+        return redirect()
+            ->route('dashboard.participant.profile')
+            ->with('status', 'Profil peserta berhasil diperbarui.');
+    }
+
     public function participantModules(Request $request): View|RedirectResponse
     {
         $guard = $this->ensureParticipantRole($request);
@@ -1360,6 +1651,12 @@ class AuthController extends Controller
                 'subtitle' => 'Bagikan karya batik terbaik Anda dengan komunitas.',
                 'headerGradient' => 'from-slate-900 to-blue-900',
             ],
+            'profile' => [
+                'view' => 'dashboard.participant.profile',
+                'title' => 'Profil Pengguna - Peserta',
+                'subtitle' => 'Lihat dan perbarui data profil peserta Anda.',
+                'headerGradient' => 'from-slate-900 to-blue-900',
+            ],
         ];
 
         $selected = $config[$activePage] ?? $config['home'];
@@ -1368,6 +1665,7 @@ class AuthController extends Controller
             ...$selected,
             'roleBadgeClasses' => 'bg-blue-100 text-blue-700',
             'activeMenuClasses' => 'bg-blue-100 text-blue-800',
+            'profileUrl' => route('dashboard.participant.profile'),
             'showNotification' => true,
             'menuItems' => [
                 [
@@ -1462,6 +1760,10 @@ class AuthController extends Controller
                 'title' => 'Pengaturan',
                 'subtitle' => 'Konfigurasi preferensi dasar sistem dan kontak operasional.',
             ],
+            'profile' => [
+                'title' => 'Profil Pengguna - Admin',
+                'subtitle' => 'Lihat dan perbarui data akun admin.',
+            ],
         ];
 
         $selected = $config[$activePage] ?? $config['home'];
@@ -1472,6 +1774,7 @@ class AuthController extends Controller
             'showNotification' => true,
             'roleBadgeClasses' => 'bg-slate-200 text-slate-700',
             'activeMenuClasses' => 'bg-slate-200 text-slate-900',
+            'profileUrl' => route('dashboard.manager.profile'),
             'menuItems' => [
                 [
                     'label' => 'Dashboard',
@@ -1955,6 +2258,10 @@ class AuthController extends Controller
                 'title' => 'Penilaian Tugas',
                 'subtitle' => 'Review dan beri nilai pada tugas yang telah dikumpulkan.',
             ],
+            'profile' => [
+                'title' => 'Profil Pengguna - Pengajar',
+                'subtitle' => 'Lihat dan perbarui data profil pengajar.',
+            ],
         ];
 
         $selected = $config[$activePage] ?? $config['home'];
@@ -1965,6 +2272,7 @@ class AuthController extends Controller
             'showNotification' => true,
             'roleBadgeClasses' => 'bg-sky-100 text-sky-700',
             'activeMenuClasses' => 'bg-sky-100 text-sky-900',
+            'profileUrl' => route('dashboard.instructor.profile'),
             'menuItems' => [
                 [
                     'label' => 'Dashboard',
