@@ -222,55 +222,58 @@
                 const prevBtn = document.getElementById(prevBtnId);
                 const nextBtn = document.getElementById(nextBtnId);
 
+                if (!slider || !dotsContainer) {
+                    return;
+                }
+
                 let current = 0;
                 const slides = slider.children;
                 const totalSlides = slides.length;
+                let dots = [];
 
-                // 1. Generate Dots Otomatis Berdasarkan Jumlah Slide
-                dotsContainer.innerHTML = '';
-                for (let i = 0; i < totalSlides; i++) {
-                    const dot = document.createElement('button');
-                    // Styling dinamis agar dot aktif berbentuk memanjang (pil)
-                    dot.className =
-                        `h-3 rounded-full transition-all duration-300 ${i === 0 ? 'bg-amber-500 w-8' : 'bg-gray-300 hover:bg-gray-400 w-3'}`;
-                    dot.setAttribute('aria-label', `Go to slide ${i + 1}`);
-                    dot.addEventListener('click', () => goToSlide(i));
-                    dotsContainer.appendChild(dot);
+                function getVisibleItems() {
+                    return window.innerWidth >= 768 ? visibleDesktopItems : 1;
                 }
-                const dots = dotsContainer.children;
+
+                function getMaxIndex() {
+                    return Math.max(0, totalSlides - getVisibleItems());
+                }
+
+                function renderDots() {
+                    const dotCount = getMaxIndex() + 1;
+                    dotsContainer.innerHTML = '';
+
+                    for (let i = 0; i < dotCount; i++) {
+                        const dot = document.createElement('button');
+                        dot.className =
+                            `h-3 rounded-full transition-all duration-300 ${i === current ? 'bg-amber-500 w-8' : 'bg-gray-300 hover:bg-gray-400 w-3'}`;
+                        dot.setAttribute('aria-label', `Go to slide ${i + 1}`);
+                        dot.addEventListener('click', () => goToSlide(i));
+                        dotsContainer.appendChild(dot);
+                    }
+
+                    dots = Array.from(dotsContainer.children);
+                }
 
                 // 2. Fungsi Eksekusi Pergeseran
                 function goToSlide(index) {
-                    const isDesktop = window.innerWidth >= 768;
-                    // Tentukan berapa card yang tampil di layar
-                    const visibleItems = isDesktop ? visibleDesktopItems : 1;
+                    const maxIndex = getMaxIndex();
 
                     // Logika Looping: jika melebihi batas, kembali ke 0. Jika kurang dari 0, ke batas akhir.
                     if (index < 0) {
-                        current = totalSlides - 1;
-                    } else if (index >= totalSlides) {
+                        current = maxIndex;
+                    } else if (index > maxIndex) {
                         current = 0;
                     } else {
                         current = index;
                     }
 
-                    // Mencegah ruang kosong di sebelah kanan pada mode desktop
-                    let maxIndex = totalSlides - visibleItems;
-                    if (maxIndex < 0) maxIndex = 0; // Jaga-jaga jika item kurang dari 3
-
-                    let slidePosition = current;
-                    // Jika posisi bergeser melewati maxIndex, tahan di maxIndex secara visual
-                    // tapi 'current' index aslinya tetap untuk memicu loop di slide berikutnya
-                    if (slidePosition > maxIndex && isDesktop) {
-                        slidePosition = maxIndex;
-                    }
-
                     // Hitung persentase pergeseran
-                    const slidePercentage = isDesktop ? (100 / visibleDesktopItems) : 100;
-                    slider.style.transform = `translateX(-${slidePosition * slidePercentage}%)`;
+                    const slidePercentage = 100 / getVisibleItems();
+                    slider.style.transform = `translateX(-${current * slidePercentage}%)`;
 
                     // Update UI Dots
-                    Array.from(dots).forEach((dot, i) => {
+                    dots.forEach((dot, i) => {
                         if (i === current) {
                             dot.className =
                                 'h-3 rounded-full transition-all duration-300 bg-amber-500 w-8'; // Dot aktif
@@ -286,7 +289,14 @@
                 if (prevBtn) prevBtn.addEventListener("click", () => goToSlide(current - 1));
 
                 // Pastikan slider tetap rapi saat ukuran layar (HP <-> Laptop) diubah
-                window.addEventListener('resize', () => goToSlide(current));
+                window.addEventListener('resize', () => {
+                    current = Math.min(current, getMaxIndex());
+                    renderDots();
+                    goToSlide(current);
+                });
+
+                renderDots();
+                goToSlide(0);
 
                 // 4. Auto Loop tiap 5 detik
                 setInterval(() => {
