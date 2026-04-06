@@ -66,7 +66,7 @@
             </form>
         </div>
 
-        <div class="mt-5 space-y-3">
+        <div class="mt-5 space-y-3 max-w-7xl mx-auto">
             @forelse ($programs as $program)
                 <article class="rounded-xl border border-slate-200 bg-slate-50 p-4">
                     <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">

@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\InstructorModuleController;
 use App\Http\Controllers\LandingController;
 
 // Landing Page Routes
@@ -53,13 +54,13 @@ Route::middleware('simple.auth')->group(function (): void {
 		Route::get('/', [AuthController::class, 'instructorHome'])->name('home');
 		Route::get('/profil', [AuthController::class, 'instructorProfile'])->name('profile');
 		Route::post('/profil/update', [AuthController::class, 'instructorProfileUpdate'])->name('profile.update');
-		Route::get('/kelola-modul', [AuthController::class, 'instructorModules'])->name('modules');
-		Route::get('/kelola-modul/create', [AuthController::class, 'instructorModulesCreate'])->name('modules.create');
-		Route::post('/kelola-modul', [AuthController::class, 'instructorModulesStore'])->name('modules.store');
-		Route::get('/kelola-modul/{module}/detail', [AuthController::class, 'instructorModulesDetail'])->name('modules.detail');
-		Route::get('/kelola-modul/{module}/edit', [AuthController::class, 'instructorModulesEdit'])->name('modules.edit');
-		Route::post('/kelola-modul/{module}', [AuthController::class, 'instructorModulesEditStore'])->name('modules.update');
-		Route::delete('/kelola-modul/{module}', [AuthController::class, 'instructorModulesDelete'])->name('modules.delete');
+		Route::get('/kelola-modul', [InstructorModuleController::class, 'index'])->name('modules');
+		Route::get('/kelola-modul/create', [InstructorModuleController::class, 'create'])->name('modules.create');
+		Route::post('/kelola-modul', [InstructorModuleController::class, 'store'])->name('modules.store');
+		Route::get('/kelola-modul/{module}/detail', [InstructorModuleController::class, 'show'])->name('modules.detail');
+		Route::get('/kelola-modul/{module}/edit', [InstructorModuleController::class, 'edit'])->name('modules.edit');
+		Route::put('/kelola-modul/{module}', [InstructorModuleController::class, 'update'])->name('modules.update');
+		Route::delete('/kelola-modul/{module}', [InstructorModuleController::class, 'destroy'])->name('modules.delete');
 		Route::get('/daftar-peserta', [AuthController::class, 'instructorParticipants'])->name('participants');
 		Route::get('/daftar-peserta/individu', [AuthController::class, 'instructorParticipantsIndividualDetail'])->name('participants.individual.detail');
 		Route::get('/daftar-peserta/kelompok', [AuthController::class, 'instructorParticipantsGroupDetail'])->name('participants.group.detail');

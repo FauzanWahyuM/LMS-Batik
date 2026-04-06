@@ -30,12 +30,12 @@
         </div>
 
         <div>
-            <label class="block text-sm font-semibold text-slate-700 mb-1">Link Video (YouTube, Vimeo, dll - embed
-                link)</label>
+            <label class="block text-sm font-semibold text-slate-700 mb-1">Link Video (YouTube, Vimeo, dll)</label>
             <input type="url" name="chapters[{{ $index }}][video]" value="{{ $chapter['video'] ?? '' }}"
-                placeholder="https://www.youtube.com/embed/..."
+                placeholder="https://www.youtube.com/watch?v=VIDEO_ID atau https://youtu.be/VIDEO_ID"
                 class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 focus:border-slate-500 focus:outline-none">
-            <p class="mt-1 text-xs text-slate-500">Gunakan embed URL, bukan URL video biasa</p>
+            <p class="mt-1 text-xs text-slate-500">Masukkan URL video YouTube atau Vimeo. Sistem akan otomatis
+                mengkonversi ke format embed.</p>
         </div>
 
         <div>

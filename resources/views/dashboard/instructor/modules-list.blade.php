@@ -34,15 +34,12 @@
                             <img src="{{ $module['cover'] }}" alt="{{ $module['title'] }}"
                                 class="h-full w-full object-cover">
                         @else
-                            <div class="flex h-full items-center justify-center">
-                                <div class="text-center">
-                                    <svg class="mx-auto h-12 w-12 text-slate-400" fill="none" stroke="currentColor"
-                                        viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                                            d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                    </svg>
-                                    <p class="mt-1 text-xs text-slate-500">Gambar sampul</p>
-                                </div>
+                            <div class="flex h-full items-center justify-center bg-slate-100">
+                                <svg class="h-12 w-12 text-slate-400" fill="none" stroke="currentColor"
+                                    viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                        d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                </svg>
                             </div>
                         @endif
                         <div class="absolute right-2 top-2">
@@ -60,7 +57,7 @@
 
                         <div class="mt-3 flex flex-wrap gap-2 text-xs text-slate-600">
                             <span class="rounded-full bg-slate-100 px-2.5 py-1">
-                                <span class="font-semibold text-slate-800">{{ $module['chapters'] }}</span> bab
+                                <span class="font-semibold text-slate-800">{{ count($module['chapters'] ?? []) }}</span> bab
                             </span>
                             <span class="rounded-full bg-slate-100 px-2.5 py-1">
                                 <span class="font-semibold text-slate-800">{{ $module['participants'] }}</span> peserta
