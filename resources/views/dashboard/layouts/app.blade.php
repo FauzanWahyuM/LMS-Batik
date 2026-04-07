@@ -48,6 +48,62 @@
 
         <div id="sidebar-overlay" class="fixed inset-0 z-30 hidden bg-slate-900/40 lg:hidden"></div>
 
+        @php
+            $dashboard = $dashboard ?? [];
+            $dashboard = array_merge(
+                [
+                    'title' => 'Dashboard',
+                    'subtitle' => 'Selamat datang di portal peserta. Pantau pembaruan dan aktivitas belajar Anda.',
+                    'headerGradient' => 'from-[#050847] to-blue-900',
+                    'showNotification' => false,
+                    'roleBadgeClasses' => 'bg-blue-100 text-blue-700',
+                    'activeMenuClasses' => 'bg-blue-100 text-blue-800',
+                    'profileUrl' => route('dashboard.participant.profile'),
+                    'menuItems' => [
+                        [
+                            'label' => 'Dashboard',
+                            'icon' => 'home',
+                            'url' => route('dashboard.participant.home'),
+                            'active' => false,
+                        ],
+                        [
+                            'label' => 'Modul Pembelajaran',
+                            'icon' => 'book',
+                            'url' => route('dashboard.participant.modules'),
+                            'active' => false,
+                        ],
+                        [
+                            'label' => 'Forum Diskusi',
+                            'icon' => 'chat',
+                            'url' => route('dashboard.participant.forum'),
+                            'active' => false,
+                        ],
+                        [
+                            'label' => 'Galeri Karya',
+                            'icon' => 'gallery',
+                            'url' => route('dashboard.participant.gallery'),
+                            'active' => false,
+                        ],
+                    ],
+                ],
+                $dashboard,
+            );
+
+            $user =
+                $user ??
+                (auth()->check()
+                    ? [
+                        'name' => auth()->user()->name,
+                        'email' => auth()->user()->email,
+                        'role' => auth()->user()->role ?? 'participant',
+                    ]
+                    : [
+                        'name' => 'Peserta',
+                        'email' => '',
+                        'role' => 'participant',
+                    ]);
+        @endphp
+
         @include('dashboard.partials.sidebar', ['dashboard' => $dashboard, 'user' => $user])
 
         <main class="flex-1 px-4 py-4 sm:px-6 sm:py-6 lg:px-8 lg:py-8">

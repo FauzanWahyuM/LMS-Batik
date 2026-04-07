@@ -62,7 +62,9 @@ class ModuleService
     private function normalize(array $data, Module $module = null): array
     {
         if (!isset($data['status'])) {
-            $data['status'] = 'Draft';
+            $data['status'] = 'draft';
+        } else {
+            $data['status'] = strtolower(trim($data['status']));
         }
 
         if (!isset($data['chapters']) || !is_array($data['chapters'])) {

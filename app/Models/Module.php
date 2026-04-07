@@ -25,12 +25,28 @@ class Module extends Model
         'participants_count' => 'integer',
     ];
 
-    public function getCoverUrlAttribute(): ?string
+    public function materials()
     {
-        if (!$this->cover) {
-            return null;
-        }
+        return $this->hasMany(ModuleMaterial::class)->orderBy('order');
+    }
 
-        return asset('storage/' . ltrim($this->cover, '/'));
+    public function assignments()
+    {
+        return $this->hasMany(ParticipantAssignment::class);
+    }
+
+    public function progress()
+    {
+        return $this->hasMany(ParticipantProgress::class);
+    }
+
+    public function getProgressForUser(User $user): ?ParticipantProgress
+    {
+        return $this->progress()->where('user_id', $user->id)->first();
+    }
+
+    public function getAssignmentsForUser(User $user)
+    {
+        return $this->assignments()->where('user_id', $user->id)->get();
     }
 }

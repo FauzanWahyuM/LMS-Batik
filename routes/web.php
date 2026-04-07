@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\InstructorModuleController;
 use App\Http\Controllers\LandingController;
+use App\Http\Controllers\ParticipantModuleController;
 
 // Landing Page Routes
 Route::get('/', [LandingController::class, 'index'])->name('landing.index');
@@ -75,9 +76,12 @@ Route::middleware('simple.auth')->group(function (): void {
 		Route::get('/', [AuthController::class, 'participantHome'])->name('home');
 		Route::get('/profil', [AuthController::class, 'participantProfile'])->name('profile');
 		Route::post('/profil/update', [AuthController::class, 'participantProfileUpdate'])->name('profile.update');
-		Route::get('/modul', [AuthController::class, 'participantModules'])->name('modules');
-		Route::get('/modul/{module}', [AuthController::class, 'participantModuleDetail'])->name('modules.detail');
-		Route::post('/modul/{module}/tugas/upload', [AuthController::class, 'uploadParticipantTask'])->name('modules.tasks.upload');
+		Route::get('/modul', [ParticipantModuleController::class, 'index'])->name('modules');
+		Route::get('/modul/{module}', [ParticipantModuleController::class, 'show'])->name('modules.detail');
+		Route::post('/modul/{module}/tugas/upload', [ParticipantModuleController::class, 'submitAssignment'])->name('modules.tasks.upload');
+		Route::get('/modul/{module}/progress', [ParticipantModuleController::class, 'getProgress'])->name('modules.progress');
+		Route::post('/modul/{module}/material/{material}/start', [ParticipantModuleController::class, 'markMaterialStarted'])->name('modules.material.start');
+		Route::post('/modul/{module}/material/{material}/complete', [ParticipantModuleController::class, 'markMaterialCompleted'])->name('modules.material.complete');
 		Route::get('/forum', [AuthController::class, 'participantForum'])->name('forum');
 		Route::get('/galeri', [AuthController::class, 'participantGallery'])->name('gallery');
 		Route::get('/galeri/upload', [AuthController::class, 'participantGalleryUpload'])->name('gallery.upload');

@@ -1,0 +1,286 @@
+<?php
+
+namespace App\Services;
+
+use App\Models\Module;
+use App\Models\ModuleMaterial;
+use App\Models\ParticipantAssignment;
+use App\Models\ParticipantProgress;
+use App\Models\User;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+
+class ParticipantModuleService
+{
+    /**
+     * Get all modules available for participants
+     */
+    public function getAvailableModules()
+    {
+        return Module::with('materials')
+            ->orderBy('created_at', 'desc')
+            ->get();
+    }
+
+    /**
+     * Get chapter and material content for a module
+     */
+    public function getMaterialsForModule(Module $module)
+    {
+        $materials = $module->materials()->orderBy('order')->get();
+
+        if ($materials->isNotEmpty()) {
+            return $materials;
+        }
+
+        return collect($module->chapters ?? [])->map(function ($chapter, $index) {
+            $slug = isset($chapter['title']) ? Str::slug($chapter['title']) : 'chapter-' . ($index + 1);
+            $videoUrl = $this->normalizeVideoUrl($chapter['video'] ?? null);
+
+            return (object) [
+                'title' => $chapter['title'] ?? 'Bab ' . ($index + 1),
+                'slug' => $slug . '-' . ($index + 1),
+                'content' => $chapter['content'] ?? $chapter['description'] ?? null,
+                'description' => $chapter['description'] ?? null,
+                'video_url' => $videoUrl,
+                'assignment' => $chapter['assignment'] ?? null,
+                'type' => ! empty($chapter['assignment']) ? 'assignment' : (! empty($videoUrl) ? 'video' : 'content'),
+                'metadata' => [
+                    'deadline' => $chapter['assignment_deadline'] ?? null,
+                ],
+                'thumbnail_url' => null,
+                'order' => $index + 1,
+            ];
+        });
+    }
+
+    private function normalizeVideoUrl(?string $url): ?string
+    {
+        if (! $url) {
+            return null;
+        }
+
+        if (preg_match('/youtube\.com\/watch\?v=([a-zA-Z0-9_-]+)/', $url, $matches)) {
+            return 'https://www.youtube.com/embed/' . $matches[1];
+        }
+
+        if (preg_match('/youtu\.be\/([a-zA-Z0-9_-]+)/', $url, $matches)) {
+            return 'https://www.youtube.com/embed/' . $matches[1];
+        }
+
+        if (preg_match('/vimeo\.com\/(\d+)/', $url, $matches)) {
+            return 'https://player.vimeo.com/video/' . $matches[1];
+        }
+
+        return $url;
+    }
+
+    /**
+     * Get module details with materials for a participant
+     */
+    public function getModuleForParticipant(Module $module, User $user)
+    {
+        $materials = $this->getMaterialsForModule($module);
+        $progress = $this->getModuleProgress($module, $user);
+        $assignments = $this->getUserAssignments($module, $user);
+
+        return [
+            'module' => $module,
+            'materials' => $materials,
+            'progress' => $progress,
+            'assignments' => $assignments,
+            'overall_progress' => $this->calculateOverallProgress($module, $user),
+        ];
+    }
+
+    /**
+     * Find a module by slug
+     */
+    public function findModuleBySlug(string $slug): ?Module
+    {
+        return Module::with('materials')
+            ->where('slug', $slug)
+            ->first();
+    }
+
+    /**
+     * Get module details for a participant by slug
+     */
+    public function getModuleForParticipantBySlug(string $slug, User $user): ?array
+    {
+        $module = $this->findModuleBySlug($slug);
+
+        if (! $module) {
+            return null;
+        }
+
+        return $this->getModuleForParticipant($module, $user);
+    }
+
+    /**
+     * Get progress for a specific module and user
+     */
+    public function getModuleProgress(Module $module, User $user): ?ParticipantProgress
+    {
+        return $module->getProgressForUser($user);
+    }
+
+    /**
+     * Get assignments submitted by user for a module
+     */
+    public function getUserAssignments(Module $module, User $user)
+    {
+        return $module->getAssignmentsForUser($user);
+    }
+
+    /**
+     * Calculate overall progress percentage for a module
+     */
+    public function calculateOverallProgress(Module $module, User $user): int
+    {
+        $materials = $module->materials;
+        if ($materials->isEmpty()) {
+            return 0;
+        }
+
+        $completedMaterials = 0;
+        foreach ($materials as $material) {
+            $progress = ParticipantProgress::where('user_id', $user->id)
+                ->where('module_id', $module->id)
+                ->where('material_id', $material->id)
+                ->where('status', 'completed')
+                ->first();
+
+            if ($progress) {
+                $completedMaterials++;
+            }
+        }
+
+        return (int) (($completedMaterials / $materials->count()) * 100);
+    }
+
+    /**
+     * Mark material as started for a user
+     */
+    public function markMaterialAsStarted(Module $module, ModuleMaterial $material, User $user): ParticipantProgress
+    {
+        return ParticipantProgress::updateOrCreate(
+            [
+                'user_id' => $user->id,
+                'module_id' => $module->id,
+                'material_id' => $material->id,
+            ],
+            [
+                'status' => 'in_progress',
+                'started_at' => now(),
+            ]
+        );
+    }
+
+    /**
+     * Mark material as completed for a user
+     */
+    public function markMaterialAsCompleted(Module $module, ModuleMaterial $material, User $user): ParticipantProgress
+    {
+        $progress = ParticipantProgress::updateOrCreate(
+            [
+                'user_id' => $user->id,
+                'module_id' => $module->id,
+                'material_id' => $material->id,
+            ],
+            [
+                'status' => 'completed',
+                'progress_percentage' => 100,
+                'completed_at' => now(),
+            ]
+        );
+
+        return $progress;
+    }
+
+    /**
+     * Submit assignment for a module material
+     */
+    public function submitAssignment(Module $module, ?ModuleMaterial $material, User $user, UploadedFile $file): ParticipantAssignment
+    {
+        // Store the file
+        $fileName = Str::uuid() . '.' . $file->getClientOriginalExtension();
+        $filePath = $file->storeAs('assignments', $fileName, 'public');
+
+        // Create assignment record
+        return ParticipantAssignment::create([
+            'user_id' => $user->id,
+            'module_id' => $module->id,
+            'material_id' => $material?->id,
+            'file_path' => $filePath,
+            'original_filename' => $file->getClientOriginalName(),
+            'file_size' => $file->getSize(),
+            'mime_type' => $file->getMimeType(),
+            'submitted_at' => now(),
+        ]);
+    }
+
+    /**
+     * Get assignment for grading (for instructors)
+     */
+    public function getAssignmentForGrading(int $assignmentId): ?ParticipantAssignment
+    {
+        return ParticipantAssignment::with(['user', 'module', 'material'])->find($assignmentId);
+    }
+
+    /**
+     * Grade an assignment
+     */
+    public function gradeAssignment(ParticipantAssignment $assignment, int $score, ?string $feedback): bool
+    {
+        return $assignment->update([
+            'score' => $score,
+            'feedback' => $feedback,
+            'graded_at' => now(),
+        ]);
+    }
+
+    /**
+     * Get module statistics for a user
+     */
+    public function getModuleStatistics(Module $module, User $user): array
+    {
+        $materials = $module->materials;
+        $completedMaterials = 0;
+        $totalAssignments = 0;
+        $gradedAssignments = 0;
+
+        foreach ($materials as $material) {
+            $progress = ParticipantProgress::where('user_id', $user->id)
+                ->where('module_id', $module->id)
+                ->where('material_id', $material->id)
+                ->where('status', 'completed')
+                ->first();
+
+            if ($progress) {
+                $completedMaterials++;
+            }
+
+            if ($material->type === 'assignment') {
+                $totalAssignments++;
+                $assignment = ParticipantAssignment::where('user_id', $user->id)
+                    ->where('module_id', $module->id)
+                    ->where('material_id', $material->id)
+                    ->first();
+
+                if ($assignment && $assignment->isGraded()) {
+                    $gradedAssignments++;
+                }
+            }
+        }
+
+        return [
+            'total_materials' => $materials->count(),
+            'completed_materials' => $completedMaterials,
+            'completion_percentage' => $materials->count() > 0 ? (int) (($completedMaterials / $materials->count()) * 100) : 0,
+            'total_assignments' => $totalAssignments,
+            'graded_assignments' => $gradedAssignments,
+        ];
+    }
+}

@@ -16,13 +16,13 @@
                 Kembali
             </a>
         </div>
-        <p class="mt-3 text-center text-sm font-semibold text-slate-700">{{ $moduleData['title'] }}</p>
-        <p class="mt-1 text-sm font-semibold text-slate-700">Durasi: {{ $moduleData['duration'] }}</p>
+        <p class="mt-3 text-center text-sm font-semibold text-slate-700">{{ $module->title }}</p>
+        <p class="mt-1 text-sm font-semibold text-slate-700">Durasi: {{ $module->duration }} Jam</p>
 
         <div class="mt-4 h-2 w-full rounded-full bg-slate-200">
-            <div class="h-2 rounded-full bg-blue-600" style="width: {{ $moduleData['progress'] }}%"></div>
+            <div class="h-2 rounded-full bg-blue-600" style="width: {{ $moduleData['overall_progress'] }}%"></div>
         </div>
-        <p class="mt-1 text-right text-xs text-slate-500">{{ $moduleData['progress'] }}% selesai</p>
+        <p class="mt-1 text-right text-xs text-slate-500">{{ $moduleData['overall_progress'] }}% selesai</p>
 
         <div class="mt-4 border-t border-slate-300 pt-4"></div>
 
@@ -49,46 +49,84 @@
                 <h4 class="text-sm font-semibold uppercase tracking-wide text-slate-700">Pindah Materi</h4>
                 <div class="mt-3 flex flex-wrap gap-2">
                     @foreach ($moduleData['materials'] as $material)
-                        <a href="{{ route('dashboard.participant.modules.detail', ['module' => $moduleSlug, 'tab' => 'materi', 'material' => $material['slug']]) }}"
-                            class="rounded-full border px-3 py-1.5 text-xs font-semibold transition {{ $selectedMaterial['slug'] === $material['slug'] ? 'border-black bg-black text-white' : 'border-slate-300 text-slate-700 hover:bg-white' }}">
-                            {{ $material['title'] }}
+                        <a href="{{ route('dashboard.participant.modules.detail', ['module' => $moduleSlug, 'tab' => 'materi', 'material' => $material->slug]) }}"
+                            class="rounded-full border px-3 py-1.5 text-xs font-semibold transition {{ $selectedMaterial && $selectedMaterial->slug === $material->slug ? 'border-black bg-black text-white' : 'border-slate-300 text-slate-700 hover:bg-white' }}">
+                            {{ $material->title }}
                         </a>
                     @endforeach
                 </div>
             </div>
 
-            <div class="mt-6 rounded-xl border border-slate-300 bg-slate-50 p-4 sm:p-5">
-                <h3 class="text-lg font-bold text-slate-800">{{ $selectedMaterial['title'] }}</h3>
-                <div class="mt-3 grid gap-4 sm:grid-cols-[220px_1fr] sm:items-start">
-                    <div
-                        class="h-36 rounded-lg border-2 border-slate-700 bg-white grid place-items-center text-xs text-slate-600 sm:h-32">
-                        {{ $selectedMaterial['thumbnailLabel'] }}
+            @if ($selectedMaterial)
+                <div class="mt-6 rounded-xl border border-slate-300 bg-slate-50 p-4 sm:p-5">
+                    <h3 class="text-lg font-bold text-slate-800">{{ $selectedMaterial->title }}</h3>
+                    <div class="mt-3 grid gap-4 sm:grid-cols-[220px_1fr] sm:items-start">
+                        <div
+                            class="h-36 rounded-lg border-2 border-slate-700 bg-white grid place-items-center text-xs text-slate-600 sm:h-32">
+                            @if ($selectedMaterial->thumbnail_url)
+                                <img src="{{ $selectedMaterial->thumbnail_url }}" alt="{{ $selectedMaterial->title }}"
+                                    class="w-full h-full object-cover rounded">
+                            @else
+                                Thumbnail
+                            @endif
+                        </div>
+                        <p class="text-sm leading-relaxed text-slate-700">
+                            {{ $selectedMaterial->content ?: 'Konten materi belum tersedia.' }}</p>
                     </div>
-                    <p class="text-sm leading-relaxed text-slate-700">{{ $selectedMaterial['summary'] }}</p>
                 </div>
-            </div>
+            @endif
         @elseif ($activeTab === 'video')
             <div class="mt-6 rounded-lg border border-slate-200 p-4">
-                <h3 class="text-center text-sm font-semibold text-slate-700">{{ $moduleData['videoTitle'] }}</h3>
-                <div
-                    class="mt-3 h-48 rounded-md border border-slate-400 bg-slate-100 grid place-items-center text-sm text-slate-600">
-                    Video
+                <h3 class="text-center text-sm font-semibold text-slate-700">{{ $module->title }} - Video Pembelajaran</h3>
+                <div class="mt-3 rounded-md border border-slate-400 bg-slate-100 p-4 text-sm text-slate-600">
+                    @if ($selectedMaterial && $selectedMaterial->video_url)
+                        @php
+                            $videoUrl = $selectedMaterial->video_url;
+                            $isDirectVideo = preg_match('/\.(mp4|webm|ogg|mov|m3u8)(\?|$)/i', $videoUrl);
+                        @endphp
+
+                        @if ($isDirectVideo)
+                            <video controls class="w-full rounded-lg bg-black">
+                                <source src="{{ $videoUrl }}" type="video/mp4">
+                                Browser Anda tidak mendukung pemutaran video.
+                            </video>
+                        @else
+                            <div class="relative h-64 w-full overflow-hidden rounded-lg bg-slate-900">
+                                <iframe class="h-full w-full" src="{{ $videoUrl }}" frameborder="0"
+                                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                    allowfullscreen></iframe>
+                            </div>
+                        @endif
+                    @else
+                        <p>Video belum tersedia</p>
+                    @endif
                 </div>
 
-                <p class="mt-4 text-justify text-sm leading-relaxed text-slate-600">{{ $moduleData['description'] }}</p>
+                <p class="mt-4 text-justify text-sm leading-relaxed text-slate-600">
+                    {{ $selectedMaterial ? ($selectedMaterial->content ?: 'Deskripsi video belum tersedia.') : 'Pilih materi terlebih dahulu.' }}
+                </p>
             </div>
         @elseif ($activeTab === 'tugas')
             <div class="mt-6 rounded-xl border border-slate-200 bg-slate-50 p-4 sm:p-6">
                 <h3 class="text-center text-2xl font-bold text-slate-800">Instruksi Tugas</h3>
 
-                <ol class="mx-auto mt-5 max-w-2xl list-decimal space-y-2 pl-5 text-base font-semibold text-slate-800">
-                    @foreach ($moduleData['taskItems'] as $taskItem)
-                        <li>{{ $taskItem }}</li>
-                    @endforeach
-                </ol>
+                @php
+                    $assignmentMaterials = $moduleData['materials']->where('type', 'assignment');
+                @endphp
 
-                <p class="mx-auto mt-5 max-w-2xl text-lg font-bold text-slate-800">Deadline Tugas:
-                    {{ $moduleData['deadline'] }}</p>
+                @if ($assignmentMaterials->count() > 0)
+                    @foreach ($assignmentMaterials as $assignment)
+                        <ol
+                            class="mx-auto mt-5 max-w-2xl list-decimal space-y-2 pl-5 text-base font-semibold text-slate-800">
+                            <li>{{ $assignment->title }}</li>
+                        </ol>
+
+                        <p class="mx-auto mt-5 max-w-2xl text-lg font-bold text-slate-800">Deadline Tugas:
+                            {{ $assignment->metadata['deadline'] ?? 'Belum ditentukan' }}</p>
+                    @endforeach
+                @else
+                    <p class="mx-auto mt-5 max-w-2xl text-center text-slate-600">Instruksi tugas belum tersedia.</p>
+                @endif
 
                 <form action="{{ route('dashboard.participant.modules.tasks.upload', ['module' => $moduleSlug]) }}"
                     method="POST" enctype="multipart/form-data"
@@ -117,16 +155,49 @@
                 </form>
 
                 <div class="mx-auto mt-6 max-w-2xl space-y-4">
-                    <div>
-                        <p class="mb-1 text-lg font-bold text-slate-800">Nilai Tugas</p>
-                        <input type="text" placeholder="Belum ada nilai" readonly
-                            class="w-full rounded-sm border border-slate-200 bg-slate-100 px-3 py-2 text-sm text-slate-500 focus:outline-none">
-                    </div>
-                    <div>
-                        <p class="mb-1 text-lg font-bold text-slate-800">Feedback Pengajar</p>
-                        <input type="text" placeholder="Belum ada feedback" readonly
-                            class="w-full rounded-sm border border-slate-200 bg-slate-100 px-3 py-2 text-sm text-slate-500 focus:outline-none">
-                    </div>
+                    @php
+                        $userAssignments = $moduleData['assignments'];
+                    @endphp
+
+                    @if ($userAssignments->count() > 0)
+                        @foreach ($userAssignments as $assignment)
+                            <div class="border border-slate-200 rounded p-4">
+                                <p class="mb-1 text-lg font-bold text-slate-800">Status Pengumpulan</p>
+                                <p class="text-sm text-slate-600">{{ $assignment->submitted_at->format('d M Y H:i') }}</p>
+                                <p class="text-sm text-slate-600">File: {{ $assignment->original_filename }}
+                                    ({{ $assignment->formatted_file_size }})
+                                </p>
+
+                                @if ($assignment->isGraded())
+                                    <div class="mt-3">
+                                        <p class="mb-1 text-lg font-bold text-slate-800">Nilai Tugas</p>
+                                        <p class="text-sm text-slate-600">{{ $assignment->score }}/100</p>
+                                        <p class="mb-1 text-lg font-bold text-slate-800">Feedback Pengajar</p>
+                                        <p class="text-sm text-slate-600">
+                                            {{ $assignment->feedback ?: 'Tidak ada feedback' }}</p>
+                                    </div>
+                                @else
+                                    <div class="mt-3">
+                                        <p class="mb-1 text-lg font-bold text-slate-800">Nilai Tugas</p>
+                                        <p class="text-sm text-slate-600">Belum dinilai</p>
+                                        <p class="mb-1 text-lg font-bold text-slate-800">Feedback Pengajar</p>
+                                        <p class="text-sm text-slate-600">Belum ada feedback</p>
+                                    </div>
+                                @endif
+                            </div>
+                        @endforeach
+                    @else
+                        <div>
+                            <p class="mb-1 text-lg font-bold text-slate-800">Nilai Tugas</p>
+                            <input type="text" placeholder="Belum ada nilai" readonly
+                                class="w-full rounded-sm border border-slate-200 bg-slate-100 px-3 py-2 text-sm text-slate-500 focus:outline-none">
+                        </div>
+                        <div>
+                            <p class="mb-1 text-lg font-bold text-slate-800">Feedback Pengajar</p>
+                            <input type="text" placeholder="Belum ada feedback" readonly
+                                class="w-full rounded-sm border border-slate-200 bg-slate-100 px-3 py-2 text-sm text-slate-500 focus:outline-none">
+                        </div>
+                    @endif
                 </div>
             </div>
         @else
@@ -151,23 +222,6 @@
                             </svg>
                         </button>
                     </form>
-
-                    @foreach ($moduleData['discussionItems'] as $discussionItem)
-                        <div class="flex items-start gap-2">
-                            <div
-                                class="mt-1 grid h-8 w-8 shrink-0 place-items-center rounded-full border border-slate-400 bg-white">
-                                <svg class="h-4 w-4 text-slate-500" fill="none" stroke="currentColor"
-                                    viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"
-                                        d="M5.121 17.804A9 9 0 1118.879 17.8M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                                </svg>
-                            </div>
-                            <div class="flex-1 rounded-xl border border-slate-400 bg-white px-3 py-2">
-                                <p class="text-xs font-semibold text-slate-700">{{ $discussionItem['name'] }}</p>
-                                <p class="mt-1 text-xs text-slate-600">{{ $discussionItem['message'] }}</p>
-                            </div>
-                        </div>
-                    @endforeach
                 </div>
             </div>
         @endif
