@@ -20,9 +20,14 @@
         <p class="mt-1 text-sm font-semibold text-slate-700">Durasi: {{ $module->duration }} Jam</p>
 
         <div class="mt-4 h-2 w-full rounded-full bg-slate-200">
-            <div class="h-2 rounded-full bg-blue-600" style="width: {{ $moduleData['overall_progress'] }}%"></div>
+            <div id="module-progress-bar" class="h-2 rounded-full bg-blue-600"
+                style="width: {{ $moduleData['overall_progress'] }}%"></div>
         </div>
-        <p class="mt-1 text-right text-xs text-slate-500">{{ $moduleData['overall_progress'] }}% selesai</p>
+        <p id="module-progress-text" class="mt-1 text-right text-xs text-slate-500">{{ $moduleData['overall_progress'] }}%
+            selesai
+        </p>
+        <p id="module-progress-count" class="mt-1 text-xs text-slate-500">Bab selesai:
+            {{ $moduleData['completed_count'] }}/{{ $moduleData['total_count'] }}</p>
 
         <div class="mt-4 border-t border-slate-300 pt-4"></div>
 
@@ -50,8 +55,12 @@
                 <div class="mt-3 flex flex-wrap gap-2">
                     @foreach ($moduleData['materials'] as $material)
                         <a href="{{ route('dashboard.participant.modules.detail', ['module' => $moduleSlug, 'tab' => 'materi', 'material' => $material->slug]) }}"
+                            data-material-chip="{{ $material->slug }}"
                             class="rounded-full border px-3 py-1.5 text-xs font-semibold transition {{ $selectedMaterial && $selectedMaterial->slug === $material->slug ? 'border-black bg-black text-white' : 'border-slate-300 text-slate-700 hover:bg-white' }}">
                             {{ $material->title }}
+                            @if (!empty($material->is_completed))
+                                <span class="ml-1">✓</span>
+                            @endif
                         </a>
                     @endforeach
                 </div>
@@ -59,19 +68,23 @@
 
             @if ($selectedMaterial)
                 <div class="mt-6 rounded-xl border border-slate-300 bg-slate-50 p-4 sm:p-5">
-                    <h3 class="text-lg font-bold text-slate-800">{{ $selectedMaterial->title }}</h3>
-                    <div class="mt-3 grid gap-4 sm:grid-cols-[220px_1fr] sm:items-start">
-                        <div
-                            class="h-36 rounded-lg border-2 border-slate-700 bg-white grid place-items-center text-xs text-slate-600 sm:h-32">
-                            @if ($selectedMaterial->thumbnail_url)
-                                <img src="{{ $selectedMaterial->thumbnail_url }}" alt="{{ $selectedMaterial->title }}"
-                                    class="w-full h-full object-cover rounded">
-                            @else
-                                Thumbnail
-                            @endif
-                        </div>
-                        <p class="text-sm leading-relaxed text-slate-700">
-                            {{ $selectedMaterial->content ?: 'Konten materi belum tersedia.' }}</p>
+                    <div class="flex flex-wrap items-center justify-between gap-3" id="selected-material-header"
+                        data-material-slug="{{ $selectedMaterial->slug }}">
+                        <h3 class="text-lg font-bold text-slate-800">{{ $selectedMaterial->title }}</h3>
+                        @if (!empty($selectedMaterial->is_completed))
+                            <span id="selected-material-badge"
+                                class="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700">Bab
+                                selesai</span>
+                        @else
+                            <button type="button" id="mark-complete-btn"
+                                data-complete-url="{{ route('dashboard.participant.modules.material.complete', ['module' => $moduleSlug, 'material' => $selectedMaterial->slug]) }}"
+                                class="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-emerald-700">
+                                Tandai Bab Selesai
+                            </button>
+                        @endif
+                    </div>
+                    <div class="mt-3 text-sm leading-relaxed text-slate-700">
+                        {!! $selectedMaterial->content ?: '<p>Konten materi belum tersedia.</p>' !!}
                     </div>
                 </div>
             @endif
@@ -103,7 +116,10 @@
                 </div>
 
                 <p class="mt-4 text-justify text-sm leading-relaxed text-slate-600">
-                    {{ $selectedMaterial ? ($selectedMaterial->content ?: 'Deskripsi video belum tersedia.') : 'Pilih materi terlebih dahulu.' }}
+                    {!! $selectedMaterial
+                        ? ($selectedMaterial->content ?:
+                            '<span>Deskripsi video belum tersedia.</span>')
+                        : '<span>Pilih materi terlebih dahulu.</span>' !!}
                 </p>
             </div>
         @elseif ($activeTab === 'tugas')
@@ -115,44 +131,45 @@
                 @endphp
 
                 @if ($assignmentMaterials->count() > 0)
-                    @foreach ($assignmentMaterials as $assignment)
-                        <ol
-                            class="mx-auto mt-5 max-w-2xl list-decimal space-y-2 pl-5 text-base font-semibold text-slate-800">
-                            <li>{{ $assignment->title }}</li>
-                        </ol>
+                    <div class="mx-auto mt-5 max-w-3xl space-y-4">
+                        @foreach ($assignmentMaterials as $assignment)
+                            <div class="rounded-xl border border-slate-200 bg-white p-4">
+                                <div class="flex items-center justify-between gap-3">
+                                    <p class="text-base font-bold text-slate-800">{{ $assignment->title }}</p>
+                                    <span class="text-xs font-semibold text-amber-700">Deadline:
+                                        {{ $assignment->metadata['deadline'] ?? 'Belum ditentukan' }}</span>
+                                </div>
 
-                        <p class="mx-auto mt-5 max-w-2xl text-lg font-bold text-slate-800">Deadline Tugas:
-                            {{ $assignment->metadata['deadline'] ?? 'Belum ditentukan' }}</p>
-                    @endforeach
+                                @if (!empty($assignment->content))
+                                    <div class="mt-2 text-sm text-slate-600">{!! $assignment->content !!}</div>
+                                @endif
+
+                                <form
+                                    action="{{ route('dashboard.participant.modules.tasks.upload', ['module' => $moduleSlug]) }}"
+                                    method="POST" enctype="multipart/form-data"
+                                    class="mt-4 rounded-lg border border-slate-300 bg-slate-50 p-4">
+                                    @csrf
+                                    <input type="hidden" name="material_slug" value="{{ $assignment->slug }}">
+
+                                    <label class="mb-2 block text-sm font-semibold text-slate-700">Upload File Tugas</label>
+                                    <input name="assignment_file" type="file" required
+                                        class="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 file:mr-3 file:rounded file:border-0 file:bg-slate-900 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-white hover:file:bg-slate-800">
+                                    <p class="mt-2 text-xs text-slate-500">Format: PDF, DOC, DOCX, PPT, PPTX, JPG, PNG, ZIP,
+                                        RAR. Maksimal 10MB.</p>
+
+                                    <div class="mt-4 flex justify-end">
+                                        <button type="submit"
+                                            class="rounded-full bg-black px-5 py-2 text-xs sm:text-sm font-semibold text-white transition hover:bg-slate-800">
+                                            Kirim Tugas
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        @endforeach
+                    </div>
                 @else
                     <p class="mx-auto mt-5 max-w-2xl text-center text-slate-600">Instruksi tugas belum tersedia.</p>
                 @endif
-
-                <form action="{{ route('dashboard.participant.modules.tasks.upload', ['module' => $moduleSlug]) }}"
-                    method="POST" enctype="multipart/form-data"
-                    class="mx-auto mt-6 max-w-2xl rounded-lg border-2 border-slate-700 bg-white p-6">
-                    @csrf
-                    <p class="text-center text-lg font-bold text-slate-800">Upload Tugas</p>
-
-                    <div class="mt-4">
-                        <label for="assignment_file" class="mb-2 block text-sm font-semibold text-slate-700">Pilih File
-                            Tugas</label>
-                        <input id="assignment_file" name="assignment_file" type="file" required
-                            class="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 file:mr-3 file:rounded file:border-0 file:bg-slate-900 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-white hover:file:bg-slate-800">
-                        <p class="mt-2 text-xs text-slate-500">Format: PDF, DOC, DOCX, PPT, PPTX, JPG, PNG, ZIP, RAR.
-                            Maksimal 10MB.</p>
-                        @error('assignment_file')
-                            <p class="mt-2 text-xs font-semibold text-red-600">{{ $message }}</p>
-                        @enderror
-                    </div>
-
-                    <div class="mt-5 flex flex-col sm:flex-row sm:justify-end">
-                        <button type="submit"
-                            class="w-full sm:w-auto inline-flex items-center justify-center rounded-full bg-black px-5 py-2 text-xs sm:text-sm font-semibold text-white transition hover:bg-slate-800">
-                            Kirim Tugas
-                        </button>
-                    </div>
-                </form>
 
                 <div class="mx-auto mt-6 max-w-2xl space-y-4">
                     @php
@@ -206,8 +223,10 @@
 
                 <div class="mx-auto mt-5 max-w-4xl space-y-3">
                     <form class="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-2">
-                        <div class="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-slate-400 bg-white">
-                            <svg class="h-4 w-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <div
+                            class="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-slate-400 bg-white">
+                            <svg class="h-4 w-4 text-slate-500" fill="none" stroke="currentColor"
+                                viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"
                                     d="M5.121 17.804A9 9 0 1118.879 17.8M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                             </svg>
@@ -226,4 +245,100 @@
             </div>
         @endif
     </section>
+
+    <script>
+        const markCompleteBtn = document.getElementById('mark-complete-btn');
+        const progressBar = document.getElementById('module-progress-bar');
+        const progressText = document.getElementById('module-progress-text');
+        const progressCount = document.getElementById('module-progress-count');
+        const selectedMaterialHeader = document.getElementById('selected-material-header');
+
+        async function refreshProgress() {
+            const url = "{{ route('dashboard.participant.modules.progress', ['module' => $moduleSlug]) }}";
+            const response = await fetch(url, {
+                headers: {
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                credentials: 'same-origin',
+            });
+
+            if (!response.ok) {
+                return;
+            }
+
+            const data = await response.json();
+            const percentage = data?.progress ?? 0;
+            const completed = data?.statistics?.completed_materials ?? 0;
+            const total = data?.statistics?.total_materials ?? 0;
+
+            if (progressBar) {
+                progressBar.style.width = `${percentage}%`;
+            }
+            if (progressText) {
+                progressText.textContent = `${percentage}% selesai`;
+            }
+            if (progressCount) {
+                progressCount.textContent = `Bab selesai: ${completed}/${total}`;
+            }
+        }
+
+        function markCurrentChapterCompletedUI() {
+            const slug = selectedMaterialHeader?.dataset.materialSlug;
+            if (!slug) {
+                return;
+            }
+
+            const chip = document.querySelector(`[data-material-chip="${slug}"]`);
+            if (chip && !chip.textContent.includes('✓')) {
+                const check = document.createElement('span');
+                check.className = 'ml-1';
+                check.textContent = '✓';
+                chip.appendChild(check);
+            }
+
+            if (!document.getElementById('selected-material-badge') && selectedMaterialHeader) {
+                const badge = document.createElement('span');
+                badge.id = 'selected-material-badge';
+                badge.className = 'rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700';
+                badge.textContent = 'Bab selesai';
+                selectedMaterialHeader.appendChild(badge);
+            }
+
+            markCompleteBtn?.remove();
+        }
+
+        markCompleteBtn?.addEventListener('click', async function() {
+            const url = this.dataset.completeUrl;
+            if (!url) {
+                return;
+            }
+
+            this.disabled = true;
+            this.textContent = 'Menyimpan...';
+
+            try {
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    },
+                    credentials: 'same-origin',
+                });
+
+                if (!response.ok) {
+                    throw new Error('Gagal menyimpan progres');
+                }
+
+                markCurrentChapterCompletedUI();
+                await refreshProgress();
+            } catch (error) {
+                this.disabled = false;
+                this.textContent = 'Tandai Bab Selesai';
+                alert('Tidak dapat menandai bab sebagai selesai. Silakan coba lagi.');
+            }
+        });
+    </script>
 @endsection

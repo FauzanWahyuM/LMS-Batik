@@ -2,13 +2,32 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Achievement;
+use App\Models\Artwork;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Schema;
 
 class LandingController extends Controller
 {
     public function index()
     {
-        return view('landing.index');
+        $latestArtworks = Schema::hasTable('artworks')
+            ? Artwork::latest()->take(6)->get()
+            : collect();
+
+        $featuredAchievements = Schema::hasTable('achievements')
+            ? Achievement::query()
+                ->where('is_active', true)
+                ->orderByRaw('CASE WHEN rank IS NULL THEN 99 ELSE rank END')
+                ->orderByDesc('year')
+                ->take(6)
+                ->get()
+            : collect();
+
+        return view('landing.index', [
+            'latestArtworks' => $latestArtworks,
+            'featuredAchievements' => $featuredAchievements,
+        ]);
     }
 
     public function about()
@@ -96,39 +115,18 @@ class LandingController extends Controller
 
     public function gallery()
     {
-        $gallery = [
-            [
-                'title' => 'Batik Parang Rusak',
-                'student' => 'Rina Wijaya',
-                'image' => 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=400'
-            ],
-            [
-                'title' => 'Batik Kawung',
-                'student' => 'Ahmad Fauzi',
-                'image' => 'https://images.unsplash.com/photo-1572635148818-ef6fd45eb394?w=400'
-            ],
-            [
-                'title' => 'Batik Truntum',
-                'student' => 'Siti Nurhaliza',
-                'image' => 'https://images.unsplash.com/photo-1583846593633-e0e8f8c6c0c8?w=400'
-            ],
-            [
-                'title' => 'Batik Sekar Jagad',
-                'student' => 'Budi Santoso',
-                'image' => 'https://images.unsplash.com/photo-1590735213920-68192a487bc2?w=400'
-            ],
-            [
-                'title' => 'Batik Mega Mendung',
-                'student' => 'Fitri Handayani',
-                'image' => 'https://images.unsplash.com/photo-1558769132-cb1aea6c8db8?w=400'
-            ],
-            [
-                'title' => 'Batik Kontemporer',
-                'student' => 'Dian Sastro',
-                'image' => 'https://images.unsplash.com/photo-1594633313593-bab3825d0caf?w=400'
-            ]
-        ];
+        $gallery = Schema::hasTable('artworks')
+            ? Artwork::latest()->get()
+            : collect();
 
-        return view('landing.gallery', compact('gallery'));
+        $achievements = Schema::hasTable('achievements')
+            ? Achievement::query()
+                ->where('is_active', true)
+                ->orderByRaw('CASE WHEN rank IS NULL THEN 99 ELSE rank END')
+                ->orderByDesc('year')
+                ->get()
+            : collect();
+
+        return view('landing.gallery', compact('gallery', 'achievements'));
     }
 }

@@ -5,6 +5,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\InstructorModuleController;
 use App\Http\Controllers\LandingController;
 use App\Http\Controllers\ParticipantModuleController;
+use App\Http\Controllers\ForumController;
 
 // Landing Page Routes
 Route::get('/', [LandingController::class, 'index'])->name('landing.index');
@@ -20,6 +21,15 @@ Route::post('/login', [AuthController::class, 'login'])->name('login.attempt');
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
 Route::middleware('simple.auth')->group(function (): void {
+	Route::post('/forum/store', [ForumController::class, 'store'])->name('forum.store');
+	Route::post('/forum/{discussion}/update', [ForumController::class, 'update'])->name('forum.update');
+	Route::post('/forum/{discussion}/delete', [ForumController::class, 'delete'])->name('forum.delete');
+	Route::post('/forum/{discussion}/toggle-pin', [ForumController::class, 'togglePin'])->name('forum.toggle-pin');
+	Route::post('/forum/{discussion}/toggle-close', [ForumController::class, 'toggleClose'])->name('forum.toggle-close');
+	Route::post('/forum/{discussion}/reply', [ForumController::class, 'storeReply'])->name('forum.reply');
+	Route::post('/forum/reply/{reply}/update', [ForumController::class, 'updateReply'])->name('forum.reply.update');
+	Route::post('/forum/reply/{reply}/delete', [ForumController::class, 'deleteReply'])->name('forum.reply.delete');
+
 	Route::get('/dashboard', [AuthController::class, 'dashboard'])->name('dashboard.index');
 
 	Route::prefix('/dashboard/pengelola')->name('dashboard.manager.')->group(function (): void {
@@ -47,6 +57,10 @@ Route::middleware('simple.auth')->group(function (): void {
 		Route::post('/kelola-program/{program}/status', [AuthController::class, 'managerProgramsUpdate'])->name('programs.update');
 		Route::get('/laporan', [AuthController::class, 'managerReports'])->name('reports');
 		Route::post('/laporan/export', [AuthController::class, 'managerReportsExport'])->name('reports.export');
+		Route::get('/kelola-prestasi', [AuthController::class, 'managerAchievements'])->name('achievements');
+		Route::post('/kelola-prestasi/create', [AuthController::class, 'managerAchievementsStore'])->name('achievements.store');
+		Route::post('/kelola-prestasi/{achievement}/edit', [AuthController::class, 'managerAchievementsEdit'])->name('achievements.edit');
+		Route::post('/kelola-prestasi/{achievement}/delete', [AuthController::class, 'managerAchievementsDelete'])->name('achievements.delete');
 		Route::get('/pengaturan', [AuthController::class, 'managerSettings'])->name('settings');
 		Route::post('/pengaturan/update', [AuthController::class, 'managerSettingsUpdate'])->name('settings.update');
 	});
@@ -66,7 +80,6 @@ Route::middleware('simple.auth')->group(function (): void {
 		Route::get('/daftar-peserta/individu', [AuthController::class, 'instructorParticipantsIndividualDetail'])->name('participants.individual.detail');
 		Route::get('/daftar-peserta/kelompok', [AuthController::class, 'instructorParticipantsGroupDetail'])->name('participants.group.detail');
 		Route::get('/forum-diskusi', [AuthController::class, 'instructorForum'])->name('forum');
-		Route::post('/forum-diskusi/{thread}/reply', [AuthController::class, 'instructorForumReply'])->name('forum.reply');
 		Route::get('/penilaian-tugas', [AuthController::class, 'instructorAssessments'])->name('assessments');
 		Route::get('/penilaian-tugas/{submission}/detail', [AuthController::class, 'instructorAssessmentsDetail'])->name('assessments.detail');
 		Route::post('/penilaian-tugas/{submission}/score', [AuthController::class, 'instructorAssessmentScore'])->name('assessments.score');
@@ -85,5 +98,6 @@ Route::middleware('simple.auth')->group(function (): void {
 		Route::get('/forum', [AuthController::class, 'participantForum'])->name('forum');
 		Route::get('/galeri', [AuthController::class, 'participantGallery'])->name('gallery');
 		Route::get('/galeri/upload', [AuthController::class, 'participantGalleryUpload'])->name('gallery.upload');
+		Route::post('/galeri/upload', [AuthController::class, 'participantGalleryStore'])->name('gallery.store');
 	});
 });

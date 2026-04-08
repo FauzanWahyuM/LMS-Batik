@@ -2,13 +2,13 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Module;
-use App\Models\ModuleMaterial;
+use App\Models\User;
 use App\Services\ParticipantModuleService;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Str;
 
 class ParticipantModuleController extends Controller
 {
@@ -25,19 +25,20 @@ class ParticipantModuleController extends Controller
     public function index(Request $request): View
     {
         $modules = $this->moduleService->getAvailableModules();
-        $user = auth()->user() ?? $this->getDefaultParticipantUser() ?? $this->getDefaultParticipantUser();
+        $user = $this->resolveParticipantUser($request);
 
-        // Calculate progress for each module
         $modulesWithProgress = $modules->map(function ($module) use ($user) {
-            $progress = $this->moduleService->calculateOverallProgress($module, $user);
+            $moduleData = $this->moduleService->getModuleForParticipant($module, $user);
             return [
                 'module' => $module,
-                'progress' => $progress,
+                'progress' => $moduleData['overall_progress'],
+                'moduleData' => $moduleData,
             ];
         });
 
         $dashboard = $this->getParticipantDashboardConfig('modules');
         $viewUser = [
+            'id' => $user->id,
             'name' => $user->name,
             'email' => $user->email,
             'role' => $user->role ?? 'participant',
@@ -55,7 +56,7 @@ class ParticipantModuleController extends Controller
      */
     public function show(Request $request, string $moduleSlug): View
     {
-        $user = auth()->user() ?? $this->getDefaultParticipantUser() ?? $this->getDefaultParticipantUser();
+        $user = $this->resolveParticipantUser($request);
         $moduleData = $this->moduleService->getModuleForParticipantBySlug($moduleSlug, $user);
 
         if (! $moduleData) {
@@ -78,6 +79,7 @@ class ParticipantModuleController extends Controller
 
         $dashboard = $this->getParticipantDashboardConfig('modules');
         $viewUser = [
+            'id' => $user->id,
             'name' => $user->name,
             'email' => $user->email,
             'role' => $user->role ?? 'participant',
@@ -97,9 +99,9 @@ class ParticipantModuleController extends Controller
     /**
      * Mark material as started (API endpoint)
      */
-    public function markMaterialStarted(Request $request, string $moduleSlug, string $materialSlug): JsonResponse
+    public function markMaterialStarted(Request $request, string $moduleSlug, string $materialSlug): JsonResponse|RedirectResponse
     {
-        $user = auth()->user() ?? $this->getDefaultParticipantUser();
+        $user = $this->resolveParticipantUser($request);
         $module = $this->moduleService->findModuleBySlug($moduleSlug);
 
         if (! $module) {
@@ -114,6 +116,14 @@ class ParticipantModuleController extends Controller
 
         $progress = $this->moduleService->markMaterialAsStarted($module, $material, $user);
 
+        if (! $request->expectsJson()) {
+            return redirect()->route('dashboard.participant.modules.detail', [
+                    'module' => $moduleSlug,
+                    'tab' => 'materi',
+                    'material' => $materialSlug,
+                ]);
+        }
+
         return response()->json([
             'success' => true,
             'progress' => $progress,
@@ -123,9 +133,9 @@ class ParticipantModuleController extends Controller
     /**
      * Mark material as completed (API endpoint)
      */
-    public function markMaterialCompleted(Request $request, string $moduleSlug, string $materialSlug): JsonResponse
+    public function markMaterialCompleted(Request $request, string $moduleSlug, string $materialSlug): JsonResponse|RedirectResponse
     {
-        $user = auth()->user() ?? $this->getDefaultParticipantUser();
+        $user = $this->resolveParticipantUser($request);
         $module = $this->moduleService->findModuleBySlug($moduleSlug);
 
         if (! $module) {
@@ -140,6 +150,14 @@ class ParticipantModuleController extends Controller
 
         $progress = $this->moduleService->markMaterialAsCompleted($module, $material, $user);
 
+        if (! $request->expectsJson()) {
+            return redirect()->route('dashboard.participant.modules.detail', [
+                    'module' => $moduleSlug,
+                    'tab' => 'materi',
+                    'material' => $materialSlug,
+                ])->with('status', 'Bab berhasil ditandai selesai.');
+        }
+
         return response()->json([
             'success' => true,
             'progress' => $progress,
@@ -153,9 +171,10 @@ class ParticipantModuleController extends Controller
     {
         $request->validate([
             'assignment_file' => 'required|file|max:10240|mimes:pdf,doc,docx,ppt,pptx,jpg,jpeg,png,zip,rar',
+            'material_slug' => 'nullable|string',
         ]);
 
-        $user = auth()->user() ?? $this->getDefaultParticipantUser();
+        $user = $this->resolveParticipantUser($request);
         $module = $this->moduleService->findModuleBySlug($moduleSlug);
 
         if (! $module) {
@@ -169,7 +188,7 @@ class ParticipantModuleController extends Controller
         }
 
         try {
-            $assignment = $this->moduleService->submitAssignment(
+            $this->moduleService->submitAssignment(
                 $module,
                 $material,
                 $user,
@@ -187,7 +206,7 @@ class ParticipantModuleController extends Controller
      */
     public function getProgress(Request $request, string $moduleSlug): JsonResponse
     {
-        $user = auth()->user() ?? $this->getDefaultParticipantUser();
+        $user = $this->resolveParticipantUser($request);
         $module = $this->moduleService->findModuleBySlug($moduleSlug);
 
         if (! $module) {
@@ -203,13 +222,33 @@ class ParticipantModuleController extends Controller
         ]);
     }
 
-    private function getDefaultParticipantUser(): \App\Models\User
+    private function resolveParticipantUser(Request $request): User
     {
-        $user = new \App\Models\User();
+        $authUser = $request->session()->get('auth_user', []);
+
+        if (!empty($authUser['email'])) {
+            $name = $authUser['name'] ?? 'Peserta Batik';
+
+            return User::firstOrCreate(
+                ['email' => $authUser['email']],
+                [
+                    'name' => $name,
+                    'password' => Str::random(32),
+                    'role' => 'peserta',
+                ]
+            );
+        }
+
+        return $this->getDefaultParticipantUser();
+    }
+
+    private function getDefaultParticipantUser(): User
+    {
+        $user = new User();
         $user->id = 0;
         $user->name = 'Peserta Batik';
         $user->email = 'peserta@lms-batik.local';
-        $user->role = 'participant';
+        $user->role = 'peserta';
 
         return $user;
     }

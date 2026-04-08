@@ -61,6 +61,10 @@ class ParticipantModuleService
             return null;
         }
 
+        if (! filter_var($url, FILTER_VALIDATE_URL)) {
+            return asset('storage/' . ltrim($url, '/'));
+        }
+
         if (preg_match('/youtube\.com\/watch\?v=([a-zA-Z0-9_-]+)/', $url, $matches)) {
             return 'https://www.youtube.com/embed/' . $matches[1];
         }
@@ -84,13 +88,32 @@ class ParticipantModuleService
         $materials = $this->getMaterialsForModule($module);
         $progress = $this->getModuleProgress($module, $user);
         $assignments = $this->getUserAssignments($module, $user);
+        $completedMaterialIds = ParticipantProgress::where('user_id', $user->id)
+            ->where('module_id', $module->id)
+            ->where('status', 'completed')
+            ->whereNotNull('material_id')
+            ->pluck('material_id')
+            ->all();
+
+        $completedCount = $materials->filter(function ($material) use ($completedMaterialIds) {
+            return isset($material->id) && in_array($material->id, $completedMaterialIds, true);
+        })->count();
+        $totalCount = $materials->count();
+        $overallProgress = $totalCount > 0 ? (int) round(($completedCount / $totalCount) * 100) : 0;
+
+        $materials = $materials->map(function ($material) use ($completedMaterialIds) {
+            $material->is_completed = isset($material->id) && in_array($material->id, $completedMaterialIds, true);
+            return $material;
+        });
 
         return [
             'module' => $module,
             'materials' => $materials,
             'progress' => $progress,
             'assignments' => $assignments,
-            'overall_progress' => $this->calculateOverallProgress($module, $user),
+            'completed_count' => $completedCount,
+            'total_count' => $totalCount,
+            'overall_progress' => $overallProgress,
         ];
     }
 
@@ -139,23 +162,21 @@ class ParticipantModuleService
      */
     public function calculateOverallProgress(Module $module, User $user): int
     {
-        $materials = $module->materials;
+        $materials = $this->getMaterialsForModule($module);
         if ($materials->isEmpty()) {
             return 0;
         }
 
-        $completedMaterials = 0;
-        foreach ($materials as $material) {
-            $progress = ParticipantProgress::where('user_id', $user->id)
-                ->where('module_id', $module->id)
-                ->where('material_id', $material->id)
-                ->where('status', 'completed')
-                ->first();
-
-            if ($progress) {
-                $completedMaterials++;
-            }
+        $materialIds = $materials->pluck('id')->filter()->values();
+        if ($materialIds->isEmpty()) {
+            return 0;
         }
+
+        $completedMaterials = ParticipantProgress::where('user_id', $user->id)
+            ->where('module_id', $module->id)
+            ->whereIn('material_id', $materialIds)
+            ->where('status', 'completed')
+            ->count();
 
         return (int) (($completedMaterials / $materials->count()) * 100);
     }
@@ -208,17 +229,29 @@ class ParticipantModuleService
         $fileName = Str::uuid() . '.' . $file->getClientOriginalExtension();
         $filePath = $file->storeAs('assignments', $fileName, 'public');
 
-        // Create assignment record
-        return ParticipantAssignment::create([
-            'user_id' => $user->id,
-            'module_id' => $module->id,
-            'material_id' => $material?->id,
-            'file_path' => $filePath,
-            'original_filename' => $file->getClientOriginalName(),
-            'file_size' => $file->getSize(),
-            'mime_type' => $file->getMimeType(),
-            'submitted_at' => now(),
-        ]);
+        $existing = ParticipantAssignment::where('user_id', $user->id)
+            ->where('module_id', $module->id)
+            ->where('material_id', $material?->id)
+            ->first();
+
+        if ($existing && $existing->file_path) {
+            Storage::disk('public')->delete($existing->file_path);
+        }
+
+        return ParticipantAssignment::updateOrCreate(
+            [
+                'user_id' => $user->id,
+                'module_id' => $module->id,
+                'material_id' => $material?->id,
+            ],
+            [
+                'file_path' => $filePath,
+                'original_filename' => $file->getClientOriginalName(),
+                'file_size' => $file->getSize(),
+                'mime_type' => $file->getMimeType(),
+                'submitted_at' => now(),
+            ]
+        );
     }
 
     /**

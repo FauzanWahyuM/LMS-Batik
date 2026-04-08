@@ -53,7 +53,8 @@
                     <!-- Content -->
                     <div class="p-4 sm:p-5">
                         <h3 class="line-clamp-2 text-sm font-bold text-slate-900">{{ $module['title'] }}</h3>
-                        <p class="mt-1 text-xs text-slate-500">Durasi: {{ $module['duration'] }}</p>
+                        <p class="mt-1 text-xs text-slate-500">Durasi:
+                            {{ $module['duration_label'] ?? $module['duration'] }}</p>
 
                         <div class="mt-3 flex flex-wrap gap-2 text-xs text-slate-600">
                             <span class="rounded-full bg-slate-100 px-2.5 py-1">

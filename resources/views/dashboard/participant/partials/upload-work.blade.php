@@ -1,15 +1,21 @@
 <section class="max-w-8xl">
     <!-- Form Card -->
     <div class="rounded-xl border border-slate-200 bg-white shadow-sm">
-        <form class="p-6 sm:p-8 space-y-6">
+        <form method="POST" action="{{ route('dashboard.participant.gallery.store') }}" enctype="multipart/form-data"
+            class="p-6 sm:p-8 space-y-6">
+            @csrf
             <!-- Nama Pembuat -->
             <div>
                 <label for="nama-pembuat" class="block text-sm font-semibold text-slate-900 mb-2">
                     Nama Pembuat
                 </label>
                 <input type="text" id="nama-pembuat" name="nama_pembuat" placeholder="Masukkan nama Anda"
+                    value="{{ old('nama_pembuat', $user['name'] ?? '') }}"
                     class="w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm placeholder-slate-400 transition focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
                     required>
+                @error('nama_pembuat')
+                    <p class="mt-2 text-xs font-semibold text-red-600">{{ $message }}</p>
+                @enderror
             </div>
 
             <!-- Judul Karya -->
@@ -18,8 +24,12 @@
                     Judul Karya
                 </label>
                 <input type="text" id="judul-karya" name="judul_karya" placeholder="Masukkan judul karya Anda"
+                    value="{{ old('judul_karya') }}"
                     class="w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm placeholder-slate-400 transition focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
                     required>
+                @error('judul_karya')
+                    <p class="mt-2 text-xs font-semibold text-red-600">{{ $message }}</p>
+                @enderror
             </div>
 
             <!-- Deskripsi -->
@@ -30,7 +40,10 @@
                 <textarea id="deskripsi" name="deskripsi"
                     placeholder="Deskripsikan karya Anda, teknik yang digunakan, inspirasi, dll..." rows="6"
                     class="w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm placeholder-slate-400 transition focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100 resize-none"
-                    required></textarea>
+                    required>{{ old('deskripsi') }}</textarea>
+                @error('deskripsi')
+                    <p class="mt-2 text-xs font-semibold text-red-600">{{ $message }}</p>
+                @enderror
             </div>
 
             <!-- Gambar/Foto Karya -->
@@ -59,7 +72,7 @@
                         <div class="rounded-lg border-2 border-slate-200 bg-slate-50 px-6 py-6">
                             <div class="flex items-center justify-between">
                                 <div class="flex items-center gap-3 flex-1">
-                                    <svg class="h-10 w-10 text-blue-600 flex-shrink-0" fill="currentColor"
+                                    <svg class="h-10 w-10 text-blue-600 shrink-0" fill="currentColor"
                                         viewBox="0 0 20 20">
                                         <path
                                             d="M5.5 13a3.5 3.5 0 01-.369-6.98 4 4 0 117.753-1.3A4.5 4.5 0 1113.5 13H11V9.413l1.293 1.293a1 1 0 001.414-1.414l-3-3a1 1 0 00-1.414 0l-3 3a1 1 0 001.414 1.414L9 9.414V13H5.5z">
@@ -72,13 +85,16 @@
                                     </div>
                                 </div>
                                 <button id="remove-file-btn" type="button"
-                                    class="ml-3 flex-shrink-0 rounded-lg bg-red-100 px-3 py-2 text-sm font-semibold text-red-600 transition hover:bg-red-200 active:bg-red-300">
+                                    class="ml-3 shrink-0 rounded-lg bg-red-100 px-3 py-2 text-sm font-semibold text-red-600 transition hover:bg-red-200 active:bg-red-300">
                                     Hapus
                                 </button>
                             </div>
                         </div>
                     </div>
                 </div>
+                @error('gambar_karya')
+                    <p class="mt-2 text-xs font-semibold text-red-600">{{ $message }}</p>
+                @enderror
             </div>
 
             <!-- Form Actions -->
@@ -98,7 +114,7 @@
     <!-- Info Box -->
     <div class="mt-6 rounded-lg border border-blue-200 bg-blue-50 p-4">
         <div class="flex gap-3">
-            <svg class="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+            <svg class="h-5 w-5 text-blue-600 shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
                 <path fill-rule="evenodd"
                     d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
                     clip-rule="evenodd"></path>

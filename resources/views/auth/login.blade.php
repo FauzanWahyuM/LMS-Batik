@@ -98,7 +98,7 @@
                     </label>
                     <input id="username" name="username" type="text" value="{{ old('username') }}" required
                         class="w-full rounded-lg border border-slate-200 bg-slate-50/50 px-4 py-3 text-sm transition-all focus:bg-white focus:border-amber-500 focus:outline-none focus:ring-4 focus:ring-amber-500/10 placeholder-slate-400"
-                        placeholder="Contoh: manager01">
+                        placeholder="Masukkan username Anda">
                 </div>
 
                 <div>
@@ -108,7 +108,7 @@
                     <div class="relative">
                         <input id="password" name="password" type="password" required
                             class="w-full rounded-lg border border-slate-200 bg-slate-50/50 px-4 py-3 pr-11 text-sm transition-all focus:bg-white focus:border-amber-500 focus:outline-none focus:ring-4 focus:ring-amber-500/10 placeholder-slate-400"
-                            placeholder="••••••••">
+                            placeholder="Masukkan kata sandi Anda">
                         <button type="button" data-password-toggle data-password-target="password"
                             class="absolute inset-y-0 right-0 flex items-center justify-center px-3 text-slate-500 transition hover:text-slate-700"
                             aria-label="Tampilkan kata sandi">

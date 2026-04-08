@@ -123,6 +123,13 @@
                             </svg>
                         @break
 
+                        @case('achievement')
+                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M8 21h8m-4-4v4M8 4h8a1 1 0 011 1v4a5 5 0 01-10 0V5a1 1 0 011-1zm-3 1h2v3a6.97 6.97 0 01-1 3.6A4 4 0 013 8V6a1 1 0 011-1zm14 0h2a1 1 0 011 1v2a4 4 0 01-3 3.87A6.97 6.97 0 0019 8.99V6a1 1 0 011-1z" />
+                            </svg>
+                        @break
+
                         @default
                             <span class="text-xs font-semibold">•</span>
                     @endswitch

@@ -15,7 +15,8 @@
                     </div>
                     <p class="mt-2 text-sm text-slate-600">{{ $module['description'] }}</p>
                     <div class="mt-4 flex flex-wrap gap-4 text-sm text-slate-600">
-                        <p><span class="font-semibold text-slate-900">Durasi:</span> {{ $module['duration'] }}</p>
+                        <p><span class="font-semibold text-slate-900">Durasi:</span>
+                            {{ $module['duration_label'] ?? $module['duration'] }}</p>
                         <p><span class="font-semibold text-slate-900">Jumlah Bab:</span> {{ count($module['chapters']) }}
                         </p>
                         <p><span class="font-semibold text-slate-900">Peserta:</span> {{ $module['participants'] }}</p>
@@ -73,13 +74,20 @@
                         @endif
 
                         <!-- Video Section -->
-                        @if ($chapter['video'])
+                        @if (!empty($chapter['video_link']) || !empty($chapter['video_upload_url']))
                             <div class="rounded-lg border border-slate-200 bg-slate-50 p-4">
                                 <h3 class="mb-3 text-sm font-bold text-slate-900">Video Pembelajaran</h3>
                                 <div class="relative h-64 w-full overflow-hidden rounded-lg bg-slate-900">
-                                    <iframe class="h-full w-full" src="{{ $chapter['video'] }}" frameborder="0"
-                                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                                        allowfullscreen></iframe>
+                                    @if (!empty($chapter['video_link']))
+                                        <iframe class="h-full w-full" src="{{ $chapter['video_link'] }}" frameborder="0"
+                                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                            allowfullscreen></iframe>
+                                    @else
+                                        <video class="h-full w-full" controls>
+                                            <source src="{{ $chapter['video_upload_url'] }}">
+                                            Browser Anda tidak mendukung pemutaran video.
+                                        </video>
+                                    @endif
                                 </div>
                             </div>
                         @endif
@@ -91,7 +99,8 @@
                                 <p class="text-sm text-amber-800">{{ $chapter['assignment'] }}</p>
                                 @if ($chapter['assignment_deadline'])
                                     <p class="mt-2 text-xs text-amber-700">
-                                        <span class="font-semibold">Deadline:</span> {{ $chapter['assignment_deadline'] }}
+                                        <span class="font-semibold">Deadline:</span>
+                                        {{ $chapter['assignment_deadline_label'] ?? $chapter['assignment_deadline'] }}
                                     </p>
                                 @endif
                             </div>

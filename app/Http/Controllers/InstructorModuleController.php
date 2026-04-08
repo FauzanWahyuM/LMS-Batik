@@ -55,7 +55,7 @@ class InstructorModuleController extends Controller
 
         $validated = $request->validate([
             'title' => ['required', 'string', 'min:3', 'max:255'],
-            'duration' => ['required', 'string', 'min:3', 'max:100'],
+            'duration' => ['required', 'numeric', 'min:0.25', 'max:10000'],
             'description' => ['nullable', 'string', 'max:1000'],
             'cover' => ['nullable', 'image', 'max:2048'],
         ]);
@@ -111,7 +111,7 @@ class InstructorModuleController extends Controller
 
         $validated = $request->validate([
             'title' => ['required', 'string', 'min:3', 'max:255'],
-            'duration' => ['required', 'string', 'min:3', 'max:100'],
+            'duration' => ['required', 'numeric', 'min:0.25', 'max:10000'],
             'description' => ['nullable', 'string', 'max:1000'],
             'cover' => ['nullable', 'image', 'max:2048'],
             'delete_cover' => ['nullable', 'boolean'],
@@ -119,9 +119,12 @@ class InstructorModuleController extends Controller
             'chapters.*.title' => ['nullable', 'string', 'max:255'],
             'chapters.*.description' => ['nullable', 'string', 'max:500'],
             'chapters.*.content' => ['nullable', 'string'],
-            'chapters.*.video' => ['nullable', 'url'],
+            'chapters.*.video_source' => ['nullable', 'in:link,upload,none'],
+            'chapters.*.video_link' => ['nullable', 'url', 'max:2048'],
+            'chapters.*.video_upload' => ['nullable', 'file', 'mimes:mp4,mov,webm,ogg,mkv', 'max:51200'],
+            'chapters.*.existing_video' => ['nullable', 'string', 'max:255'],
             'chapters.*.assignment' => ['nullable', 'string'],
-            'chapters.*.assignment_deadline' => ['nullable', 'string'],
+            'chapters.*.assignment_deadline' => ['nullable', 'date_format:Y-m-d'],
         ]);
 
         if ($request->hasFile('cover')) {
@@ -153,19 +156,55 @@ class InstructorModuleController extends Controller
     private function formatModule(Module $module): array
     {
         $chapters = $module->chapters ?? [];
-        // Normalize video URLs in chapters
         foreach ($chapters as &$chapter) {
-            if (isset($chapter['video']) && $chapter['video']) {
-                $chapter['video'] = $this->normalizeVideoUrl($chapter['video']);
+            $video = (string) ($chapter['video'] ?? '');
+            $isVideoUrl = $video !== '' && filter_var($video, FILTER_VALIDATE_URL);
+            $content = (string) ($chapter['content'] ?? '');
+
+            preg_match_all('/<img[^>]+src=["\']([^"\']+)["\'][^>]*>/i', $content, $imageMatches);
+            $chapter['images'] = $imageMatches[1] ?? [];
+
+            if (($chapter['video_type'] ?? null) === 'upload' || ($video !== '' && !$isVideoUrl)) {
+                $chapter['video_type'] = 'upload';
+                $chapter['video_upload_url'] = $video !== '' ? asset('storage/' . ltrim($video, '/')) : null;
+                $chapter['video_link'] = null;
+            } else {
+                $chapter['video_type'] = $video !== '' ? 'link' : 'none';
+                $chapter['video_link'] = $video !== '' ? $this->normalizeVideoUrl($video) : null;
+                $chapter['video_upload_url'] = null;
+            }
+
+            if (!empty($chapter['assignment_deadline'])) {
+                try {
+                    $chapter['assignment_deadline_label'] = \Carbon\Carbon::parse($chapter['assignment_deadline'])->format('d M Y');
+                } catch (\Throwable $e) {
+                    $chapter['assignment_deadline_label'] = $chapter['assignment_deadline'];
+                }
             }
         }
 
         return array_merge($module->toArray(), [
             'cover' => $module->cover ? asset('storage/' . ltrim($module->cover, '/')) : null,
             'chapters' => $chapters,
+            'duration' => is_numeric($module->duration) ? (float) $module->duration : $module->duration,
+            'duration_label' => $this->formatDurationHours($module->duration),
             'participants' => $module->participants_count ?? 0,
             'status' => $module->status ?? 'Draft',
         ]);
+    }
+
+    private function formatDurationHours(mixed $duration): string
+    {
+        if (!is_numeric($duration)) {
+            return (string) $duration;
+        }
+
+        $hours = (float) $duration;
+        $formatted = fmod($hours, 1.0) === 0.0
+            ? (string) (int) $hours
+            : rtrim(rtrim(number_format($hours, 2, '.', ''), '0'), '.');
+
+        return $formatted . ' jam';
     }
 
     private function normalizeVideoUrl(string $url): string

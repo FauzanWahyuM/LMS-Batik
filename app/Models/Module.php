@@ -22,6 +22,7 @@ class Module extends Model
 
     protected $casts = [
         'chapters' => 'array',
+        'duration' => 'float',
         'participants_count' => 'integer',
     ];
 

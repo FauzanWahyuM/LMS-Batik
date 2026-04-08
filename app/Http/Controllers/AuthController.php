@@ -2,9 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Achievement;
+use App\Models\Artwork;
+use App\Models\ForumDiscussion;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\View\View;
 
 class AuthController extends Controller
@@ -889,6 +893,130 @@ class AuthController extends Controller
         }
     }
 
+    public function managerAchievements(Request $request): View|RedirectResponse
+    {
+        $guard = $this->ensureManagerRole($request);
+
+        if ($guard) {
+            return $guard;
+        }
+
+        $search = trim((string) $request->query('search', ''));
+        $achievementsQuery = Schema::hasTable('achievements') ? Achievement::query()->latest() : null;
+
+        if ($achievementsQuery && $search !== '') {
+            $achievementsQuery->where(function ($query) use ($search) {
+                $query->where('title', 'like', '%' . $search . '%')
+                    ->orWhere('event_name', 'like', '%' . $search . '%')
+                    ->orWhere('winner_name', 'like', '%' . $search . '%');
+            });
+        }
+
+        return view('dashboard.manager.achievements', [
+            'user' => $request->session()->get('auth_user'),
+            'dashboard' => $this->getManagerDashboardConfig('achievements'),
+            'achievements' => $achievementsQuery ? $achievementsQuery->get() : collect(),
+            'search' => $search,
+        ]);
+    }
+
+    public function managerAchievementsStore(Request $request): RedirectResponse
+    {
+        $guard = $this->ensureManagerRole($request);
+
+        if ($guard) {
+            return $guard;
+        }
+
+        if (!Schema::hasTable('achievements')) {
+            return redirect()->route('dashboard.manager.achievements')
+                ->withErrors(['achievements' => 'Tabel prestasi belum tersedia. Jalankan migrasi terlebih dahulu.']);
+        }
+
+        $payload = $request->validate([
+            'title' => ['required', 'string', 'min:3', 'max:255'],
+            'event_name' => ['required', 'string', 'min:3', 'max:255'],
+            'winner_name' => ['required', 'string', 'min:3', 'max:255'],
+            'description' => ['nullable', 'string', 'max:1000'],
+            'rank' => ['nullable', 'integer', 'min:1', 'max:3'],
+            'year' => ['nullable', 'integer', 'min:2000', 'max:2100'],
+            'is_active' => ['nullable', 'boolean'],
+        ]);
+
+        Achievement::create([
+            'title' => $payload['title'],
+            'event_name' => $payload['event_name'],
+            'winner_name' => $payload['winner_name'],
+            'description' => $payload['description'] ?? null,
+            'rank' => $payload['rank'] ?? null,
+            'year' => $payload['year'] ?? null,
+            'is_active' => (bool) ($payload['is_active'] ?? false),
+        ]);
+
+        return redirect()->route('dashboard.manager.achievements')
+            ->with('status', 'Prestasi berhasil ditambahkan.');
+    }
+
+    public function managerAchievementsEdit(Request $request, string $achievement): RedirectResponse
+    {
+        $guard = $this->ensureManagerRole($request);
+
+        if ($guard) {
+            return $guard;
+        }
+
+        if (!Schema::hasTable('achievements')) {
+            return redirect()->route('dashboard.manager.achievements')
+                ->withErrors(['achievements' => 'Tabel prestasi belum tersedia. Jalankan migrasi terlebih dahulu.']);
+        }
+
+        $payload = $request->validate([
+            'title' => ['required', 'string', 'min:3', 'max:255'],
+            'event_name' => ['required', 'string', 'min:3', 'max:255'],
+            'winner_name' => ['required', 'string', 'min:3', 'max:255'],
+            'description' => ['nullable', 'string', 'max:1000'],
+            'rank' => ['nullable', 'integer', 'min:1', 'max:3'],
+            'year' => ['nullable', 'integer', 'min:2000', 'max:2100'],
+            'is_active' => ['nullable', 'boolean'],
+        ]);
+
+        $target = Achievement::find($achievement);
+
+        if (!$target) {
+            return redirect()->route('dashboard.manager.achievements')
+                ->withErrors(['achievements' => 'Data prestasi tidak ditemukan.']);
+        }
+
+        $target->update([
+            'title' => $payload['title'],
+            'event_name' => $payload['event_name'],
+            'winner_name' => $payload['winner_name'],
+            'description' => $payload['description'] ?? null,
+            'rank' => $payload['rank'] ?? null,
+            'year' => $payload['year'] ?? null,
+            'is_active' => (bool) ($payload['is_active'] ?? false),
+        ]);
+
+        return redirect()->route('dashboard.manager.achievements')
+            ->with('status', 'Prestasi berhasil diperbarui.');
+    }
+
+    public function managerAchievementsDelete(Request $request, string $achievement): RedirectResponse
+    {
+        $guard = $this->ensureManagerRole($request);
+
+        if ($guard) {
+            return $guard;
+        }
+
+        if (Schema::hasTable('achievements')) {
+            Achievement::where('id', $achievement)->delete();
+        }
+
+        return redirect()->route('dashboard.manager.achievements')
+            ->with('status', 'Prestasi berhasil dihapus.');
+    }
+
     public function managerSettings(Request $request): View|RedirectResponse
     {
         $guard = $this->ensureManagerRole($request);
@@ -1303,13 +1431,18 @@ class AuthController extends Controller
             return $guard;
         }
 
-        $selected = (string) $request->query('thread', 't-01');
+        $discussionsQuery = Schema::hasTable('forum_discussions')
+            ? (Schema::hasTable('forum_discussion_replies')
+                ? ForumDiscussion::with(['replies' => function ($query): void {
+                    $query->orderBy('created_at');
+                }])->orderByDesc('is_pinned')->orderByDesc('created_at')->get()
+                : ForumDiscussion::orderByDesc('is_pinned')->orderByDesc('created_at')->get())
+            : collect();
 
         return view('dashboard.instructor.forum', [
             'user' => $request->session()->get('auth_user'),
+            'discussions' => $discussionsQuery,
             'dashboard' => $this->getInstructorDashboardConfig('forum'),
-            'threads' => $this->getInstructorThreads(),
-            'selectedThread' => $selected,
         ]);
     }
 
@@ -1582,7 +1715,17 @@ class AuthController extends Controller
             return $guard;
         }
 
-        return $this->renderParticipantPage($request, 'forum');
+        $discussionsQuery = Schema::hasTable('forum_discussions')
+            ? (Schema::hasTable('forum_discussion_replies')
+                ? ForumDiscussion::with(['replies' => function ($query): void {
+                    $query->orderBy('created_at');
+                }])->orderByDesc('is_pinned')->orderByDesc('created_at')->get()
+                : ForumDiscussion::orderByDesc('is_pinned')->orderByDesc('created_at')->get())
+            : collect();
+
+        return $this->renderParticipantPage($request, 'forum', [
+            'discussions' => $discussionsQuery,
+        ]);
     }
 
     public function participantGallery(Request $request): View|RedirectResponse
@@ -1593,7 +1736,21 @@ class AuthController extends Controller
             return $guard;
         }
 
-        return $this->renderParticipantPage($request, 'gallery');
+        $search = trim((string) $request->query('search', ''));
+        $artworksQuery = Schema::hasTable('artworks') ? Artwork::query()->latest() : null;
+
+        if ($artworksQuery && $search !== '') {
+            $artworksQuery->where(function ($query) use ($search) {
+                $query->where('title', 'like', '%' . $search . '%')
+                    ->orWhere('description', 'like', '%' . $search . '%')
+                    ->orWhere('creator_name', 'like', '%' . $search . '%');
+            });
+        }
+
+        return $this->renderParticipantPage($request, 'gallery', [
+            'artworks' => $artworksQuery ? $artworksQuery->get() : collect(),
+            'search' => $search,
+        ]);
     }
 
     public function participantGalleryUpload(Request $request): View|RedirectResponse
@@ -1607,15 +1764,52 @@ class AuthController extends Controller
         return $this->renderParticipantPage($request, 'gallery-upload');
     }
 
-    private function renderParticipantPage(Request $request, string $page): View
+    public function participantGalleryStore(Request $request): RedirectResponse
+    {
+        $guard = $this->ensureParticipantRole($request);
+
+        if ($guard) {
+            return $guard;
+        }
+
+        $validated = $request->validate([
+            'nama_pembuat' => ['required', 'string', 'max:255'],
+            'judul_karya' => ['required', 'string', 'max:255'],
+            'deskripsi' => ['required', 'string', 'max:2000'],
+            'gambar_karya' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:10240'],
+        ]);
+
+        $imagePath = $request->file('gambar_karya')->store('artworks', 'public');
+        $authUser = $request->session()->get('auth_user', []);
+
+        if (!Schema::hasTable('artworks')) {
+            return redirect()
+                ->route('dashboard.participant.gallery')
+                ->withErrors(['gambar_karya' => 'Penyimpanan karya belum siap. Jalankan migrasi database terlebih dahulu.']);
+        }
+
+        Artwork::create([
+            'title' => $validated['judul_karya'],
+            'description' => $validated['deskripsi'],
+            'image_path' => $imagePath,
+            'creator_name' => $validated['nama_pembuat'],
+            'creator_email' => $authUser['email'] ?? null,
+        ]);
+
+        return redirect()
+            ->route('dashboard.participant.gallery')
+            ->with('status', 'Karya berhasil diunggah dan tersimpan.');
+    }
+
+    private function renderParticipantPage(Request $request, string $page, array $extraData = []): View
     {
         $user = $request->session()->get('auth_user');
         $dashboard = $this->getParticipantDashboardConfig($page);
 
-        return view($dashboard['view'], [
+        return view($dashboard['view'], array_merge([
             'user' => $user,
             'dashboard' => $dashboard,
-        ]);
+        ], $extraData));
     }
 
     private function getParticipantDashboardConfig(string $activePage): array
@@ -1756,6 +1950,10 @@ class AuthController extends Controller
                 'title' => 'Laporan',
                 'subtitle' => 'Tinjau ringkasan partisipasi dan ekspor laporan operasional.',
             ],
+            'achievements' => [
+                'title' => 'Kelola Prestasi',
+                'subtitle' => 'Atur data prestasi alumni yang ditampilkan di landing page.',
+            ],
             'settings' => [
                 'title' => 'Pengaturan',
                 'subtitle' => 'Konfigurasi preferensi dasar sistem dan kontak operasional.',
@@ -1811,6 +2009,12 @@ class AuthController extends Controller
                     'icon' => 'reports',
                     'url' => route('dashboard.manager.reports'),
                     'active' => $activePage === 'reports',
+                ],
+                [
+                    'label' => 'Kelola Prestasi',
+                    'icon' => 'achievement',
+                    'url' => route('dashboard.manager.achievements'),
+                    'active' => $activePage === 'achievements',
                 ],
                 [
                     'label' => 'Pengaturan',

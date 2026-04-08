@@ -29,9 +29,10 @@
                 <!-- Duration -->
                 <div>
                     <label for="duration" class="block text-sm font-semibold text-slate-700">Durasi Modul</label>
-                    <input type="text" id="duration" name="duration" required placeholder="contoh: 72 Jam"
-                        value="{{ old('duration') }}"
+                    <input type="number" id="duration" name="duration" required min="0.25" step="0.25"
+                        placeholder="contoh: 72" value="{{ old('duration') }}"
                         class="mt-2 w-full rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700 placeholder-slate-400 focus:border-slate-500 focus:outline-none">
+                    <p class="mt-1 text-xs text-slate-500">Durasi disimpan otomatis dalam satuan jam.</p>
                     @error('duration')
                         <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
                     @enderror
@@ -60,8 +61,7 @@
                             class="hidden mt-4 rounded-lg border-2 border-slate-200 bg-slate-50 px-6 py-6">
                             <div class="flex items-center justify-between gap-4">
                                 <div class="flex items-center gap-3 flex-1 min-w-0">
-                                    <svg class="h-10 w-10 text-blue-600 flex-shrink-0" fill="currentColor"
-                                        viewBox="0 0 20 20">
+                                    <svg class="h-10 w-10 text-blue-600 shrink-0" fill="currentColor" viewBox="0 0 20 20">
                                         <path
                                             d="M5.5 13a3.5 3.5 0 01-.369-6.98 4 4 0 117.753-1.3A4.5 4.5 0 1113.5 13H11V9.413l1.293 1.293a1 1 0 001.414-1.414l-3-3a1 1 0 00-1.414 0l-3 3a1 1 0 001.414 1.414L9 9.414V13H5.5z">
                                         </path>
