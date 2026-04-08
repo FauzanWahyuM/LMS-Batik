@@ -181,9 +181,25 @@
                             <div class="border border-slate-200 rounded p-4">
                                 <p class="mb-1 text-lg font-bold text-slate-800">Status Pengumpulan</p>
                                 <p class="text-sm text-slate-600">{{ $assignment->submitted_at->format('d M Y H:i') }}</p>
-                                <p class="text-sm text-slate-600">File: {{ $assignment->original_filename }}
-                                    ({{ $assignment->formatted_file_size }})
-                                </p>
+
+                                @if (str_starts_with($assignment->mime_type ?? '', 'image/'))
+                                    <div class="mt-4 overflow-hidden rounded-lg border border-slate-200 bg-slate-50">
+                                        <img src="{{ $assignment->file_url }}" alt="Preview tugas"
+                                            class="h-72 w-full object-contain bg-slate-100">
+                                    </div>
+                                    <p class="mt-3 text-sm text-slate-600">{{ $assignment->original_filename }}
+                                        ({{ $assignment->formatted_file_size }})</p>
+                                @else
+                                    <div class="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
+                                        <p class="text-sm font-semibold text-slate-800">File Pengiriman</p>
+                                        <p class="mt-2 text-sm text-slate-600">{{ $assignment->original_filename }}</p>
+                                        <p class="text-xs text-slate-500">{{ $assignment->formatted_file_size }}</p>
+                                        <p class="mt-2 text-sm">
+                                            <a href="{{ $assignment->file_url }}" target="_blank"
+                                                class="text-blue-600 underline">Lihat file</a>
+                                        </p>
+                                    </div>
+                                @endif
 
                                 @if ($assignment->isGraded())
                                     <div class="mt-3">

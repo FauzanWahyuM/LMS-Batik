@@ -5,10 +5,15 @@ namespace App\Http\Controllers;
 use App\Models\Achievement;
 use App\Models\Artwork;
 use App\Models\ForumDiscussion;
+use App\Models\ParticipantAssignment;
+use App\Models\User;
+use App\Services\ParticipantModuleService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 class AuthController extends Controller
@@ -139,6 +144,24 @@ class AuthController extends Controller
         ]);
 
         $username = strtolower(trim($credentials['username']));
+
+        $dbUser = User::where('username', $username)
+            ->orWhere('email', $username)
+            ->first();
+
+        if ($dbUser && Hash::check($credentials['password'], $dbUser->password)) {
+            $request->session()->put('auth_user', [
+                'name' => $dbUser->name,
+                'username' => $dbUser->username ?: $dbUser->email,
+                'email' => $dbUser->email,
+                'role' => $this->getSessionRoleFromDbRole($dbUser->role),
+            ]);
+
+            $request->session()->regenerate();
+
+            return redirect()->route('dashboard.index');
+        }
+
         $user = $this->users[$username] ?? null;
 
         if ((! $user) || ($user['password'] !== $credentials['password'])) {
@@ -531,9 +554,9 @@ class AuthController extends Controller
 
         $payload = $request->validate([
             'name' => ['required', 'string', 'min:3', 'max:120'],
-            'username' => ['nullable', 'string', 'min:4', 'max:30'],
+            'username' => ['nullable', 'string', 'min:4', 'max:30', Rule::unique('users', 'username')],
             'password' => ['nullable', 'string', 'min:6', 'max:50'],
-            'email' => ['required', 'email'],
+            'email' => ['required', 'email', Rule::unique('users', 'email')],
             'phone' => ['required', 'string', 'min:8', 'max:20'],
             'address' => ['required', 'string', 'min:5', 'max:255'],
             'education' => ['required', 'string', 'min:2', 'max:100'],
@@ -544,7 +567,9 @@ class AuthController extends Controller
         $password = trim((string) ($payload['password'] ?? ''));
 
         if ($username === '') {
-            $username = substr(strtolower(Str::slug($payload['name'], '')), 0, 10) . rand(10, 99);
+            do {
+                $username = substr(strtolower(Str::slug($payload['name'], '')), 0, 10) . rand(10, 99);
+            } while (User::where('username', $username)->exists());
         }
 
         if ($password === '') {
@@ -556,21 +581,22 @@ class AuthController extends Controller
             $certificateName = (string) $request->file('certificate')->getClientOriginalName();
         }
 
-        $instructors = $this->getManagerManagedInstructors($request);
-        $instructors[] = [
-            'id' => 'ig-' . strtolower(Str::random(6)),
+        User::create([
             'name' => $payload['name'],
             'username' => $username,
-            'password' => $password,
             'email' => $payload['email'],
+            'password' => $password,
+            'role' => 'pengajar',
             'phone' => $payload['phone'],
             'address' => $payload['address'],
             'education' => $payload['education'],
             'certificate' => $certificateName,
             'status' => 'Aktif',
-        ];
+        ]);
 
-        $request->session()->put('manager_instructors_data', $instructors);
+        $passwordCache = $request->session()->get('manager_instructor_passwords', []);
+        $passwordCache[$username] = $password;
+        $request->session()->put('manager_instructor_passwords', $passwordCache);
 
         return redirect()
             ->route('dashboard.manager.instructors')
@@ -588,6 +614,16 @@ class AuthController extends Controller
         $request->validate([
             'status' => ['required', 'string', 'in:Aktif,Nonaktif'],
         ]);
+
+        $dbUser = User::where('username', $instructor)->first();
+        if ($dbUser) {
+            $dbUser->status = (string) $request->input('status');
+            $dbUser->save();
+
+            return redirect()
+                ->route('dashboard.manager.instructors')
+                ->with('status', 'Status pengajar ' . strtoupper($instructor) . ' berhasil diperbarui.');
+        }
 
         $instructors = $this->getManagerManagedInstructors($request);
         $updatedInstructors = array_map(function (array $item) use ($instructor, $request): array {
@@ -613,10 +649,17 @@ class AuthController extends Controller
             return $guard;
         }
 
+        $dbUser = User::where('username', $instructor)->first();
+        $usernameRules = ['required', 'string', 'min:4', 'max:30'];
+
+        if ($dbUser) {
+            $usernameRules[] = Rule::unique('users', 'username')->ignore($dbUser->id);
+        }
+
         $payload = $request->validate([
             'name' => ['required', 'string', 'min:3', 'max:120'],
-            'username' => ['required', 'string', 'min:4', 'max:30'],
-            'password' => ['required', 'string', 'min:6', 'max:50'],
+            'username' => $usernameRules,
+            'password' => ['nullable', 'string', 'min:6', 'max:50'],
             'email' => ['required', 'email'],
             'phone' => ['required', 'string', 'min:8', 'max:20'],
             'address' => ['required', 'string', 'min:5', 'max:255'],
@@ -630,6 +673,37 @@ class AuthController extends Controller
             $certificateName = (string) $request->file('certificate')->getClientOriginalName();
         }
 
+        if ($dbUser) {
+            $originalUsername = $dbUser->username;
+            $dbUser->name = $payload['name'];
+            $dbUser->username = $payload['username'];
+            $dbUser->email = $payload['email'];
+            $dbUser->phone = $payload['phone'];
+            $dbUser->address = $payload['address'];
+            $dbUser->education = $payload['education'];
+            if ($certificateName !== null) {
+                $dbUser->certificate = $certificateName;
+            }
+            if ($payload['password'] !== '') {
+                $dbUser->password = $payload['password'];
+            }
+            $dbUser->status = $payload['status'];
+            $dbUser->save();
+
+            $passwordCache = $request->session()->get('manager_instructor_passwords', []);
+            if ($payload['password'] !== '') {
+                $passwordCache[$dbUser->username] = $payload['password'];
+            } elseif (isset($passwordCache[$originalUsername]) && $originalUsername !== $dbUser->username) {
+                $passwordCache[$dbUser->username] = $passwordCache[$originalUsername];
+                unset($passwordCache[$originalUsername]);
+            }
+            $request->session()->put('manager_instructor_passwords', $passwordCache);
+
+            return redirect()
+                ->route('dashboard.manager.instructors')
+                ->with('status', 'Data pengajar berhasil diperbarui.');
+        }
+
         $instructors = $this->getManagerManagedInstructors($request);
         $found = false;
         $updated = array_map(function (array $item) use ($instructor, $payload, $certificateName, &$found): array {
@@ -637,7 +711,9 @@ class AuthController extends Controller
                 $found = true;
                 $item['name'] = $payload['name'];
                 $item['username'] = $payload['username'];
-                $item['password'] = $payload['password'];
+                if ($payload['password'] !== '') {
+                    $item['password'] = $payload['password'];
+                }
                 $item['email'] = $payload['email'];
                 $item['phone'] = $payload['phone'];
                 $item['address'] = $payload['address'];
@@ -670,6 +746,21 @@ class AuthController extends Controller
 
         if ($guard) {
             return $guard;
+        }
+
+        $dbUser = User::where('username', $instructor)->first();
+        if ($dbUser) {
+            $dbUser->delete();
+
+            $passwordCache = $request->session()->get('manager_instructor_passwords', []);
+            if (isset($passwordCache[$instructor])) {
+                unset($passwordCache[$instructor]);
+                $request->session()->put('manager_instructor_passwords', $passwordCache);
+            }
+
+            return redirect()
+                ->route('dashboard.manager.instructors')
+                ->with('status', 'Data pengajar berhasil dihapus.');
         }
 
         $instructors = $this->getManagerManagedInstructors($request);
@@ -1055,7 +1146,7 @@ class AuthController extends Controller
 
         // Store in session for demo purposes
         $currentSettings = $request->session()->get('manager_settings', []);
-        
+
         // Handle logo upload if provided
         if ($request->hasFile('logo')) {
             $logoFile = $request->file('logo');
@@ -1486,17 +1577,16 @@ class AuthController extends Controller
             return $guard;
         }
 
-        $submissions = $this->getInstructorSubmissions();
-        $currentSubmission = collect($submissions)->firstWhere('id', $submission);
+        $assignment = $this->getInstructorSubmissionById($submission);
 
-        if (!$currentSubmission) {
+        if (! $assignment) {
             return redirect()->route('dashboard.instructor.assessments');
         }
 
         return view('dashboard.instructor.assessments-detail', [
             'user' => $request->session()->get('auth_user'),
             'dashboard' => $this->getInstructorDashboardConfig('assessments'),
-            'submission' => $currentSubmission,
+            'submission' => $assignment,
         ]);
     }
 
@@ -1510,11 +1600,39 @@ class AuthController extends Controller
 
         $request->validate([
             'score' => ['required', 'integer', 'min:0', 'max:100'],
+            'feedback' => ['nullable', 'string', 'max:1000'],
         ]);
+
+        $assignment = $this->getInstructorSubmissionById($submission);
+
+        if (! $assignment) {
+            return redirect()->route('dashboard.instructor.assessments')
+                ->withErrors(['submission' => 'Tugas tidak ditemukan.']);
+        }
+
+        $service = new ParticipantModuleService();
+        $service->gradeAssignment($assignment, (int) $request->score, $request->feedback);
 
         return redirect()
             ->route('dashboard.instructor.assessments')
-            ->with('status', 'Nilai untuk tugas ' . strtoupper($submission) . ' berhasil disimpan (simulasi).');
+            ->with('status', 'Nilai untuk tugas peserta berhasil disimpan.');
+    }
+
+    private function getInstructorSubmissions()
+    {
+        return ParticipantAssignment::with(['user', 'module', 'material'])
+            ->orderByDesc('submitted_at')
+            ->get();
+    }
+
+    private function getInstructorSubmissionById(string $submissionId): ?ParticipantAssignment
+    {
+        if (!is_numeric($submissionId)) {
+            return null;
+        }
+
+        return ParticipantAssignment::with(['user', 'module', 'material'])
+            ->find((int) $submissionId);
     }
 
     public function participantHome(Request $request): View|RedirectResponse
@@ -2176,11 +2294,48 @@ class AuthController extends Controller
         ];
     }
 
+        private function getSessionRoleFromDbRole(string $role): string
+    {
+        return match ($role) {
+            'pengajar' => 'instructor',
+            'pengelola' => 'manager',
+            default => 'participant',
+        };
+    }
+
+    private function mapManagerInstructor(User $user, array $passwordCache = []): array
+    {
+        return [
+            'id' => $user->username ?: 'instr-' . $user->id,
+            'name' => $user->name,
+            'username' => $user->username,
+            'password' => $passwordCache[$user->username] ?? null,
+            'email' => $user->email,
+            'phone' => $user->phone ?? '',
+            'address' => $user->address ?? '',
+            'education' => $user->education ?? '',
+            'certificate' => $user->certificate,
+            'status' => $user->status ?? 'Aktif',
+        ];
+    }
+
     /**
      * @return array<int, array<string, string|null>>
      */
     private function getManagerManagedInstructors(Request $request): array
     {
+        $passwordCache = $request->session()->get('manager_instructor_passwords', []);
+
+        $dbInstructors = User::where('role', 'pengajar')
+            ->orderBy('name')
+            ->get();
+
+        if ($dbInstructors->isNotEmpty()) {
+            return $dbInstructors
+                ->map(fn (User $user) => $this->mapManagerInstructor($user, $passwordCache))
+                ->all();
+        }
+
         $sessionData = $request->session()->get('manager_instructors_data');
 
         if (is_array($sessionData)) {
@@ -2630,18 +2785,6 @@ class AuthController extends Controller
             ['id' => 't-01', 'title' => 'Tips menjaga konsistensi malam', 'author' => 'Anita Wijaya', 'replies' => 12, 'last_message' => '20 menit lalu', 'excerpt' => 'Bagaimana cara menjaga aliran malam tetap stabil saat membuat garis panjang?'],
             ['id' => 't-02', 'title' => 'Rasio campuran warna untuk gradasi', 'author' => 'Bima Pradana', 'replies' => 7, 'last_message' => '1 jam lalu', 'excerpt' => 'Adakah rasio standar untuk membuat gradasi warna biru ke hijau?'],
             ['id' => 't-03', 'title' => 'Referensi motif kontemporer', 'author' => 'Citra Kurnia', 'replies' => 5, 'last_message' => 'Kemarin', 'excerpt' => 'Mohon rekomendasi referensi motif modern yang tetap mempertahankan unsur tradisional.'],
-        ];
-    }
-
-    /**
-     * @return array<int, array<string, string|int|null>>
-     */
-    private function getInstructorSubmissions(): array
-    {
-        return [
-            ['id' => 's-01', 'participant' => 'Anita Wijaya', 'module' => 'Teknik Canting Dasar', 'submitted_at' => '16 Mar 2026, 14:20', 'status' => 'Menunggu', 'score' => null],
-            ['id' => 's-02', 'participant' => 'Bima Pradana', 'module' => 'Teknik Warna Dasar', 'submitted_at' => '16 Mar 2026, 11:05', 'status' => 'Revisi', 'score' => 74],
-            ['id' => 's-03', 'participant' => 'Citra Kurnia', 'module' => 'Komposisi Motif Modern', 'submitted_at' => '15 Mar 2026, 16:40', 'status' => 'Menunggu', 'score' => null],
         ];
     }
 

@@ -6,7 +6,8 @@
             <h2 class="text-lg font-bold text-slate-900">Kelola Pengajar</h2>
             <div class="flex items-center gap-2">
                 <button type="button" id="open-create-instructor"
-                    class="rounded-lg bg-slate-900 px-3 py-2 text-xs font-semibold text-white transition hover:bg-slate-700 sm:text-sm">Tambah Pengajar</button>
+                    class="rounded-lg bg-slate-900 px-3 py-2 text-xs font-semibold text-white transition hover:bg-slate-700 sm:text-sm">Tambah
+                    Pengajar</button>
                 <a href="{{ route('dashboard.manager.home') }}"
                     class="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 sm:text-sm">Kembali</a>
             </div>
@@ -120,13 +121,9 @@
                         <div class="flex w-full flex-col gap-2 sm:w-32">
                             <button type="button" data-toggle="edit-{{ $instructor['id'] }}"
                                 class="rounded-lg border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100">Edit</button>
-                            <form method="POST"
-                                action="{{ route('dashboard.manager.instructors.delete', ['instructor' => $instructor['id']]) }}"
-                                onsubmit="return confirm('Hapus data pengajar ini?')">
-                                @csrf
-                                <button type="submit"
-                                    class="w-full rounded-lg bg-rose-600 px-3 py-2 text-xs font-semibold text-white hover:bg-rose-700">Hapus</button>
-                            </form>
+                            <button type="button" data-delete-instructor="{{ $instructor['id'] }}"
+                                data-delete-name="{{ $instructor['name'] }}"
+                                class="delete-instructor-btn w-full rounded-lg bg-rose-600 px-3 py-2 text-xs font-semibold text-white hover:bg-rose-700">Hapus</button>
                         </div>
                     </div>
 
@@ -146,7 +143,8 @@
                                     </tr>
                                     <tr>
                                         <th class="bg-slate-50 px-3 py-2 font-semibold text-slate-600">Password</th>
-                                        <td class="px-3 py-2 text-slate-800">{{ $instructor['password'] }}</td>
+                                        <td class="px-3 py-2 text-slate-800">{{ $instructor['password'] ?? 'Tersimpan' }}
+                                        </td>
                                     </tr>
                                     <tr>
                                         <th class="bg-slate-50 px-3 py-2 font-semibold text-slate-600">Email</th>
@@ -196,8 +194,8 @@
                                 <label class="mb-1 block text-xs font-semibold text-slate-600">Password</label>
                                 <div class="relative">
                                     <input id="edit-password-{{ $instructor['id'] }}" type="password" name="password"
-                                        value="{{ $instructor['password'] }}"
-                                        class="w-full rounded-lg border border-slate-300 px-3 py-2 pr-10 text-sm" required>
+                                        class="w-full rounded-lg border border-slate-300 px-3 py-2 pr-10 text-sm"
+                                        placeholder="Kosongkan jika tidak ingin mengubah password">
                                     <button type="button" data-password-toggle
                                         data-password-target="edit-password-{{ $instructor['id'] }}"
                                         class="absolute inset-y-0 right-0 flex items-center justify-center px-3 text-slate-500 transition hover:text-slate-700"
@@ -218,6 +216,7 @@
                                         </svg>
                                     </button>
                                 </div>
+                                <p class="mt-1 text-xs text-slate-500">Kosongkan jika tidak ingin mengganti password.</p>
                             </div>
                             <div>
                                 <label class="mb-1 block text-xs font-semibold text-slate-600">Email</label>
@@ -340,6 +339,131 @@
                     button.setAttribute('aria-label', isHidden ? 'Sembunyikan kata sandi' :
                         'Tampilkan kata sandi');
                 });
+            });
+        })();
+    </script>
+
+    <!-- Delete Confirmation Modal -->
+    <div id="delete-modal" class="fixed inset-0 z-50 hidden overflow-y-auto">
+        <div class="flex min-h-screen items-center justify-center px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+            <!-- Background overlay -->
+            <div class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm transition-opacity" id="modal-backdrop"></div>
+
+            <!-- Modal panel -->
+            <div
+                class="inline-block transform overflow-hidden rounded-2xl bg-white px-4 pt-5 pb-4 text-left align-bottom shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg sm:p-6 sm:align-middle">
+                <div class="sm:flex sm:items-start">
+                    <div
+                        class="mx-auto flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-red-100 sm:mx-0 sm:h-10 sm:w-10">
+                        <svg class="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                    </div>
+                    <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
+                        <h3 class="text-lg font-semibold leading-6 text-slate-900" id="modal-title">
+                            Hapus Pengajar
+                        </h3>
+                        <div class="mt-2">
+                            <p class="text-sm text-slate-500" id="modal-message">
+                                Apakah Anda yakin ingin menghapus data pengajar ini? Tindakan ini tidak dapat dibatalkan.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-5 sm:mt-4 sm:flex sm:flex-row-reverse sm:gap-3">
+                    <button type="button" id="confirm-delete-btn"
+                        class="inline-flex w-full justify-center rounded-lg bg-red-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 sm:w-auto">
+                        Hapus
+                    </button>
+                    <button type="button" id="cancel-delete-btn"
+                        class="mt-3 inline-flex w-full justify-center rounded-lg bg-white px-3 py-2 text-sm font-semibold text-slate-900 shadow-sm ring-1 ring-inset ring-slate-300 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 sm:mt-0 sm:w-auto">
+                        Batal
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        (function() {
+            const modal = document.getElementById('delete-modal');
+            const backdrop = document.getElementById('modal-backdrop');
+            const confirmBtn = document.getElementById('confirm-delete-btn');
+            const cancelBtn = document.getElementById('cancel-delete-btn');
+            const modalTitle = document.getElementById('modal-title');
+            const modalMessage = document.getElementById('modal-message');
+
+            let deleteForm = null;
+            let instructorName = '';
+
+            // Show modal
+            function showModal(name, message, form) {
+                instructorName = name;
+                modalTitle.textContent = `Hapus Pengajar: ${name}`;
+                modalMessage.textContent = message;
+                deleteForm = form;
+                modal.classList.remove('hidden');
+                document.body.classList.add('overflow-hidden');
+            }
+
+            // Hide modal
+            function hideModal() {
+                modal.classList.add('hidden');
+                document.body.classList.remove('overflow-hidden');
+                deleteForm = null;
+                instructorName = '';
+            }
+
+            // Handle delete button clicks
+            document.querySelectorAll('.delete-instructor-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const instructorId = this.getAttribute('data-delete-instructor');
+                    const name = this.getAttribute('data-delete-name');
+
+                    // Create form dynamically
+                    const form = document.createElement('form');
+                    form.method = 'POST';
+                    form.action = `/dashboard/pengelola/kelola-pengajar/${instructorId}/delete`;
+
+                    const csrfToken = document.querySelector('meta[name="csrf-token"]');
+                    if (csrfToken) {
+                        const csrfInput = document.createElement('input');
+                        csrfInput.type = 'hidden';
+                        csrfInput.name = '_token';
+                        csrfInput.value = csrfToken.getAttribute('content');
+                        form.appendChild(csrfInput);
+                    }
+
+                    showModal(name,
+                        `Apakah Anda yakin ingin menghapus data pengajar "${name}"? Tindakan ini tidak dapat dibatalkan.`,
+                        form);
+                });
+            });
+
+            // Confirm delete
+            confirmBtn.addEventListener('click', function() {
+                if (deleteForm) {
+                    document.body.appendChild(deleteForm);
+                    deleteForm.submit();
+                }
+            });
+
+            // Cancel delete
+            cancelBtn.addEventListener('click', function() {
+                hideModal();
+            });
+
+            // Close modal on backdrop click
+            backdrop.addEventListener('click', function() {
+                hideModal();
+            });
+
+            // Close modal on escape key
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape' && !modal.classList.contains('hidden')) {
+                    hideModal();
+                }
             });
         })();
     </script>
