@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\DiscussionReply;
 use App\Models\ForumDiscussion;
+use App\Services\ForumDiscussionService;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
@@ -21,33 +22,23 @@ class ForumController extends Controller
     public function index(Request $request, ?string $moduleSlug = null): View|RedirectResponse
     {
         $user = $request->session()->get('auth_user', []);
+        $service = app(ForumDiscussionService::class);
+        $selectedModuleSlug = (string) $request->query('module', $moduleSlug ?? '');
 
         if (empty($user['email'])) {
             return redirect()->route('login')
                 ->withErrors(['forum' => 'Anda harus login untuk mengakses forum.']);
         }
 
-        $discussionsQuery = Schema::hasTable('forum_discussions')
-            ? (Schema::hasTable('forum_discussion_replies')
-                ? ForumDiscussion::with(['replies' => function ($query): void {
-                    $query->orderBy('created_at');
-                }])
-                : ForumDiscussion::query())
-            : null;
-
-        if ($discussionsQuery && !empty($moduleSlug)) {
-            $discussionsQuery->where('module_id', $moduleSlug);
-        }
-
-        if ($discussionsQuery) {
-            $discussionsQuery->orderByDesc('is_pinned')
-                ->orderByDesc('created_at');
-        }
+        $discussions = Schema::hasTable('forum_discussions')
+            ? $service->getForumDiscussions($selectedModuleSlug !== '' ? $selectedModuleSlug : null)
+            : collect();
 
         return view('forum.index', [
-            'discussions' => $discussionsQuery ? $discussionsQuery->get() : collect(),
+            'discussions' => $discussions,
             'user' => $user,
-            'moduleSlug' => $moduleSlug,
+            'modules' => $service->getForumModules(),
+            'selectedModuleSlug' => $selectedModuleSlug,
         ]);
     }
 
@@ -61,9 +52,9 @@ class ForumController extends Controller
         }
 
         $validated = $request->validate([
-            'title' => ['required', 'string', 'min:5', 'max:255'],
+            'theme' => ['required', 'string', 'min:5', 'max:255'],
             'content' => ['required', 'string', 'min:10', 'max:5000'],
-            'module_id' => ['nullable', 'string'],
+            'module_id' => ['nullable', 'string', 'exists:modules,slug'],
         ]);
 
         if (!Schema::hasTable('forum_discussions')) {
@@ -77,7 +68,7 @@ class ForumController extends Controller
             'user_name' => $user['name'] ?? 'Peserta',
             'user_email' => $user['email'],
             'user_role' => $this->normalizeRole($user['role'] ?? null),
-            'title' => $validated['title'],
+            'title' => $validated['theme'],
             'content' => $validated['content'],
         ]);
 
@@ -113,11 +104,14 @@ class ForumController extends Controller
         }
 
         $validated = $request->validate([
-            'title' => ['required', 'string', 'min:5', 'max:255'],
+            'theme' => ['required', 'string', 'min:5', 'max:255'],
             'content' => ['required', 'string', 'min:10', 'max:5000'],
         ]);
 
-        $target->update($validated);
+        $target->update([
+            'title' => $validated['theme'],
+            'content' => $validated['content'],
+        ]);
 
         return back()->with('modal_success', 'Diskusi berhasil diperbarui!');
     }
@@ -217,6 +211,10 @@ class ForumController extends Controller
 
         if ($target->is_closed) {
             return back()->withErrors(['forum' => 'Diskusi ini sudah ditutup.']);
+        }
+
+        if (!empty($target->module_id) && $this->normalizeRole($user['role'] ?? null) !== 'pengajar') {
+            return back()->withErrors(['forum' => 'Hanya pengajar yang dapat membalas diskusi modul.']);
         }
 
         $parentId = $validated['parent_id'] ?? null;

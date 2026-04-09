@@ -224,7 +224,7 @@
                     <article
                         class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-lg">
                         <div class="h-56 overflow-hidden bg-slate-100">
-                            <img src="{{ asset('storage/' . ltrim($artwork->image_path, '/')) }}"
+                            <img src="{{ route('public-file', ['path' => ltrim($artwork->image_path, '/')]) }}"
                                 alt="{{ $artwork->title }}"
                                 class="h-full w-full object-cover transition-transform duration-500 hover:scale-105">
                         </div>

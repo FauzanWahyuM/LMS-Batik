@@ -124,5 +124,17 @@
                 </a>
             </div>
         @endif
+
+        <section class="mt-6">
+            @include('forum.discussions-list', [
+                'discussions' => $moduleDiscussions ?? collect(),
+                'user' => $user ?? [],
+                'moduleContext' => true,
+                'showModuleFilter' => false,
+                'moduleSlug' => $module['slug'] ?? '',
+                'moduleTitle' => $module['title'] ?? null,
+                'selectedModuleSlug' => $module['slug'] ?? '',
+            ])
+        </section>
     </div>
 @endsection

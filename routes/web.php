@@ -1,11 +1,20 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Storage;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\InstructorModuleController;
 use App\Http\Controllers\LandingController;
 use App\Http\Controllers\ParticipantModuleController;
 use App\Http\Controllers\ForumController;
+
+Route::get('/files/{path}', function (string $path) {
+	if (! Storage::disk('public')->exists($path)) {
+		abort(404);
+	}
+
+	return Storage::disk('public')->response($path);
+})->where('path', '.*')->name('public-file');
 
 // Landing Page Routes
 Route::get('/', [LandingController::class, 'index'])->name('landing.index');
@@ -72,6 +81,7 @@ Route::middleware('simple.auth')->group(function (): void {
 		Route::get('/kelola-modul', [InstructorModuleController::class, 'index'])->name('modules');
 		Route::get('/kelola-modul/create', [InstructorModuleController::class, 'create'])->name('modules.create');
 		Route::post('/kelola-modul', [InstructorModuleController::class, 'store'])->name('modules.store');
+		Route::post('/kelola-modul/upload-content-image', [InstructorModuleController::class, 'uploadChapterImage'])->name('modules.content-image.upload');
 		Route::get('/kelola-modul/{module}/detail', [InstructorModuleController::class, 'show'])->name('modules.detail');
 		Route::get('/kelola-modul/{module}/edit', [InstructorModuleController::class, 'edit'])->name('modules.edit');
 		Route::put('/kelola-modul/{module}', [InstructorModuleController::class, 'update'])->name('modules.update');

@@ -47,7 +47,7 @@ class ParticipantAssignment extends Model
 
     public function getFileUrlAttribute(): string
     {
-        return asset('storage/' . ltrim($this->file_path, '/'));
+        return route('public-file', ['path' => ltrim($this->file_path, '/')]);
     }
 
     public function getFormattedFileSizeAttribute(): string

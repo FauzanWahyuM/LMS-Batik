@@ -7,6 +7,9 @@
         @include('forum.discussions-list', [
             'discussions' => $discussions ?? collect(),
             'user' => $user ?? [],
+            'modules' => $modules ?? collect(),
+            'selectedModuleSlug' => $selectedModuleSlug ?? '',
+            'showModuleFilter' => true,
         ])
     </section>
 @endsection

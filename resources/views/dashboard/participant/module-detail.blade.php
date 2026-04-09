@@ -67,6 +67,42 @@
             </div>
 
             @if ($selectedMaterial)
+                @php
+                    $materialMeta = is_array($selectedMaterial->metadata ?? null) ? $selectedMaterial->metadata : [];
+                    $materialImages = $materialMeta['images'] ?? [];
+
+                    if (!is_array($materialImages)) {
+                        $materialImages = [];
+                    }
+
+                    if (empty($materialImages) && !empty($materialMeta['image_path'])) {
+                        $materialImages = [
+                            [
+                                'path' => $materialMeta['image_path'],
+                                'title' => $materialMeta['image_title'] ?? '',
+                                'caption' => $materialMeta['image_caption'] ?? '',
+                                'width' => $materialMeta['image_width'] ?? 75,
+                            ],
+                        ];
+                    }
+
+                    $materialImages = array_values(
+                        array_filter(
+                            array_map(function (array $image): array {
+                                return [
+                                    'path' => $image['path'] ?? ($image['existing_path'] ?? null),
+                                    'title' => $image['title'] ?? ($image['image_title'] ?? ''),
+                                    'caption' => $image['caption'] ?? ($image['image_caption'] ?? ''),
+                                    'width' => max(
+                                        25,
+                                        min(100, (int) ($image['width'] ?? ($image['image_width'] ?? 75))),
+                                    ),
+                                ];
+                            }, $materialImages),
+                            fn(array $image) => !empty($image['path']),
+                        ),
+                    );
+                @endphp
                 <div class="mt-6 rounded-xl border border-slate-300 bg-slate-50 p-4 sm:p-5">
                     <div class="flex flex-wrap items-center justify-between gap-3" id="selected-material-header"
                         data-material-slug="{{ $selectedMaterial->slug }}">
@@ -86,6 +122,42 @@
                     <div class="mt-3 text-sm leading-relaxed text-slate-700">
                         {!! $selectedMaterial->content ?: '<p>Konten materi belum tersedia.</p>' !!}
                     </div>
+
+                    @if (!empty($materialImages))
+                        <div class="mt-5 rounded-lg border border-slate-200 bg-white p-4">
+                            <div class="flex items-center justify-between gap-3">
+                                <p class="text-sm font-semibold text-slate-800">Gambar Pendukung</p>
+                                <span class="text-xs text-slate-500">{{ count($materialImages) }} gambar</span>
+                            </div>
+
+                            <div class="mt-4 space-y-4">
+                                @foreach ($materialImages as $image)
+                                    <article class="overflow-hidden rounded-lg border border-slate-200 bg-slate-50">
+                                        <div class="border-b border-slate-200 bg-white p-4">
+                                            <p class="text-sm font-semibold text-slate-800">
+                                                {{ $image['title'] ?: 'Gambar Pendukung' }}
+                                            </p>
+                                        </div>
+                                        <div class="p-4">
+                                            <div class="flex justify-center">
+                                                <img src="{{ route('public-file', ['path' => ltrim($image['path'], '/')]) }}"
+                                                    alt="{{ $image['title'] ?: 'Gambar pendukung materi' }}"
+                                                    class="rounded-md border border-slate-200 object-cover"
+                                                    style="width: {{ $image['width'] }}%; max-width: 100%; height: auto;">
+                                            </div>
+                                            @if (!empty($image['caption']))
+                                                <p class="mt-3 text-center text-xs text-slate-600">{{ $image['caption'] }}
+                                                </p>
+                                            @endif
+                                            <p class="mt-2 text-center text-[11px] uppercase tracking-wide text-slate-400">
+                                                Approx. display: {{ $image['width'] }}%
+                                            </p>
+                                        </div>
+                                    </article>
+                                @endforeach
+                            </div>
+                        </div>
+                    @endif
                 </div>
             @endif
         @elseif ($activeTab === 'video')
@@ -127,7 +199,7 @@
                 <h3 class="text-center text-2xl font-bold text-slate-800">Instruksi Tugas</h3>
 
                 @php
-                    $assignmentMaterials = $moduleData['materials']->where('type', 'assignment');
+                    $assignmentMaterials = collect($moduleData['task_instructions'] ?? []);
                 @endphp
 
                 @if ($assignmentMaterials->count() > 0)
@@ -137,11 +209,11 @@
                                 <div class="flex items-center justify-between gap-3">
                                     <p class="text-base font-bold text-slate-800">{{ $assignment->title }}</p>
                                     <span class="text-xs font-semibold text-amber-700">Deadline:
-                                        {{ $assignment->metadata['deadline'] ?? 'Belum ditentukan' }}</span>
+                                        {{ $assignment->deadline ?? 'Belum ditentukan' }}</span>
                                 </div>
 
-                                @if (!empty($assignment->content))
-                                    <div class="mt-2 text-sm text-slate-600">{!! $assignment->content !!}</div>
+                                @if (!empty($assignment->assignment))
+                                    <div class="mt-2 text-sm text-slate-600">{{ $assignment->assignment }}</div>
                                 @endif
 
                                 <form
@@ -188,7 +260,8 @@
                                             class="h-72 w-full object-contain bg-slate-100">
                                     </div>
                                     <p class="mt-3 text-sm text-slate-600">{{ $assignment->original_filename }}
-                                        ({{ $assignment->formatted_file_size }})</p>
+                                        ({{ $assignment->formatted_file_size }})
+                                    </p>
                                 @else
                                     <div class="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
                                         <p class="text-sm font-semibold text-slate-800">File Pengiriman</p>
@@ -234,30 +307,16 @@
                 </div>
             </div>
         @else
-            <div class="mt-6 rounded-xl border border-slate-200 bg-slate-50 p-4 sm:p-6">
-                <h3 class="text-center text-3xl font-bold text-slate-800">Forum Diskusi</h3>
-
-                <div class="mx-auto mt-5 max-w-4xl space-y-3">
-                    <form class="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-2">
-                        <div
-                            class="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-slate-400 bg-white">
-                            <svg class="h-4 w-4 text-slate-500" fill="none" stroke="currentColor"
-                                viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"
-                                    d="M5.121 17.804A9 9 0 1118.879 17.8M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                            </svg>
-                        </div>
-                        <input type="text" placeholder="Input komentar/Pertanyaan"
-                            class="flex-1 h-8 rounded-full border border-slate-400 bg-white px-3 text-xs text-slate-700 focus:border-slate-600 focus:outline-none">
-                        <button type="button"
-                            class="w-full sm:w-auto inline-flex items-center justify-center gap-1 h-8 rounded-full border border-slate-500 px-4 text-xs font-semibold text-slate-700 transition hover:bg-slate-100">
-                            Kirim
-                            <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-                            </svg>
-                        </button>
-                    </form>
-                </div>
+            <div class="mt-6">
+                @include('forum.discussions-list', [
+                    'discussions' => $moduleDiscussions ?? collect(),
+                    'user' => $user ?? [],
+                    'moduleContext' => true,
+                    'showModuleFilter' => false,
+                    'moduleSlug' => $moduleSlug,
+                    'moduleTitle' => $module->title ?? null,
+                    'selectedModuleSlug' => $moduleSlug,
+                ])
             </div>
         @endif
     </section>

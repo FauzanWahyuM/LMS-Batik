@@ -9,7 +9,7 @@
             <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
                 <p class="text-sm font-semibold text-slate-800">Foto Profil</p>
                 <div class="mt-3 flex flex-col items-center gap-3 sm:flex-row">
-                    <img src="{{ !empty($profile['photo']) ? asset('storage/profiles/' . $profile['photo']) : asset('img/komunitasbatik.png') }}"
+                    <img src="{{ !empty($profile['photo']) ? route('public-file', ['path' => 'profiles/' . $profile['photo']]) : asset('img/komunitasbatik.png') }}"
                         alt="Foto profil" class="h-20 w-20 rounded-full border border-slate-300 object-cover">
                     <input type="file" name="photo" accept="image/*"
                         class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs sm:text-sm">

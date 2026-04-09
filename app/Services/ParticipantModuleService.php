@@ -37,17 +37,45 @@ class ParticipantModuleService
         return collect($module->chapters ?? [])->map(function ($chapter, $index) {
             $slug = isset($chapter['title']) ? Str::slug($chapter['title']) : 'chapter-' . ($index + 1);
             $videoUrl = $this->normalizeVideoUrl($chapter['video'] ?? null);
+            $images = $chapter['images'] ?? [];
+
+            if (!is_array($images)) {
+                $images = [];
+            }
+
+            if (empty($images) && !empty($chapter['image_path'])) {
+                $images = [[
+                    'path' => $chapter['image_path'],
+                    'title' => $chapter['image_title'] ?? '',
+                    'caption' => $chapter['image_caption'] ?? '',
+                    'width' => $chapter['image_width'] ?? 75,
+                ]];
+            }
+
+            $normalizedImages = array_map(function (array $image): array {
+                return [
+                    'path' => $image['path'] ?? $image['existing_path'] ?? null,
+                    'title' => $image['title'] ?? $image['image_title'] ?? '',
+                    'caption' => $image['caption'] ?? $image['image_caption'] ?? '',
+                    'width' => $image['width'] ?? $image['image_width'] ?? 75,
+                ];
+            }, $images);
 
             return (object) [
                 'title' => $chapter['title'] ?? 'Bab ' . ($index + 1),
                 'slug' => $slug . '-' . ($index + 1),
-                'content' => $chapter['content'] ?? $chapter['description'] ?? null,
+                'content' => normalize_uploaded_content_html($chapter['content'] ?? $chapter['description'] ?? null),
                 'description' => $chapter['description'] ?? null,
                 'video_url' => $videoUrl,
                 'assignment' => $chapter['assignment'] ?? null,
                 'type' => ! empty($chapter['assignment']) ? 'assignment' : (! empty($videoUrl) ? 'video' : 'content'),
                 'metadata' => [
                     'deadline' => $chapter['assignment_deadline'] ?? null,
+                    'images' => $normalizedImages,
+                    'image_path' => $normalizedImages[0]['path'] ?? null,
+                    'image_title' => $normalizedImages[0]['title'] ?? null,
+                    'image_caption' => $normalizedImages[0]['caption'] ?? null,
+                    'image_width' => $normalizedImages[0]['width'] ?? 75,
                 ],
                 'thumbnail_url' => null,
                 'order' => $index + 1,
@@ -62,7 +90,7 @@ class ParticipantModuleService
         }
 
         if (! filter_var($url, FILTER_VALIDATE_URL)) {
-            return asset('storage/' . ltrim($url, '/'));
+            return route('public-file', ['path' => ltrim($url, '/')]);
         }
 
         if (preg_match('/youtube\.com\/watch\?v=([a-zA-Z0-9_-]+)/', $url, $matches)) {
@@ -88,6 +116,7 @@ class ParticipantModuleService
         $materials = $this->getMaterialsForModule($module);
         $progress = $this->getModuleProgress($module, $user);
         $assignments = $this->getUserAssignments($module, $user);
+        $taskInstructions = $this->getTaskInstructions($module);
         $completedMaterialIds = ParticipantProgress::where('user_id', $user->id)
             ->where('module_id', $module->id)
             ->where('status', 'completed')
@@ -111,10 +140,52 @@ class ParticipantModuleService
             'materials' => $materials,
             'progress' => $progress,
             'assignments' => $assignments,
+            'task_instructions' => $taskInstructions,
             'completed_count' => $completedCount,
             'total_count' => $totalCount,
             'overall_progress' => $overallProgress,
         ];
+    }
+
+    public function getTaskInstructions(Module $module)
+    {
+        if ($module->materials()->exists()) {
+            return $module->materials()
+                ->where('type', 'assignment')
+                ->orderBy('order')
+                ->get(['id', 'slug', 'title', 'metadata'])
+                ->map(function (ModuleMaterial $material) {
+                    $metadata = is_array($material->metadata) ? $material->metadata : [];
+
+                    return (object) [
+                        'id' => $material->id,
+                        'slug' => $material->slug,
+                        'title' => $material->title,
+                        'assignment' => (string) ($metadata['assignment'] ?? ''),
+                        'deadline' => $metadata['deadline'] ?? null,
+                    ];
+                })
+                ->values();
+        }
+
+        return collect($module->chapters ?? [])
+            ->map(function (array $chapter, int $index) {
+                $assignment = trim((string) ($chapter['assignment'] ?? ''));
+
+                if ($assignment === '') {
+                    return null;
+                }
+
+                return (object) [
+                    'id' => null,
+                    'slug' => Str::slug((string) ($chapter['title'] ?? 'bab-' . ($index + 1))) . '-' . ($index + 1),
+                    'title' => (string) ($chapter['title'] ?? ('Bab ' . ($index + 1))),
+                    'assignment' => $assignment,
+                    'deadline' => $chapter['assignment_deadline'] ?? null,
+                ];
+            })
+            ->filter()
+            ->values();
     }
 
     /**

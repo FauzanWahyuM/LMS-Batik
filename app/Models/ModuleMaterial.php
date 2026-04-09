@@ -27,6 +27,11 @@ class ModuleMaterial extends Model
         'order' => 'integer',
     ];
 
+    public function getContentAttribute($value): ?string
+    {
+        return normalize_uploaded_content_html($value);
+    }
+
     public function module(): BelongsTo
     {
         return $this->belongsTo(Module::class);
@@ -34,25 +39,28 @@ class ModuleMaterial extends Model
 
     public function getThumbnailUrlAttribute(): ?string
     {
-        if (!$this->thumbnail) {
+        $thumbnail = (string) ($this->getAttribute('thumbnail') ?? '');
+
+        if ($thumbnail === '') {
             return null;
         }
 
-        return asset('storage/' . ltrim($this->thumbnail, '/'));
+        return route('public-file', ['path' => ltrim($thumbnail, '/')]);
     }
 
-    public function getVideoUrlAttribute(): ?string
+    public function getVideoUrlAttribute($value): ?string
     {
-        if (!$this->video_url) {
+        $videoUrl = (string) ($value ?? '');
+
+        if ($videoUrl === '') {
             return null;
         }
 
         // If it's a full URL, return as is
-        if (filter_var($this->video_url, FILTER_VALIDATE_URL)) {
-            return $this->video_url;
+        if (filter_var($videoUrl, FILTER_VALIDATE_URL)) {
+            return $videoUrl;
         }
 
-        // Otherwise, assume it's a local file
-        return asset('storage/' . ltrim($this->video_url, '/'));
+        return route('public-file', ['path' => ltrim($videoUrl, '/')]);
     }
 }

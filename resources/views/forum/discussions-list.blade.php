@@ -12,39 +12,74 @@
             ['pengajar', 'instructor', 'teacher'],
             true,
         );
+
+        $modules = $modules ?? collect();
+        $selectedModuleSlug = (string) ($selectedModuleSlug ?? '');
+        $moduleContext = (bool) ($moduleContext ?? false);
+        $showModuleFilter = (bool) ($showModuleFilter ?? true);
+        $moduleSlug = $moduleSlug ?? null;
     @endphp
 
     <div class="mb-4 flex items-center justify-between gap-3">
-        <h3 class="text-lg font-bold text-slate-900">Forum Diskusi</h3>
+        <div>
+            <h3 class="text-lg font-bold text-slate-900">Forum Diskusi</h3>
+            @if ($moduleContext && $moduleSlug)
+                <p class="mt-1 text-xs text-slate-500">Diskusi tema modul: {{ $moduleTitle ?? $moduleSlug }}</p>
+            @endif
+        </div>
         <button type="button" id="open-create-discussion"
             class="rounded-lg bg-slate-900 px-3 py-2 text-xs font-semibold text-white hover:bg-slate-700">
-            Buat Diskusi
+            Kirim Pertanyaan
         </button>
     </div>
 
+    @if ($showModuleFilter && $modules->count())
+        <form method="GET" action="{{ url()->current() }}"
+            class="mb-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
+            <label class="mb-1 block text-xs font-semibold text-slate-700">Filter Tema Modul</label>
+            <div class="flex flex-col gap-2 sm:flex-row">
+                <select name="module"
+                    class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none">
+                    <option value="">Semua tema</option>
+                    @foreach ($modules as $module)
+                        <option value="{{ $module->slug }}" @selected($selectedModuleSlug === $module->slug)>
+                            {{ $module->title }}
+                        </option>
+                    @endforeach
+                </select>
+                <button type="submit"
+                    class="rounded-lg bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-700">
+                    Terapkan
+                </button>
+            </div>
+        </form>
+    @endif
+
     <div id="create-discussion-form" class="mb-6 hidden rounded-lg border border-slate-200 bg-slate-50 p-4">
-        <h4 class="mb-3 font-semibold text-slate-900">Diskusi Baru</h4>
+        <h4 class="mb-3 font-semibold text-slate-900">Pesan Baru</h4>
         <form method="POST" action="{{ route('forum.store') }}" class="space-y-3">
             @csrf
-            @if (!empty($moduleSlug))
+            @if ($moduleContext && !empty($moduleSlug))
                 <input type="hidden" name="module_id" value="{{ $moduleSlug }}">
+            @elseif (!empty($selectedModuleSlug))
+                <input type="hidden" name="module_id" value="{{ $selectedModuleSlug }}">
             @endif
 
             <div>
-                <label class="mb-1 block text-xs font-semibold text-slate-700">Judul Diskusi</label>
-                <input type="text" name="title" required
+                <label class="mb-1 block text-xs font-semibold text-slate-700">Tema</label>
+                <input type="text" name="theme" required
                     class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
-                    placeholder="Tuliskan judul diskusi...">
-                @error('title')
+                    placeholder="Tuliskan tema diskusi...">
+                @error('theme')
                     <p class="mt-1 text-xs text-rose-600">{{ $message }}</p>
                 @enderror
             </div>
 
             <div>
-                <label class="mb-1 block text-xs font-semibold text-slate-700">Konten</label>
+                <label class="mb-1 block text-xs font-semibold text-slate-700">Pertanyaan / Pesan</label>
                 <textarea name="content" rows="4" required
                     class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
-                    placeholder="Tuliskan isi diskusi..."></textarea>
+                    placeholder="Tuliskan isi pertanyaan atau pesan Anda..."></textarea>
                 @error('content')
                     <p class="mt-1 text-xs text-rose-600">{{ $message }}</p>
                 @enderror
@@ -69,11 +104,16 @@
                 <div class="flex items-start justify-between gap-3">
                     <div class="min-w-0 flex-1">
                         <div class="flex flex-wrap items-center gap-2">
-                            <h4 class="truncate font-semibold text-slate-900">{{ $discussion->title }}</h4>
+                            <h4 class="truncate font-semibold text-slate-900">{{ $discussion->theme }}</h4>
                             <span
                                 class="rounded px-2 py-1 text-xs font-semibold {{ $roleLabel($discussion->user_role) === 'Pengajar' ? 'bg-blue-100 text-blue-700' : 'bg-emerald-100 text-emerald-700' }}">
                                 {{ $roleLabel($discussion->user_role) }}
                             </span>
+                            @if (!empty($discussion->module))
+                                <span class="rounded bg-indigo-100 px-2 py-1 text-xs font-semibold text-indigo-700">
+                                    {{ $discussion->module->title }}
+                                </span>
+                            @endif
                             @if ($discussion->is_pinned)
                                 <span
                                     class="rounded bg-amber-100 px-2 py-1 text-xs font-semibold text-amber-700">Penting</span>
@@ -87,13 +127,16 @@
                             {{ $discussion->user_name }} • {{ $roleLabel($discussion->user_role) }} •
                             {{ $discussion->created_at->diffForHumans() }}
                         </p>
-                        <p class="mt-2 text-sm text-slate-700">{{ $discussion->content }}</p>
+                        <div
+                            class="mt-1 whitespace-pre-line rounded-lg border border-slate-200 bg-white p-3 text-sm leading-relaxed text-slate-700">
+                            {{ $discussion->content }}
+                        </div>
                     </div>
                 </div>
 
                 @if ($user)
                     <div class="mt-4 flex flex-wrap gap-3">
-                        @if (!$discussion->is_closed)
+                        @if (!$discussion->is_closed && (!$discussion->module_id || $isCurrentUserInstructor))
                             <button type="button" data-toggle-reply="{{ $discussion->id }}"
                                 class="text-xs font-semibold text-slate-700 hover:text-slate-900">
                                 Balas
@@ -140,7 +183,7 @@
                     </div>
                 @endif
 
-                @if ($user && !$discussion->is_closed)
+                @if ($user && !$discussion->is_closed && (!$discussion->module_id || $isCurrentUserInstructor))
                     <div id="reply-form-{{ $discussion->id }}"
                         class="mt-4 hidden rounded-lg border border-slate-300 bg-white p-3">
                         <form method="POST" action="{{ route('forum.reply', ['discussion' => $discussion->id]) }}"
@@ -184,7 +227,7 @@
                             class="space-y-2">
                             @csrf
                             <div>
-                                <input type="text" name="title" value="{{ $discussion->title }}" required
+                                <input type="text" name="theme" value="{{ $discussion->theme }}" required
                                     class="w-full rounded-lg border border-slate-300 px-2 py-1 text-xs focus:border-slate-500 focus:outline-none">
                             </div>
                             <div>

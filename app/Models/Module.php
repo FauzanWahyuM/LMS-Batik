@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Module extends Model
 {
@@ -39,6 +40,11 @@ class Module extends Model
     public function progress()
     {
         return $this->hasMany(ParticipantProgress::class);
+    }
+
+    public function discussions(): HasMany
+    {
+        return $this->hasMany(ForumDiscussion::class, 'module_id', 'slug')->orderByDesc('created_at');
     }
 
     public function getProgressForUser(User $user): ?ParticipantProgress

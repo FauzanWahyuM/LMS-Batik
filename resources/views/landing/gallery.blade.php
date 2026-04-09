@@ -34,7 +34,8 @@
                     <article
                         class="group relative overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-lg">
                         <div class="aspect-4/3 w-full overflow-hidden bg-slate-100">
-                            <img src="{{ asset('storage/' . ltrim($item->image_path, '/')) }}" alt="{{ $item->title }}"
+                            <img src="{{ route('public-file', ['path' => ltrim($item->image_path, '/')]) }}"
+                                alt="{{ $item->title }}"
                                 class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105">
                         </div>
                         <div class="p-4 md:p-5 transition-opacity duration-300 group-hover:opacity-0">

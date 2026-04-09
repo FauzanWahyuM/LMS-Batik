@@ -4,7 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Models\Module;
+use App\Services\ForumDiscussionService;
 use App\Services\ModuleService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -79,10 +81,13 @@ class InstructorModuleController extends Controller
             return $guard;
         }
 
+        $discussionService = app(ForumDiscussionService::class);
+
         return view('dashboard.instructor.modules-detail', [
             'user' => $request->session()->get('auth_user'),
             'dashboard' => $this->getInstructorDashboardConfig('modules'),
             'module' => $this->formatModule($module),
+            'moduleDiscussions' => $discussionService->getModuleDiscussions($module->slug),
         ]);
     }
 
@@ -125,6 +130,13 @@ class InstructorModuleController extends Controller
             'chapters.*.existing_video' => ['nullable', 'string', 'max:255'],
             'chapters.*.assignment' => ['nullable', 'string'],
             'chapters.*.assignment_deadline' => ['nullable', 'date_format:Y-m-d'],
+            'chapters.*.images' => ['nullable', 'array'],
+            'chapters.*.images.*.image_upload' => ['nullable', 'image', 'max:5120'],
+            'chapters.*.images.*.existing_path' => ['nullable', 'string', 'max:255'],
+            'chapters.*.images.*.delete_image' => ['nullable', 'boolean'],
+            'chapters.*.images.*.title' => ['nullable', 'string', 'max:120'],
+            'chapters.*.images.*.caption' => ['nullable', 'string', 'max:500'],
+            'chapters.*.images.*.width' => ['nullable', 'integer', 'min:25', 'max:100'],
         ]);
 
         if ($request->hasFile('cover')) {
@@ -136,6 +148,26 @@ class InstructorModuleController extends Controller
         return redirect()
             ->route('dashboard.instructor.modules.detail', ['module' => $module->id])
             ->with('status', 'Modul berhasil diperbarui.');
+    }
+
+    public function uploadChapterImage(Request $request, ModuleService $service): JsonResponse|RedirectResponse
+    {
+        $guard = $this->ensureInstructorRole($request);
+
+        if ($guard) {
+            return $guard;
+        }
+
+        $validated = $request->validate([
+            'image' => ['required', 'image', 'max:5120'],
+        ]);
+
+        $uploaded = $service->uploadChapterContentImage($validated['image']);
+
+        return response()->json([
+            'url' => $uploaded['url'],
+            'path' => $uploaded['path'],
+        ]);
     }
 
     public function destroy(Request $request, Module $module, ModuleService $service): RedirectResponse
@@ -160,13 +192,43 @@ class InstructorModuleController extends Controller
             $video = (string) ($chapter['video'] ?? '');
             $isVideoUrl = $video !== '' && filter_var($video, FILTER_VALIDATE_URL);
             $content = (string) ($chapter['content'] ?? '');
+            $chapter['content'] = (string) preg_replace('/<img\b[^>]*>/i', '', normalize_uploaded_content_html($content));
 
-            preg_match_all('/<img[^>]+src=["\']([^"\']+)["\'][^>]*>/i', $content, $imageMatches);
-            $chapter['images'] = $imageMatches[1] ?? [];
+            $chapterImages = $chapter['images'] ?? [];
+            if (!is_array($chapterImages)) {
+                $chapterImages = [];
+            }
+
+            if (empty($chapterImages) && !empty($chapter['image_path'])) {
+                $chapterImages = [[
+                    'path' => $chapter['image_path'],
+                    'title' => $chapter['image_title'] ?? '',
+                    'caption' => $chapter['image_caption'] ?? '',
+                    'width' => $chapter['image_width'] ?? 75,
+                ]];
+            }
+
+            $chapter['images'] = array_map(function (array $image) {
+                $path = $image['path'] ?? $image['existing_path'] ?? null;
+
+                return [
+                    'path' => $path,
+                    'title' => $image['title'] ?? $image['image_title'] ?? '',
+                    'caption' => $image['caption'] ?? $image['image_caption'] ?? '',
+                    'width' => $image['width'] ?? $image['image_width'] ?? 75,
+                ];
+            }, $chapterImages);
+
+            $chapter['image_url'] = !empty($chapter['images'][0]['path'])
+                ? route('public-file', ['path' => ltrim((string) $chapter['images'][0]['path'], '/')])
+                : null;
+            $chapter['image_title'] = $chapter['images'][0]['title'] ?? null;
+            $chapter['image_caption'] = $chapter['images'][0]['caption'] ?? null;
+            $chapter['image_width'] = isset($chapter['images'][0]['width']) ? (int) $chapter['images'][0]['width'] : 75;
 
             if (($chapter['video_type'] ?? null) === 'upload' || ($video !== '' && !$isVideoUrl)) {
                 $chapter['video_type'] = 'upload';
-                $chapter['video_upload_url'] = $video !== '' ? asset('storage/' . ltrim($video, '/')) : null;
+                $chapter['video_upload_url'] = $video !== '' ? route('public-file', ['path' => ltrim($video, '/')]) : null;
                 $chapter['video_link'] = null;
             } else {
                 $chapter['video_type'] = $video !== '' ? 'link' : 'none';
@@ -184,7 +246,7 @@ class InstructorModuleController extends Controller
         }
 
         return array_merge($module->toArray(), [
-            'cover' => $module->cover ? asset('storage/' . ltrim($module->cover, '/')) : null,
+            'cover' => $module->cover ? route('public-file', ['path' => ltrim($module->cover, '/')]) : null,
             'chapters' => $chapters,
             'duration' => is_numeric($module->duration) ? (float) $module->duration : $module->duration,
             'duration_label' => $this->formatDurationHours($module->duration),

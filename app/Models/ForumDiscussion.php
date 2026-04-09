@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class ForumDiscussion extends Model
 {
@@ -36,5 +37,20 @@ class ForumDiscussion extends Model
             ->whereNull('parent_id')
             ->orderBy('created_at')
             ->with('childrenRecursive');
+    }
+
+    public function module(): BelongsTo
+    {
+        return $this->belongsTo(Module::class, 'module_id', 'slug');
+    }
+
+    public function getThemeAttribute(): string
+    {
+        return (string) ($this->attributes['title'] ?? '');
+    }
+
+    public function setThemeAttribute($value): void
+    {
+        $this->attributes['title'] = $value;
     }
 }

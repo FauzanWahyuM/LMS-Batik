@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Services\ForumDiscussionService;
 use App\Services\ParticipantModuleService;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
@@ -13,10 +14,12 @@ use Illuminate\Support\Str;
 class ParticipantModuleController extends Controller
 {
     private ParticipantModuleService $moduleService;
+    private ForumDiscussionService $discussionService;
 
-    public function __construct(ParticipantModuleService $moduleService)
+    public function __construct(ParticipantModuleService $moduleService, ForumDiscussionService $discussionService)
     {
         $this->moduleService = $moduleService;
+        $this->discussionService = $discussionService;
     }
 
     /**
@@ -84,6 +87,7 @@ class ParticipantModuleController extends Controller
             'email' => $user->email,
             'role' => $user->role ?? 'participant',
         ];
+        $moduleDiscussions = $this->discussionService->getModuleDiscussions($moduleSlug);
 
         return view('dashboard.participant.module-detail', [
             'module' => $module,
@@ -91,6 +95,7 @@ class ParticipantModuleController extends Controller
             'activeTab' => $activeTab,
             'selectedMaterial' => $selectedMaterial,
             'moduleSlug' => $moduleSlug,
+            'moduleDiscussions' => $moduleDiscussions,
             'dashboard' => $dashboard,
             'user' => $viewUser,
         ]);

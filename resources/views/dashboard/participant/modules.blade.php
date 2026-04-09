@@ -14,8 +14,8 @@
                 class="group overflow-hidden rounded-xl border border-slate-200 bg-white transition hover:border-slate-300 hover:shadow-md">
                 <div class="relative h-40 w-full overflow-hidden bg-linear-to-br from-slate-100 to-slate-200 sm:h-48">
                     @if ($module->cover)
-                        <img src="{{ asset('storage/' . ltrim($module->cover, '/')) }}" alt="{{ $module->title }}"
-                            class="h-full w-full object-cover">
+                        <img src="{{ route('public-file', ['path' => ltrim($module->cover, '/')]) }}"
+                            alt="{{ $module->title }}" class="h-full w-full object-cover">
                     @else
                         <div class="flex h-full items-center justify-center bg-slate-100">
                             <svg class="h-12 w-12 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">

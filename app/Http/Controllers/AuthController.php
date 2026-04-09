@@ -4,9 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\Achievement;
 use App\Models\Artwork;
-use App\Models\ForumDiscussion;
 use App\Models\ParticipantAssignment;
 use App\Models\User;
+use App\Services\ForumDiscussionService;
 use App\Services\ParticipantModuleService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -1522,17 +1522,17 @@ class AuthController extends Controller
             return $guard;
         }
 
+        $service = app(ForumDiscussionService::class);
+        $selectedModuleSlug = (string) $request->query('module', '');
         $discussionsQuery = Schema::hasTable('forum_discussions')
-            ? (Schema::hasTable('forum_discussion_replies')
-                ? ForumDiscussion::with(['replies' => function ($query): void {
-                    $query->orderBy('created_at');
-                }])->orderByDesc('is_pinned')->orderByDesc('created_at')->get()
-                : ForumDiscussion::orderByDesc('is_pinned')->orderByDesc('created_at')->get())
+            ? $service->getForumDiscussions($selectedModuleSlug !== '' ? $selectedModuleSlug : null)
             : collect();
 
         return view('dashboard.instructor.forum', [
             'user' => $request->session()->get('auth_user'),
             'discussions' => $discussionsQuery,
+            'modules' => $service->getForumModules(),
+            'selectedModuleSlug' => $selectedModuleSlug,
             'dashboard' => $this->getInstructorDashboardConfig('forum'),
         ]);
     }
@@ -1833,16 +1833,16 @@ class AuthController extends Controller
             return $guard;
         }
 
+        $service = app(ForumDiscussionService::class);
+        $selectedModuleSlug = (string) $request->query('module', '');
         $discussionsQuery = Schema::hasTable('forum_discussions')
-            ? (Schema::hasTable('forum_discussion_replies')
-                ? ForumDiscussion::with(['replies' => function ($query): void {
-                    $query->orderBy('created_at');
-                }])->orderByDesc('is_pinned')->orderByDesc('created_at')->get()
-                : ForumDiscussion::orderByDesc('is_pinned')->orderByDesc('created_at')->get())
+            ? $service->getForumDiscussions($selectedModuleSlug !== '' ? $selectedModuleSlug : null)
             : collect();
 
         return $this->renderParticipantPage($request, 'forum', [
             'discussions' => $discussionsQuery,
+            'modules' => $service->getForumModules(),
+            'selectedModuleSlug' => $selectedModuleSlug,
         ]);
     }
 

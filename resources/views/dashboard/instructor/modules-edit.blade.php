@@ -2,6 +2,12 @@
 
 @section('dashboard-content')
     <link href="https://cdn.jsdelivr.net/npm/quill@1.3.7/dist/quill.snow.css" rel="stylesheet">
+    <style>
+        .ql-editor img {
+            max-width: 100%;
+            height: auto;
+        }
+    </style>
     <div class="max-w-6xl mx-auto">
         <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
             <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
@@ -172,50 +178,6 @@
 
         const quillEditors = new Map();
 
-        function readFileAsDataUrl(file) {
-            return new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onload = () => resolve(reader.result);
-                reader.onerror = reject;
-                reader.readAsDataURL(file);
-            });
-        }
-
-        function buildImageHandler(quill) {
-            return function() {
-                const input = document.createElement('input');
-                input.setAttribute('type', 'file');
-                input.setAttribute('accept', 'image/*');
-                input.click();
-
-                input.onchange = async () => {
-                    const file = input.files?.[0];
-                    if (!file) {
-                        return;
-                    }
-
-                    if (!file.type.startsWith('image/')) {
-                        alert('File harus berupa gambar.');
-                        return;
-                    }
-
-                    if (file.size > 2 * 1024 * 1024) {
-                        alert('Ukuran gambar maksimal 2MB.');
-                        return;
-                    }
-
-                    const dataUrl = await readFileAsDataUrl(file);
-                    const range = quill.getSelection(true) || {
-                        index: quill.getLength(),
-                        length: 0,
-                    };
-
-                    quill.insertEmbed(range.index, 'image', dataUrl, 'user');
-                    quill.setSelection(range.index + 1, 0, 'user');
-                };
-            };
-        }
-
         function syncEditorToInput(editorId) {
             const quill = quillEditors.get(editorId);
             const input = document.querySelector(`[data-rich-editor-target="${editorId}"]`);
@@ -238,30 +200,37 @@
                     return;
                 }
 
+                const modulesConfig = {
+                    toolbar: {
+                        container: [
+                            [{
+                                header: [1, 2, 3, false]
+                            }],
+                            ['bold', 'italic', 'underline'],
+                            [{
+                                list: 'ordered'
+                            }, {
+                                list: 'bullet'
+                            }],
+                            [{
+                                align: []
+                            }],
+                            ['link'],
+                            ['clean'],
+                        ],
+                    },
+                };
+
                 const quill = new Quill(container, {
                     theme: 'snow',
                     placeholder: 'Tuliskan konten pembelajaran...',
-                    modules: {
-                        toolbar: {
-                            container: [
-                                [{
-                                    header: [1, 2, 3, false]
-                                }],
-                                ['bold', 'italic', 'underline'],
-                                [{
-                                    list: 'ordered'
-                                }, {
-                                    list: 'bullet'
-                                }],
-                                ['link', 'image'],
-                                ['clean'],
-                            ],
-                        },
-                    },
+                    modules: modulesConfig,
                 });
 
-                quill.getModule('toolbar').addHandler('image', buildImageHandler(quill));
-                quill.root.innerHTML = input.value || '';
+                const initialHtml = input.value || '';
+                if (initialHtml.trim() !== '') {
+                    quill.clipboard.dangerouslyPasteHTML(initialHtml);
+                }
                 quill.on('text-change', () => syncEditorToInput(editorId));
                 quillEditors.set(editorId, quill);
             });
@@ -289,9 +258,210 @@
             });
         }
 
+        function initImageWidthSelectors(root = document) {
+            root.querySelectorAll('[data-image-width-range]').forEach((rangeInput) => {
+                if (rangeInput.dataset.bound === '1') {
+                    return;
+                }
+
+                const label = rangeInput.parentElement?.querySelector('[data-image-width-label]');
+                const syncLabel = () => {
+                    if (label) {
+                        label.textContent = rangeInput.value;
+                    }
+                };
+
+                rangeInput.addEventListener('input', syncLabel);
+                rangeInput.dataset.bound = '1';
+                syncLabel();
+            });
+        }
+
+        function createImageBlockHtml(chapterIndex, imageIndex) {
+            return `
+                <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm" data-image-item data-image-index="${imageIndex}">
+                    <div class="flex items-start justify-between gap-3">
+                        <div>
+                            <p class="text-sm font-semibold text-slate-800">Gambar ${imageIndex + 1}</p>
+                            <p class="text-xs text-slate-500">Upload, judul, caption, dan ukuran tampil.</p>
+                        </div>
+                        <button type="button" data-remove-image-btn class="rounded-full border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-600 transition hover:bg-red-100">
+                            Hapus
+                        </button>
+                    </div>
+
+                    <div class="mt-4 grid gap-4 lg:grid-cols-[220px_1fr]">
+                        <div class="overflow-hidden rounded-lg border border-slate-200 bg-slate-50">
+                            <div data-image-preview-wrap class="hidden">
+                                <img alt="Pratinjau gambar" class="h-40 w-full object-cover" data-image-preview>
+                            </div>
+                            <div data-image-placeholder class="flex h-40 items-center justify-center px-4 text-center text-xs text-slate-500">
+                                Pratinjau gambar akan muncul di sini.
+                            </div>
+                            <div class="border-t border-slate-200 bg-white p-3 text-xs text-slate-500" data-image-preview-meta>
+                                <p class="font-semibold text-slate-700">Nama file: <span data-image-file-name>Belum dipilih</span></p>
+                                <p class="mt-1">Ukuran file: <span data-image-file-size>-</span></p>
+                                <p class="mt-1">Approx. display: <span data-image-display-label>75</span>%</p>
+                            </div>
+                        </div>
+
+                        <div class="space-y-3">
+                            <div class="grid gap-3 sm:grid-cols-2">
+                                <div>
+                                    <label class="mb-1 block text-xs font-semibold text-slate-600">File Gambar</label>
+                                    <input type="file" name="chapters[${chapterIndex}][images][${imageIndex}][image_upload]" accept="image/*"
+                                        class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 file:mr-3 file:rounded-md file:border-0 file:bg-slate-100 file:px-3 file:py-2 file:text-xs file:font-semibold"
+                                        data-image-upload>
+                                </div>
+                                <div>
+                                    <label class="mb-1 block text-xs font-semibold text-slate-600">Lebar Tampil (25%-100%)</label>
+                                    <input type="range" min="25" max="100" step="5"
+                                        name="chapters[${chapterIndex}][images][${imageIndex}][width]"
+                                        value="75" class="w-full" data-image-width-range>
+                                    <p class="mt-1 text-xs text-slate-500">Approx. display: <span data-image-width-label>75</span>%</p>
+                                </div>
+                            </div>
+
+                            <input type="hidden" name="chapters[${chapterIndex}][images][${imageIndex}][existing_path]" value="" data-existing-image-path>
+
+                            <div>
+                                <label class="mb-1 block text-xs font-semibold text-slate-600">Judul Gambar</label>
+                                <input type="text" name="chapters[${chapterIndex}][images][${imageIndex}][title]"
+                                    placeholder="Contoh: Pola Dasar Batik"
+                                    class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 focus:border-slate-500 focus:outline-none">
+                            </div>
+
+                            <div>
+                                <label class="mb-1 block text-xs font-semibold text-slate-600">Caption Gambar</label>
+                                <textarea name="chapters[${chapterIndex}][images][${imageIndex}][caption]" rows="2"
+                                    placeholder="Penjelasan singkat tentang gambar..."
+                                    class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 focus:border-slate-500 focus:outline-none"></textarea>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function syncImageBlockPreview(imageBlock) {
+            const fileInput = imageBlock.querySelector('[data-image-upload]');
+            const previewWrap = imageBlock.querySelector('[data-image-preview-wrap]');
+            const preview = imageBlock.querySelector('[data-image-preview]');
+            const placeholder = imageBlock.querySelector('[data-image-placeholder]');
+            const fileName = imageBlock.querySelector('[data-image-file-name]');
+            const fileSize = imageBlock.querySelector('[data-image-file-size]');
+            const widthRange = imageBlock.querySelector('[data-image-width-range]');
+            const widthLabel = imageBlock.querySelector('[data-image-width-label]');
+            const displayLabel = imageBlock.querySelector('[data-image-display-label]');
+
+            const updateDisplayLabel = () => {
+                const widthValue = widthRange?.value || '75';
+                if (widthLabel) widthLabel.textContent = widthValue;
+                if (displayLabel) displayLabel.textContent = widthValue;
+                if (preview) {
+                    preview.style.width = `${widthValue}%`;
+                    preview.style.maxWidth = '100%';
+                    preview.style.height = 'auto';
+                }
+            };
+
+            const showPreview = (src, name, size) => {
+                if (preview) preview.src = src;
+                previewWrap?.classList.remove('hidden');
+                placeholder?.classList.add('hidden');
+                if (fileName) fileName.textContent = name || 'Belum dipilih';
+                if (fileSize) fileSize.textContent = size || '-';
+            };
+
+            if (fileInput && !fileInput.dataset.previewBound) {
+                fileInput.addEventListener('change', () => {
+                    const file = fileInput.files?.[0];
+                    if (!file) {
+                        return;
+                    }
+
+                    const objectUrl = URL.createObjectURL(file);
+                    showPreview(objectUrl, file.name, formatFileSize(file.size));
+                });
+                fileInput.dataset.previewBound = '1';
+            }
+
+            if (widthRange && !widthRange.dataset.previewBound) {
+                widthRange.addEventListener('input', updateDisplayLabel);
+                widthRange.dataset.previewBound = '1';
+            }
+
+            updateDisplayLabel();
+        }
+
+        function initImageBlocks(root = document) {
+            root.querySelectorAll('[data-image-item]').forEach((imageBlock) => {
+                if (imageBlock.dataset.bound === '1') {
+                    return;
+                }
+
+                syncImageBlockPreview(imageBlock);
+
+                const removeBtn = imageBlock.querySelector('[data-remove-image-btn]');
+                removeBtn?.addEventListener('click', () => {
+                    const list = imageBlock.closest('[data-image-list]');
+                    imageBlock.remove();
+
+                    if (list && !list.querySelector('[data-image-item]')) {
+                        const emptyState = document.createElement('div');
+                        emptyState.className =
+                            'rounded-lg border border-dashed border-slate-300 bg-white p-4 text-sm text-slate-500';
+                        emptyState.setAttribute('data-image-empty-state', '');
+                        emptyState.textContent =
+                            'Belum ada gambar. Klik "Tambah Gambar" untuk menambahkan gambar pendukung bab.';
+                        list.appendChild(emptyState);
+                    }
+                });
+
+                imageBlock.dataset.bound = '1';
+            });
+
+            root.querySelectorAll('[data-add-image-btn]').forEach((button) => {
+                if (button.dataset.bound === '1') {
+                    return;
+                }
+
+                button.addEventListener('click', () => {
+                    const section = button.closest('.rounded-xl');
+                    const list = section?.querySelector('[data-image-list]');
+                    if (!list) {
+                        return;
+                    }
+
+                    const emptyState = list.querySelector('[data-image-empty-state]');
+                    if (emptyState) {
+                        emptyState.remove();
+                    }
+
+                    const nextIndex = Number(list.dataset.nextImageIndex || '0');
+                    const chapterIndex = button.closest('[data-chapter-index]')?.dataset.chapterIndex ||
+                    '0';
+                    list.insertAdjacentHTML('beforeend', createImageBlockHtml(chapterIndex, nextIndex));
+                    list.dataset.nextImageIndex = String(nextIndex + 1);
+
+                    const newBlock = list.lastElementChild;
+                    if (newBlock) {
+                        syncImageBlockPreview(newBlock);
+                        newBlock.dataset.bound = '1';
+                        newBlock.querySelector('[data-remove-image-btn]')?.addEventListener('click', () =>
+                            newBlock.remove());
+                    }
+                });
+
+                button.dataset.bound = '1';
+            });
+        }
+
         function initDynamicChapterFeatures(root = document) {
             initRichEditors(root);
             initVideoSourceSelectors(root);
+            initImageWidthSelectors(root);
+            initImageBlocks(root);
         }
 
         function collapseAllExistingChapters() {
@@ -339,9 +509,28 @@
 
                     <div>
                         <label class="block text-sm font-semibold text-slate-700 mb-1">Konten Pembelajaran</label>
-                        <input type="hidden" name="chapters[${chapterIndex}][content]" data-rich-editor-target="chapter-content-${chapterIndex}" value="">
+                        <textarea name="chapters[${chapterIndex}][content]" data-rich-editor-target="chapter-content-${chapterIndex}" class="hidden"></textarea>
                         <div data-rich-editor="chapter-content-${chapterIndex}" class="min-h-[180px] rounded-lg border border-slate-300 bg-white"></div>
-                        <p class="mt-1 text-xs text-slate-500">Gunakan editor untuk format teks dan gambar.</p>
+                        <p class="mt-1 text-xs text-slate-500">Konten pembelajaran hanya untuk teks dan format dasar. Gambar diatur di bagian terpisah di bawah.</p>
+                    </div>
+
+                    <div class="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-4">
+                        <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                            <div>
+                                <label class="block text-sm font-semibold text-slate-700">Gambar Pendukung Bab</label>
+                                <p class="text-xs text-slate-500">Upload lebih dari satu gambar. Setiap gambar bisa diberi judul, caption, dan ukuran tampil.</p>
+                            </div>
+                            <button type="button" data-add-image-btn
+                                class="inline-flex items-center justify-center rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-100">
+                                + Tambah Gambar
+                            </button>
+                        </div>
+
+                        <div class="space-y-4" data-image-list data-next-image-index="0">
+                            <div class="rounded-lg border border-dashed border-slate-300 bg-white p-4 text-sm text-slate-500" data-image-empty-state>
+                                Belum ada gambar. Klik "Tambah Gambar" untuk menambahkan gambar pendukung bab.
+                            </div>
+                        </div>
                     </div>
 
                     <div>
