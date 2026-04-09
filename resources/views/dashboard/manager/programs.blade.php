@@ -30,7 +30,7 @@
         </div>
         </div>
 
-        <div id="create-program-form" class="mt-4 hidden rounded-xl border border-slate-200 bg-slate-50 p-4">
+        <div id="create-program-form" class="mt-4 hidden max-w-7xl mx-auto rounded-xl border border-slate-200 bg-slate-50 p-4">
             <h3 class="text-sm font-semibold text-slate-900">Tambah Program</h3>
             <form method="POST" action="{{ route('dashboard.manager.programs.store') }}"
                 class="mt-3 grid gap-3 sm:grid-cols-2">

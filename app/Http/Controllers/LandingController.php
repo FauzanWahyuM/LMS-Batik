@@ -4,8 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Models\Achievement;
 use App\Models\Artwork;
+use App\Models\RegistrationIndividual;
+use App\Models\RegistrationGroup;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Storage;
 
 class LandingController extends Controller
 {
@@ -44,14 +47,22 @@ class LandingController extends Controller
     {
         $request->validate([
             'nama_lengkap'      => ['required', 'string', 'max:255'],
-            'email'             => ['required', 'email', 'max:255'],
+            'email'             => ['required', 'email', 'max:255', 'unique:registration_individuals,email'],
             'no_handphone'      => ['required', 'string', 'max:20'],
             'alamat'            => ['required', 'string', 'max:500'],
             'pendidikan_terakhir' => ['required', 'string', 'max:100'],
             'motivasi'          => ['required', 'string', 'max:1000'],
         ]);
 
-        // TODO: store registration data
+        RegistrationIndividual::create($request->only([
+            'nama_lengkap',
+            'email',
+            'no_handphone',
+            'alamat',
+            'pendidikan_terakhir',
+            'motivasi',
+        ]));
+
         return redirect()->route('landing.registration')
             ->with('success', 'Pendaftaran individu berhasil dikirim. Kami akan menghubungi Anda segera.');
     }
@@ -61,14 +72,31 @@ class LandingController extends Controller
         $request->validate([
             'nama_lembaga'      => ['required', 'string', 'max:255'],
             'alamat_pic'        => ['required', 'string', 'max:500'],
-            'email_pic'         => ['required', 'email', 'max:255'],
+            'email_pic'         => ['required', 'email', 'max:255', 'unique:registration_groups,email_pic'],
             'no_handphone_pic'  => ['required', 'string', 'max:20'],
             'nama_pic'          => ['required', 'string', 'max:255'],
             'jumlah_peserta'    => ['required', 'integer', 'min:1'],
             'surat_resmi'       => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:5120'],
         ]);
 
-        // TODO: store registration data and handle file upload
+        $data = $request->only([
+            'nama_lembaga',
+            'alamat_pic',
+            'email_pic',
+            'no_handphone_pic',
+            'nama_pic',
+            'jumlah_peserta',
+        ]);
+
+        // Handle file upload
+        if ($request->hasFile('surat_resmi')) {
+            $file = $request->file('surat_resmi');
+            $filePath = $file->store('registration_documents', 'public');
+            $data['surat_resmi'] = $filePath;
+        }
+
+        RegistrationGroup::create($data);
+
         return redirect()->route('landing.registration')
             ->with('success', 'Pendaftaran kelompok berhasil dikirim. Kami akan menghubungi Anda segera.');
     }

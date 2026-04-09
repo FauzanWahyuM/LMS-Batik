@@ -49,9 +49,41 @@
                     <label class="mb-1 block text-xs font-semibold text-slate-600">Password</label>
                     <div class="relative">
                         <input id="participant-profile-password" type="password" name="password"
-                            value="{{ old('password', $profile['password']) }}" required
+                            value="{{ old('password', $profile['password'] ?? '') }}" required
                             class="w-full rounded-lg border border-slate-300 px-3 py-2 pr-10 text-sm">
                         <button type="button" data-password-toggle data-password-target="participant-profile-password"
+                            class="absolute inset-y-0 right-0 flex items-center px-3 text-slate-500"
+                            aria-label="Tampilkan kata sandi">
+                            <span data-icon="show">&#128065;</span>
+                            <span data-icon="hide" class="hidden">&#128584;</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="mb-1 block text-xs font-semibold text-slate-600">Konfirmasi Password</label>
+                    <div class="relative">
+                        <input id="participant-profile-password-confirmation" type="password" name="password_confirmation"
+                            value="{{ old('password_confirmation') }}" required
+                            class="w-full rounded-lg border border-slate-300 px-3 py-2 pr-10 text-sm">
+                        <button type="button" data-password-toggle
+                            data-password-target="participant-profile-password-confirmation"
+                            class="absolute inset-y-0 right-0 flex items-center px-3 text-slate-500"
+                            aria-label="Tampilkan kata sandi">
+                            <span data-icon="show">&#128065;</span>
+                            <span data-icon="hide" class="hidden">&#128584;</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="mb-1 block text-xs font-semibold text-slate-600">Konfirmasi Password</label>
+                    <div class="relative">
+                        <input id="participant-profile-password-confirmation" type="password" name="password_confirmation"
+                            value="{{ old('password_confirmation') }}" required
+                            class="w-full rounded-lg border border-slate-300 px-3 py-2 pr-10 text-sm">
+                        <button type="button" data-password-toggle
+                            data-password-target="participant-profile-password-confirmation"
                             class="absolute inset-y-0 right-0 flex items-center px-3 text-slate-500"
                             aria-label="Tampilkan kata sandi">
                             <span data-icon="show">&#128065;</span>
@@ -113,6 +145,31 @@
         </form>
     </section>
 
+    <!-- Modal for password change notification -->
+    @if (session('force_password_change'))
+        <div id="password-change-modal"
+            class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+            <div class="mx-4 w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
+                <div class="text-center">
+                    <div class="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-amber-100">
+                        <svg class="h-6 w-6 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z">
+                            </path>
+                        </svg>
+                    </div>
+                    <h3 class="mb-2 text-lg font-semibold text-slate-900">Perubahan Password Diperlukan</h3>
+                    <p class="text-sm text-slate-600">Harap ganti password Anda terlebih dahulu sebelum melanjutkan ke
+                        halaman lain.</p>
+                    <button onclick="closeModal()"
+                        class="mt-4 w-full rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-700">
+                        Tutup
+                    </button>
+                </div>
+            </div>
+        </div>
+    @endif
+
     <script>
         (function() {
             const toggles = document.querySelectorAll('[data-password-toggle]');
@@ -154,5 +211,12 @@
 
             syncTypeFields();
         })();
+
+        function closeModal() {
+            const modal = document.getElementById('password-change-modal');
+            if (modal) {
+                modal.style.display = 'none';
+            }
+        }
     </script>
 @endsection

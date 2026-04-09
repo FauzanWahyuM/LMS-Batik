@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\Achievement;
 use App\Models\Artwork;
 use App\Models\ParticipantAssignment;
+use App\Models\RegistrationGroup;
+use App\Models\RegistrationIndividual;
 use App\Models\User;
 use App\Services\ForumDiscussionService;
 use App\Services\ParticipantModuleService;
@@ -87,7 +89,6 @@ class AuthController extends Controller
             'participant_type' => 'individual',
             'full_name' => (string) ($authUser['name'] ?? 'Demo Participant'),
             'username' => (string) ($authUser['username'] ?? 'participant01'),
-            'password' => 'participant123',
             'email' => (string) ($authUser['email'] ?? 'participant@lmsbatik.test'),
             'phone' => '081300112233',
             'address' => 'Jl. Karya Batik No. 8',
@@ -99,11 +100,39 @@ class AuthController extends Controller
 
         $sessionData = $request->session()->get('profile_participant_data', []);
 
-        if (!is_array($sessionData)) {
-            return $defaults;
+        if (is_array($sessionData) && count($sessionData) > 0) {
+            return array_merge($defaults, $sessionData);
         }
 
-        return array_merge($defaults, $sessionData);
+        $authUser = $request->session()->get('auth_user', []);
+        $dbUser = null;
+
+        if (!empty($authUser['email']) || !empty($authUser['username'])) {
+            $query = User::query();
+            if (!empty($authUser['email'])) {
+                $query->where('email', $authUser['email']);
+            }
+            if (!empty($authUser['username'])) {
+                $query->orWhere('username', $authUser['username']);
+            }
+            $dbUser = $query->where('role', 'peserta')->first();
+        }
+
+        if ($dbUser) {
+            return array_merge($defaults, [
+                'full_name' => $dbUser->name,
+                'username' => $dbUser->username,
+                'email' => $dbUser->email,
+                'phone' => $dbUser->phone ?? '',
+                'address' => $dbUser->address ?? '',
+                'motivation' => $dbUser->role === 'peserta' ? ($dbUser->education ? '' : $defaults['motivation']) : $defaults['motivation'],
+                'group_name' => '',
+                'pic_name' => '',
+                'role_label' => 'Peserta Individu',
+            ]);
+        }
+
+        return $defaults;
     }
 
     private array $users = [
@@ -158,6 +187,12 @@ class AuthController extends Controller
             ]);
 
             $request->session()->regenerate();
+
+            // Check if participant needs to change password
+            if ($dbUser->role === 'peserta' && !$dbUser->password_changed) {
+                return redirect()->route('dashboard.participant.profile')
+                    ->with('force_password_change', true);
+            }
 
             return redirect()->route('dashboard.index');
         }
@@ -226,26 +261,8 @@ class AuthController extends Controller
             return $guard;
         }
 
-        $sentParticipantIds = $request->session()->get('manager_sent_individual_ids', []);
         $pendingParticipants = $this->getManagerPendingIndividualValidations();
-        $pendingParticipants = array_values(array_filter($pendingParticipants, function (array $participant) use ($sentParticipantIds): bool {
-            return !in_array($participant['id'], $sentParticipantIds, true);
-        }));
-
         $managedParticipants = $this->getManagerIndividualParticipants();
-        $managedParticipantIds = array_column($managedParticipants, 'id');
-
-        foreach ($this->getManagerPendingIndividualValidations() as $participant) {
-            if (in_array($participant['id'], $sentParticipantIds, true) && !in_array($participant['id'], $managedParticipantIds, true)) {
-                $managedParticipants[] = [
-                    'id' => $participant['id'],
-                    'name' => $participant['name'],
-                    'program' => $participant['program'],
-                    'progress' => 0,
-                    'status' => 'Aktif',
-                ];
-            }
-        }
 
         return view('dashboard.manager.participants-individual', [
             'user' => $request->session()->get('auth_user'),
@@ -264,29 +281,65 @@ class AuthController extends Controller
             return $guard;
         }
 
-        $selectedParticipant = collect($this->getManagerPendingIndividualValidations())->firstWhere('id', $participant);
+        $registrationId = (int) str_replace('individual-', '', $participant);
+        $registration = RegistrationIndividual::where('id', $registrationId)
+            ->where('status', 'pending')
+            ->first();
 
-        if (!$selectedParticipant) {
+        if (!$registration) {
             return redirect()
                 ->route('dashboard.manager.participants.individual')
-                ->withErrors(['credential' => 'Data peserta untuk validasi tidak ditemukan.']);
+                ->withErrors(['credential' => 'Data peserta untuk validasi tidak ditemukan atau sudah divalidasi.']);
         }
 
-        $username = strtolower(Str::slug($selectedParticipant['name'], ''));
-        $username = substr($username, 0, 10) . rand(10, 99);
+        if (User::where('email', $registration->email)->exists()) {
+            return redirect()
+                ->route('dashboard.manager.participants.individual')
+                ->withErrors(['credential' => 'Email peserta sudah digunakan pada akun lain.']);
+        }
+
+        $baseUsername = strtolower(Str::slug($registration->nama_lengkap, '')) ?: 'peserta';
+        $baseUsername = substr($baseUsername, 0, 10);
+        $username = $baseUsername;
+        $attempt = 0;
+
+        while (User::where('username', $username)->exists()) {
+            $attempt++;
+            $username = substr($baseUsername, 0, max(3, 10 - strlen((string) $attempt))) . rand(10, 99) . $attempt;
+            if ($attempt > 50) {
+                $username = $baseUsername . Str::random(4);
+                break;
+            }
+        }
+
         $password = Str::upper(Str::random(2)) . rand(10, 99) . Str::lower(Str::random(3)) . '!';
 
+        User::create([
+            'name' => $registration->nama_lengkap,
+            'username' => $username,
+            'email' => $registration->email,
+            'password' => Hash::make($password),
+            'role' => 'peserta',
+            'phone' => $registration->no_handphone,
+            'address' => $registration->alamat,
+            'education' => $registration->pendidikan_terakhir,
+            'status' => 'Aktif',
+            'password_changed' => false,
+        ]);
+
+        $registration->update(['status' => 'approved']);
+
         $request->session()->put('manager_generated_credential', [
-            'participant_id' => $selectedParticipant['id'],
-            'participant_name' => $selectedParticipant['name'],
-            'participant_whatsapp' => $selectedParticipant['whatsapp'],
+            'participant_id' => 'individual-' . $registration->id,
+            'participant_name' => $registration->nama_lengkap,
+            'participant_whatsapp' => $registration->no_handphone,
             'username' => $username,
             'password' => $password,
         ]);
 
         return redirect()
             ->route('dashboard.manager.participants.individual')
-            ->with('status', 'Username dan password awal berhasil digenerate. Silakan kirim via WhatsApp.');
+            ->with('status', 'Peserta berhasil divalidasi dan akun dibuat. Silakan kirim kredensial via WhatsApp.');
     }
 
     public function managerIndividualParticipantsSendCredential(Request $request, string $participant): RedirectResponse
@@ -331,13 +384,34 @@ class AuthController extends Controller
             return $guard;
         }
 
-        $request->validate([
-            'status' => ['required', 'string', 'in:Aktif,Lulus,Nonaktif'],
+        $validated = $request->validate([
+            'status' => ['required', 'string', Rule::in(['Aktif', 'Lulus', 'Nonaktif'])],
         ]);
+
+        $status = $validated['status'];
+
+        $query = User::query();
+        if (is_numeric($participant)) {
+            $query->where('id', (int) $participant);
+        } else {
+            $query->where('username', $participant)
+                ->orWhere('email', $participant);
+        }
+
+        $user = $query->where('role', 'peserta')->first();
+
+        if (!$user) {
+            return redirect()
+                ->route('dashboard.manager.participants.individual')
+                ->withErrors(['status' => 'Peserta tidak ditemukan untuk diperbarui.']);
+        }
+
+        $user->status = $status;
+        $user->save();
 
         return redirect()
             ->route('dashboard.manager.participants.individual')
-            ->with('status', 'Status peserta individu ' . strtoupper($participant) . ' diperbarui (simulasi).');
+            ->with('status', 'Status peserta individu ' . $user->name . ' berhasil diperbarui menjadi ' . $status . '.');
     }
 
     public function managerGroupParticipants(Request $request): View|RedirectResponse
@@ -1675,6 +1749,7 @@ class AuthController extends Controller
             'full_name' => ['required', 'string', 'min:3', 'max:120'],
             'username' => ['required', 'string', 'min:4', 'max:40'],
             'password' => ['required', 'string', 'min:6', 'max:40'],
+            'password_confirmation' => ['required', 'string', 'same:password'],
             'email' => ['required', 'email'],
             'phone' => ['required', 'string', 'min:7', 'max:20'],
             'address' => ['required', 'string', 'min:5', 'max:255'],
@@ -1692,37 +1767,32 @@ class AuthController extends Controller
             return back()->withErrors(['group_name' => 'Nama kelompok/lembaga dan nama PIC wajib diisi untuk peserta kelompok.'])->withInput();
         }
 
-        $profile = $this->getParticipantProfileData($request);
+        $authUser = $request->session()->get('auth_user', []);
+        $dbUser = User::where('email', $authUser['email'])->first();
 
-        if ($request->hasFile('photo')) {
-            $photo = $request->file('photo');
-            $photoName = 'participant-' . now()->timestamp . '.' . $photo->getClientOriginalExtension();
-            $photo->storeAs('profiles', $photoName, 'public');
-            $profile['photo'] = $photoName;
+        if (!$dbUser) {
+            return back()->withErrors(['general' => 'User tidak ditemukan.'])->withInput();
         }
 
-        $profile['participant_type'] = $validated['participant_type'];
-        $profile['full_name'] = $validated['full_name'];
-        $profile['username'] = $validated['username'];
-        $profile['password'] = $validated['password'];
-        $profile['email'] = $validated['email'];
-        $profile['phone'] = $validated['phone'];
-        $profile['address'] = $validated['address'];
-        $profile['motivation'] = $validated['motivation'] ?? '';
-        $profile['group_name'] = $validated['group_name'] ?? '';
-        $profile['pic_name'] = $validated['pic_name'] ?? '';
-        $profile['role_label'] = $validated['role_label'];
+        // Update user data
+        $dbUser->name = $validated['full_name'];
+        $dbUser->username = $validated['username'];
+        $dbUser->email = $validated['email'];
+        $dbUser->password = Hash::make($validated['password']);
+        $dbUser->phone = $validated['phone'];
+        $dbUser->address = $validated['address'];
+        $dbUser->password_changed = true; // Mark as changed
 
-        $request->session()->put('profile_participant_data', $profile);
+        $dbUser->save();
 
-        $authUser = $request->session()->get('auth_user', []);
+        // Update session
         $authUser['name'] = $validated['full_name'];
         $authUser['username'] = $validated['username'];
         $authUser['email'] = $validated['email'];
         $request->session()->put('auth_user', $authUser);
 
         return redirect()
-            ->route('dashboard.participant.profile')
+            ->route('dashboard.participant.home')
             ->with('status', 'Profil peserta berhasil diperbarui.');
     }
 
@@ -2130,7 +2200,7 @@ class AuthController extends Controller
                 ],
                 [
                     'label' => 'Kelola Prestasi',
-                    'icon' => 'achievement',
+                    'icon' => 'achievements',
                     'url' => route('dashboard.manager.achievements'),
                     'active' => $activePage === 'achievements',
                 ],
@@ -2175,12 +2245,23 @@ class AuthController extends Controller
      */
     private function getManagerIndividualParticipants(): array
     {
-        return [
-            ['id' => 'pi-01', 'name' => 'Nadia Putri', 'program' => 'Teknik Canting Dasar', 'progress' => 88, 'status' => 'Aktif'],
-            ['id' => 'pi-02', 'name' => 'Rafi Akbar', 'program' => 'Teknik Warna Dasar', 'progress' => 61, 'status' => 'Lulus'],
-            ['id' => 'pi-03', 'name' => 'Salsa Wicaksono', 'program' => 'Komposisi Motif', 'progress' => 75, 'status' => 'Aktif'],
-            ['id' => 'pi-04', 'name' => 'Tio Ramadhan', 'program' => 'Teknik Canting Dasar', 'progress' => 42, 'status' => 'Nonaktif'],
-        ];
+        if (! Schema::hasTable('users')) {
+            return [];
+        }
+
+        $users = User::where('role', 'peserta')
+            ->orderByDesc('created_at')
+            ->get();
+
+        return $users->map(function ($user) {
+            return [
+                'id' => $user->username ?: 'peserta-' . $user->id,
+                'name' => $user->name,
+                'program' => 'Program Individu',
+                'progress' => 0,
+                'status' => $user->status ?? 'Aktif',
+            ];
+        })->toArray();
     }
 
     /**
@@ -2188,32 +2269,24 @@ class AuthController extends Controller
      */
     private function getManagerPendingIndividualValidations(): array
     {
-        return [
-            [
-                'id' => 'pv-01',
-                'registration_date' => '2026-03-27',
-                'name' => 'Rama Langit',
-                'email' => 'rama@contoh.id',
-                'phone' => '087756123789',
-                'address' => 'Jl. Merdeka 10, Pekalongan',
-                'education' => 'SMA',
-                'motivation' => 'Ingin belajar teknik canting agar dapat memulai usaha kecil batik rumahan.',
-                'program' => 'Teknik Canting Dasar',
-                'whatsapp' => '087756123789',
-            ],
-            [
-                'id' => 'pv-02',
-                'registration_date' => '2026-03-29',
-                'name' => 'Aisyah Nur',
-                'email' => 'aisyah@contoh.id',
-                'phone' => '081378990122',
-                'address' => 'Jl. Veteran 2, Yogyakarta',
-                'education' => 'S1',
-                'motivation' => 'Meningkatkan kemampuan desain motif untuk kebutuhan produk UMKM.',
-                'program' => 'Teknik Warna Dasar',
-                'whatsapp' => '081378990122',
-            ],
-        ];
+        $registrations = Schema::hasTable('registration_individuals')
+            ? RegistrationIndividual::where('status', 'pending')->orderByDesc('created_at')->get()
+            : collect();
+
+        return $registrations->map(function ($reg) {
+            return [
+                'id' => 'individual-' . $reg->id,
+                'registration_date' => $reg->created_at->format('Y-m-d'),
+                'name' => $reg->nama_lengkap,
+                'email' => $reg->email,
+                'phone' => $reg->no_handphone,
+                'address' => $reg->alamat,
+                'education' => $reg->pendidikan_terakhir,
+                'motivation' => $reg->motivasi,
+                'program' => 'Program Individu',
+                'whatsapp' => $reg->no_handphone,
+            ];
+        })->toArray();
     }
 
     /**
@@ -2233,32 +2306,25 @@ class AuthController extends Controller
      */
     private function getManagerPendingGroupValidations(): array
     {
-        return [
-            [
-                'id' => 'gv-01',
-                'registration_date' => '2026-03-26',
-                'group_name' => 'Lembaga A',
-                'pic_name' => 'Anonymouse',
-                'pic_email' => 'lembagaA@email.com',
-                'pic_phone' => '081234567890',
-                'pic_address' => 'Jl. XXY',
-                'members' => 20,
-                'official_letter' => 'suratresmi.pdf',
-                'program' => '2 Januari 2026',
-            ],
-            [
-                'id' => 'gv-02',
-                'registration_date' => '2026-03-30',
-                'group_name' => 'Lembaga B',
-                'pic_name' => 'Siti Nur',
-                'pic_email' => 'lembagaB@email.com',
-                'pic_phone' => '082145678900',
-                'pic_address' => 'Jl. Mawar 1',
-                'members' => 15,
-                'official_letter' => 'pengajuan-lembagaB.pdf',
-                'program' => '8 Januari 2026',
-            ],
-        ];
+        $registrations = Schema::hasTable('registration_groups')
+            ? RegistrationGroup::where('status', 'pending')->orderByDesc('created_at')->get()
+            : collect();
+
+        return $registrations->map(function ($reg) {
+            return [
+                'id' => 'group-' . $reg->id,
+                'registration_date' => $reg->created_at->format('Y-m-d'),
+                'group_name' => $reg->nama_lembaga,
+                'pic_name' => $reg->nama_pic,
+                'pic_email' => $reg->email_pic,
+                'pic_phone' => $reg->no_handphone_pic,
+                'pic_address' => $reg->alamat_pic,
+                'members' => $reg->jumlah_peserta,
+                'official_letter' => $reg->surat_resmi ? basename($reg->surat_resmi) : null,
+                'official_letter_path' => $reg->surat_resmi ? $reg->surat_resmi : null,
+                'program' => 'Program Kelompok',
+            ];
+        })->toArray();
     }
 
     /**
@@ -2753,13 +2819,21 @@ class AuthController extends Controller
      */
     private function getInstructorIndividualParticipants(): array
     {
-        return [
-            ['id' => 'p-01', 'name' => 'Anita Wijaya'],
-            ['id' => 'p-02', 'name' => 'Bima Pradana'],
-            ['id' => 'p-03', 'name' => 'Citra Kurnia'],
-            ['id' => 'p-04', 'name' => 'Deni Santoso'],
-            ['id' => 'p-05', 'name' => 'Eka Putri'],
-        ];
+        $registrations = Schema::hasTable('registration_individuals')
+            ? \App\Models\RegistrationIndividual::orderByDesc('created_at')->get()
+            : collect();
+
+        return $registrations->map(function ($reg) {
+            return [
+                'id' => 'individual-' . $reg->id,
+                'name' => $reg->nama_lengkap,
+                'email' => $reg->email,
+                'no_handphone' => $reg->no_handphone,
+                'alamat' => $reg->alamat,
+                'pendidikan_terakhir' => $reg->pendidikan_terakhir,
+                'motivasi' => $reg->motivasi,
+            ];
+        })->toArray();
     }
 
     /**
@@ -2767,13 +2841,22 @@ class AuthController extends Controller
      */
     private function getInstructorGroupParticipants(): array
     {
-        return [
-            ['id' => 'g-01', 'name' => 'Kelompok A', 'group' => 'Lembaga A'],
-            ['id' => 'g-02', 'name' => 'Kelompok A', 'group' => 'Lembaga A'],
-            ['id' => 'g-03', 'name' => 'Kelompok B', 'group' => 'Lembaga B'],
-            ['id' => 'g-04', 'name' => 'Kelompok B', 'group' => 'Lembaga B'],
-            ['id' => 'g-05', 'name' => 'Kelompok C', 'group' => 'Lembaga C'],
-        ];
+        $registrations = Schema::hasTable('registration_groups')
+            ? \App\Models\RegistrationGroup::orderByDesc('created_at')->get()
+            : collect();
+
+        return $registrations->map(function ($reg) {
+            return [
+                'id' => 'group-' . $reg->id,
+                'name' => $reg->nama_pic,
+                'group' => $reg->nama_lembaga,
+                'email' => $reg->email_pic,
+                'no_handphone' => $reg->no_handphone_pic,
+                'alamat' => $reg->alamat_pic,
+                'jumlah_peserta' => $reg->jumlah_peserta,
+                'surat_resmi' => $reg->surat_resmi,
+            ];
+        })->toArray();
     }
 
     /**
@@ -3026,6 +3109,16 @@ class AuthController extends Controller
 
     public function logout(Request $request): RedirectResponse
     {
+        $authUser = $request->session()->get('auth_user');
+
+        if ($authUser && $authUser['role'] === 'participant') {
+            $dbUser = User::where('email', $authUser['email'])->first();
+            if ($dbUser && !$dbUser->password_changed) {
+                return redirect()->route('dashboard.participant.profile')
+                    ->with('force_password_change', true);
+            }
+        }
+
         $request->session()->forget('auth_user');
         $request->session()->invalidate();
         $request->session()->regenerateToken();

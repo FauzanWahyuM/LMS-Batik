@@ -45,7 +45,8 @@
                             </p>
                             <p class="mt-1 text-xs text-slate-500">Ukuran: {{ $submission->formatted_file_size }}</p>
                             <p class="mt-1 text-xs text-slate-500">Tanggal Pengiriman:
-                                {{ optional($submission->submitted_at)->format('d M Y, H:i') }}</p>
+                                {{ optional($submission->submitted_at)->setTimezone('Asia/Jakarta')->format('d M Y H:i') }}
+                                WIB</p>
                         </div>
                     @endif
                 </div>

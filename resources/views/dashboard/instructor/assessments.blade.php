@@ -22,7 +22,8 @@
                             </p>
                             <p class="mt-0.5 text-xs text-slate-600">
                                 <span class="font-medium">Waktu:</span>
-                                {{ optional($submission->submitted_at)->format('d M Y, H:i') ?? '-' }}
+                                {{ optional($submission->submitted_at)->setTimezone('Asia/Jakarta')->format('d M Y H:i') ?? '-' }}
+                                WIB
                             </p>
                             <div class="mt-3 flex items-center gap-2">
                                 @if ($submission->isGraded())

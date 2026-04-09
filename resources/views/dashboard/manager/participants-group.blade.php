@@ -56,7 +56,15 @@
                                 </tr>
                                 <tr>
                                     <th class="bg-slate-50 px-3 py-2 font-semibold text-slate-600">Surat Resmi</th>
-                                    <td class="px-3 py-2 text-blue-600 underline">{{ $group['official_letter'] }}</td>
+                                    <td class="px-3 py-2">
+                                        @if (!empty($group['official_letter_path']))
+                                            <a href="{{ asset('storage/' . $group['official_letter_path']) }}"
+                                                target="_blank"
+                                                class="text-blue-600 underline">{{ $group['official_letter'] }}</a>
+                                        @else
+                                            <span class="text-slate-500">-</span>
+                                        @endif
+                                    </td>
                                 </tr>
                             </tbody>
                         </table>

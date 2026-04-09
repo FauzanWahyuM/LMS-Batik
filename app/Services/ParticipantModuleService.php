@@ -294,7 +294,7 @@ class ParticipantModuleService
     /**
      * Submit assignment for a module material
      */
-    public function submitAssignment(Module $module, ?ModuleMaterial $material, User $user, UploadedFile $file): ParticipantAssignment
+    public function submitAssignment(Module $module, ?ModuleMaterial $material, User $user, UploadedFile $file, ?string $materialSlug = null): ParticipantAssignment
     {
         // Store the file
         $fileName = Str::uuid() . '.' . $file->getClientOriginalExtension();
@@ -316,6 +316,7 @@ class ParticipantModuleService
                 'material_id' => $material?->id,
             ],
             [
+                'material_slug' => $materialSlug ?: $material?->slug,
                 'file_path' => $filePath,
                 'original_filename' => $file->getClientOriginalName(),
                 'file_size' => $file->getSize(),

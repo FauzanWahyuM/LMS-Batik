@@ -95,7 +95,7 @@ Route::middleware('simple.auth')->group(function (): void {
 		Route::post('/penilaian-tugas/{submission}/score', [AuthController::class, 'instructorAssessmentScore'])->name('assessments.score');
 	});
 
-	Route::prefix('/dashboard/peserta')->name('dashboard.participant.')->group(function (): void {
+	Route::prefix('/dashboard/peserta')->name('dashboard.participant.')->middleware('force.password.change')->group(function (): void {
 		Route::get('/', [AuthController::class, 'participantHome'])->name('home');
 		Route::get('/profil', [AuthController::class, 'participantProfile'])->name('profile');
 		Route::post('/profil/update', [AuthController::class, 'participantProfileUpdate'])->name('profile.update');

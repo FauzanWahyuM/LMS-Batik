@@ -14,6 +14,7 @@ class ParticipantAssignment extends Model
         'user_id',
         'module_id',
         'material_id',
+        'material_slug',
         'file_path',
         'original_filename',
         'file_size',

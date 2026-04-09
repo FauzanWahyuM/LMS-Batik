@@ -28,6 +28,7 @@ class User extends Authenticatable
         'education',
         'certificate',
         'status',
+        'password_changed',
     ];
 
     /**

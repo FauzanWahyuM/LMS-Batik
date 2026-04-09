@@ -153,19 +153,46 @@ class ParticipantModuleController extends Controller
             abort(404);
         }
 
-        $progress = $this->moduleService->markMaterialAsCompleted($module, $material, $user);
+        $progress = \App\Models\ParticipantProgress::firstOrNew([
+            'user_id' => $user->id,
+            'module_id' => $module->id,
+            'material_id' => $material->id,
+        ]);
+
+        $toggledCompleted = false;
+
+        if ($progress->exists && $progress->status === 'completed') {
+            $progress->update([
+                'status' => 'in_progress',
+                'progress_percentage' => 0,
+                'completed_at' => null,
+            ]);
+            $toggledCompleted = false;
+        } else {
+            $progress->update([
+                'status' => 'completed',
+                'progress_percentage' => 100,
+                'completed_at' => now(),
+                'started_at' => $progress->started_at ?: now(),
+            ]);
+            $toggledCompleted = true;
+        }
 
         if (! $request->expectsJson()) {
             return redirect()->route('dashboard.participant.modules.detail', [
                     'module' => $moduleSlug,
                     'tab' => 'materi',
                     'material' => $materialSlug,
-                ])->with('status', 'Bab berhasil ditandai selesai.');
+                ])->with('status', $toggledCompleted ? 'Bab berhasil ditandai selesai.' : 'Status bab diubah menjadi belum selesai.');
         }
 
         return response()->json([
             'success' => true,
-            'progress' => $progress,
+            'completed' => $toggledCompleted,
+            'progress' => [
+                'status' => $progress->status,
+                'percentage' => $progress->progress_percentage,
+            ],
         ]);
     }
 
@@ -188,8 +215,10 @@ class ParticipantModuleController extends Controller
 
         // Find the assignment material (if any)
         $material = null;
+        $materialSlug = null;
         if ($request->has('material_slug')) {
-            $material = $module->materials->firstWhere('slug', $request->material_slug);
+            $materialSlug = $request->material_slug;
+            $material = $module->materials->firstWhere('slug', $materialSlug);
         }
 
         try {
@@ -197,7 +226,8 @@ class ParticipantModuleController extends Controller
                 $module,
                 $material,
                 $user,
-                $request->file('assignment_file')
+                $request->file('assignment_file'),
+                $materialSlug
             );
 
             return redirect()->back()->with('status', 'Tugas berhasil dikirim!');

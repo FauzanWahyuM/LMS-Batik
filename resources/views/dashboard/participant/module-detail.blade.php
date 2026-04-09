@@ -42,19 +42,19 @@
             @endphp
 
             @foreach ($tabMap as $tabKey => $tabLabel)
-                <a href="{{ route('dashboard.participant.modules.detail', ['module' => $moduleSlug, 'tab' => $tabKey]) }}"
+                <a href="{{ route('dashboard.participant.modules.detail', array_filter(['module' => $moduleSlug, 'tab' => $tabKey, 'material' => $selectedMaterial?->slug])) }}"
                     class="rounded-md border px-3 py-2 text-center text-xs font-semibold transition {{ $activeTab === $tabKey ? 'border-black bg-black text-white' : 'border-slate-300 text-slate-700 hover:bg-slate-100' }}">
                     {{ $tabLabel }}
                 </a>
             @endforeach
         </div>
 
-        @if ($activeTab === 'materi')
+        @if ($moduleData['materials']->isNotEmpty())
             <div class="mt-5 border-t border-slate-300 pt-4">
                 <h4 class="text-sm font-semibold uppercase tracking-wide text-slate-700">Pindah Materi</h4>
                 <div class="mt-3 flex flex-wrap gap-2">
                     @foreach ($moduleData['materials'] as $material)
-                        <a href="{{ route('dashboard.participant.modules.detail', ['module' => $moduleSlug, 'tab' => 'materi', 'material' => $material->slug]) }}"
+                        <a href="{{ route('dashboard.participant.modules.detail', array_filter(['module' => $moduleSlug, 'tab' => $activeTab, 'material' => $material->slug])) }}"
                             data-material-chip="{{ $material->slug }}"
                             class="rounded-full border px-3 py-1.5 text-xs font-semibold transition {{ $selectedMaterial && $selectedMaterial->slug === $material->slug ? 'border-black bg-black text-white' : 'border-slate-300 text-slate-700 hover:bg-white' }}">
                             {{ $material->title }}
@@ -65,7 +65,9 @@
                     @endforeach
                 </div>
             </div>
+        @endif
 
+        @if ($activeTab === 'materi')
             @if ($selectedMaterial)
                 @php
                     $materialMeta = is_array($selectedMaterial->metadata ?? null) ? $selectedMaterial->metadata : [];
@@ -107,17 +109,12 @@
                     <div class="flex flex-wrap items-center justify-between gap-3" id="selected-material-header"
                         data-material-slug="{{ $selectedMaterial->slug }}">
                         <h3 class="text-lg font-bold text-slate-800">{{ $selectedMaterial->title }}</h3>
-                        @if (!empty($selectedMaterial->is_completed))
-                            <span id="selected-material-badge"
-                                class="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700">Bab
-                                selesai</span>
-                        @else
-                            <button type="button" id="mark-complete-btn"
-                                data-complete-url="{{ route('dashboard.participant.modules.material.complete', ['module' => $moduleSlug, 'material' => $selectedMaterial->slug]) }}"
-                                class="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-emerald-700">
-                                Tandai Bab Selesai
-                            </button>
-                        @endif
+                        <button type="button" id="mark-complete-btn"
+                            data-complete-url="{{ route('dashboard.participant.modules.material.complete', ['module' => $moduleSlug, 'material' => $selectedMaterial->slug]) }}"
+                            data-completed="{{ !empty($selectedMaterial->is_completed) ? '1' : '0' }}"
+                            class="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-emerald-700">
+                            {{ !empty($selectedMaterial->is_completed) ? 'Bab Selesai' : 'Tandai Bab Selesai' }}
+                        </button>
                     </div>
                     <div class="mt-3 text-sm leading-relaxed text-slate-700">
                         {!! $selectedMaterial->content ?: '<p>Konten materi belum tersedia.</p>' !!}
@@ -199,12 +196,16 @@
                 <h3 class="text-center text-2xl font-bold text-slate-800">Instruksi Tugas</h3>
 
                 @php
-                    $assignmentMaterials = collect($moduleData['task_instructions'] ?? []);
+                    $materialAssignments = collect($moduleData['task_instructions'] ?? [])->filter(function (
+                        $assignment,
+                    ) use ($selectedMaterial) {
+                        return $selectedMaterial && $assignment->slug === $selectedMaterial->slug;
+                    });
                 @endphp
 
-                @if ($assignmentMaterials->count() > 0)
+                @if ($materialAssignments->count() > 0)
                     <div class="mx-auto mt-5 max-w-3xl space-y-4">
-                        @foreach ($assignmentMaterials as $assignment)
+                        @foreach ($materialAssignments as $assignment)
                             <div class="rounded-xl border border-slate-200 bg-white p-4">
                                 <div class="flex items-center justify-between gap-3">
                                     <p class="text-base font-bold text-slate-800">{{ $assignment->title }}</p>
@@ -240,19 +241,30 @@
                         @endforeach
                     </div>
                 @else
-                    <p class="mx-auto mt-5 max-w-2xl text-center text-slate-600">Instruksi tugas belum tersedia.</p>
+                    <p class="mx-auto mt-5 max-w-2xl text-center text-slate-600">Instruksi tugas belum tersedia untuk bab
+                        ini.</p>
                 @endif
 
                 <div class="mx-auto mt-6 max-w-2xl space-y-4">
                     @php
-                        $userAssignments = $moduleData['assignments'];
+                        $userAssignments = collect($moduleData['assignments'])->filter(function ($assignment) use (
+                            $selectedMaterial,
+                        ) {
+                            if (!$selectedMaterial) {
+                                return false;
+                            }
+                            return $assignment->material_id == $selectedMaterial->id ||
+                                $assignment->material_slug === $selectedMaterial->slug;
+                        });
                     @endphp
 
                     @if ($userAssignments->count() > 0)
                         @foreach ($userAssignments as $assignment)
                             <div class="border border-slate-200 rounded p-4">
                                 <p class="mb-1 text-lg font-bold text-slate-800">Status Pengumpulan</p>
-                                <p class="text-sm text-slate-600">{{ $assignment->submitted_at->format('d M Y H:i') }}</p>
+                                <p class="text-sm text-slate-600">
+                                    {{ $assignment->submitted_at->setTimezone('Asia/Jakarta')->format('d M Y H:i') }} WIB
+                                </p>
 
                                 @if (str_starts_with($assignment->mime_type ?? '', 'image/'))
                                     <div class="mt-4 overflow-hidden rounded-lg border border-slate-200 bg-slate-50">
@@ -294,22 +306,28 @@
                         @endforeach
                     @else
                         <div>
-                            <p class="mb-1 text-lg font-bold text-slate-800">Nilai Tugas</p>
-                            <input type="text" placeholder="Belum ada nilai" readonly
-                                class="w-full rounded-sm border border-slate-200 bg-slate-100 px-3 py-2 text-sm text-slate-500 focus:outline-none">
-                        </div>
-                        <div>
-                            <p class="mb-1 text-lg font-bold text-slate-800">Feedback Pengajar</p>
-                            <input type="text" placeholder="Belum ada feedback" readonly
-                                class="w-full rounded-sm border border-slate-200 bg-slate-100 px-3 py-2 text-sm text-slate-500 focus:outline-none">
+                            <p class="mb-1 text-lg font-bold text-slate-800">Status Pengumpulan</p>
+                            <p class="text-sm text-slate-600">Belum ada pengumpulan untuk bab ini</p>
                         </div>
                     @endif
                 </div>
             </div>
         @else
             <div class="mt-6">
+                @php
+                    $filteredDiscussions = $moduleDiscussions ?? collect();
+                    if ($selectedMaterial) {
+                        $materialTitle = strtolower($selectedMaterial->title);
+                        $filteredDiscussions = $filteredDiscussions->filter(function ($discussion) use (
+                            $materialTitle,
+                        ) {
+                            return str_contains(strtolower($discussion->title), $materialTitle) ||
+                                str_contains(strtolower($discussion->content), $materialTitle);
+                        });
+                    }
+                @endphp
                 @include('forum.discussions-list', [
-                    'discussions' => $moduleDiscussions ?? collect(),
+                    'discussions' => $filteredDiscussions,
                     'user' => $user ?? [],
                     'moduleContext' => true,
                     'showModuleFilter' => false,
@@ -358,29 +376,42 @@
             }
         }
 
-        function markCurrentChapterCompletedUI() {
+        function updateSelectedMaterialStatus(isCompleted) {
             const slug = selectedMaterialHeader?.dataset.materialSlug;
             if (!slug) {
                 return;
             }
 
             const chip = document.querySelector(`[data-material-chip="${slug}"]`);
-            if (chip && !chip.textContent.includes('✓')) {
-                const check = document.createElement('span');
-                check.className = 'ml-1';
-                check.textContent = '✓';
-                chip.appendChild(check);
+            if (chip) {
+                const hasCheck = Array.from(chip.childNodes).some(node => node.textContent === '✓');
+                if (isCompleted && !hasCheck) {
+                    const check = document.createElement('span');
+                    check.className = 'ml-1';
+                    check.textContent = '✓';
+                    chip.appendChild(check);
+                }
+                if (!isCompleted && hasCheck) {
+                    const check = Array.from(chip.childNodes).find(node => node.textContent === '✓');
+                    if (check) {
+                        chip.removeChild(check);
+                    }
+                }
             }
 
-            if (!document.getElementById('selected-material-badge') && selectedMaterialHeader) {
-                const badge = document.createElement('span');
-                badge.id = 'selected-material-badge';
-                badge.className = 'rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700';
-                badge.textContent = 'Bab selesai';
-                selectedMaterialHeader.appendChild(badge);
+            if (markCompleteBtn) {
+                markCompleteBtn.textContent = isCompleted ? 'Bab Selesai' : 'Tandai Bab Selesai';
+                markCompleteBtn.dataset.completed = isCompleted ? '1' : '0';
             }
 
-            markCompleteBtn?.remove();
+            const selectedProgress = document.getElementById('selected-material-progress');
+            const selectedProgressText = document.getElementById('selected-material-progress-text');
+            if (selectedProgress) {
+                selectedProgress.style.width = isCompleted ? '100%' : '0%';
+            }
+            if (selectedProgressText) {
+                selectedProgressText.textContent = isCompleted ? '100% selesai' : '0% selesai';
+            }
         }
 
         markCompleteBtn?.addEventListener('click', async function() {
@@ -407,12 +438,18 @@
                     throw new Error('Gagal menyimpan progres');
                 }
 
-                markCurrentChapterCompletedUI();
+                const data = await response.json();
+                const completed = data?.completed === true;
+                updateSelectedMaterialStatus(completed);
                 await refreshProgress();
             } catch (error) {
-                this.disabled = false;
-                this.textContent = 'Tandai Bab Selesai';
-                alert('Tidak dapat menandai bab sebagai selesai. Silakan coba lagi.');
+                alert('Tidak dapat mengubah status bab. Silakan coba lagi.');
+            } finally {
+                if (markCompleteBtn) {
+                    markCompleteBtn.disabled = false;
+                    markCompleteBtn.textContent = markCompleteBtn.dataset.completed === '1' ? 'Bab Selesai' :
+                        'Tandai Bab Selesai';
+                }
             }
         });
     </script>
