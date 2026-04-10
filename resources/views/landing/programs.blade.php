@@ -27,168 +27,99 @@
         </h2>
     </div>
 
-        <section class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 mb-20">
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12">
+    <section class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 mb-20">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12">
 
-                <div class="bg-blue-950 rounded-xl shadow-xl p-8 md:p-10 text-white">
-                    <h3 class="text-xl md:text-2xl font-bold mb-6" style="font-family: 'Georgia', serif;">
-                        Program Individu
-                    </h3>
-                    <p class="text-sm md:text-base text-gray-200 leading-relaxed text-justify">
-                        Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore
-                        et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut
-                        aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse
-                        cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in
-                        culpa qui officia deserunt mollit anim id est laborum. Lorem ipsum dolor sit amet, consectetur
-                        adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim
-                        veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
-                    </p>
-                </div>
-
-                <div class="bg-blue-950 rounded-xl shadow-xl p-8 md:p-10 text-white">
-                    <h3 class="text-xl md:text-2xl font-bold mb-6" style="font-family: 'Georgia', serif;">
-                        Program Kelompok
-                    </h3>
-                    <p class="text-sm md:text-base text-gray-200 leading-relaxed text-justify">
-                        Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore
-                        et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut
-                        aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse
-                        cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in
-                        culpa qui officia deserunt mollit anim id est laborum. Lorem ipsum dolor sit amet, consectetur
-                        adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim
-                        veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
-                    </p>
-                </div>
-
+            <div class="bg-blue-950 rounded-xl shadow-xl p-8 md:p-10 text-white">
+                <h3 class="text-xl md:text-2xl font-bold mb-6" style="font-family: 'Georgia', serif;">
+                    {{ $programTypes['individual']['title'] ?? 'Program Individu' }}
+                </h3>
+                <p class="text-sm md:text-base text-gray-200 leading-relaxed text-justify">
+                    {{ $programTypes['individual']['description'] ?? 'Pembelajaran personal dengan pendampingan intensif untuk memperkuat teknik membatik dari dasar hingga lanjutan.' }}
+                </p>
             </div>
-        </section>
 
-
-        <section class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-
-            <h2 class="text-3xl md:text-4xl font-bold text-center text-blue-950 mb-12"
-                style="font-family: 'Georgia', serif;">
-                Paket Program
-            </h2>
-
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12">
-
-                <div class="bg-blue-950 rounded-xl shadow-xl p-8 md:p-10 text-white flex flex-col">
-                    <h3 class="text-xl md:text-2xl font-bold mb-2" style="font-family: 'Georgia', serif;">Paket Individu
-                    </h3>
-                    <p class="text-sm text-gray-300 border-b border-gray-600 pb-4 mb-4">Durasi : 20 Hari</p>
-
-                    <ul class="space-y-4 mb-10 flex-grow text-sm md:text-base">
-                        <li class="flex items-start border-b border-gray-600 pb-3">
-                            <svg class="h-5 w-5 text-green-500 mr-3 flex-shrink-0" fill="none" stroke="currentColor"
-                                viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7">
-                                </path>
-                            </svg>
-                            <span>Lorem ipsum</span>
-                        </li>
-                        <li class="flex items-start border-b border-gray-600 pb-3">
-                            <svg class="h-5 w-5 text-green-500 mr-3 flex-shrink-0" fill="none" stroke="currentColor"
-                                viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7">
-                                </path>
-                            </svg>
-                            <span>Lorem ipsum</span>
-                        </li>
-                        <li class="flex items-start border-b border-gray-600 pb-3">
-                            <svg class="h-5 w-5 text-green-500 mr-3 flex-shrink-0" fill="none" stroke="currentColor"
-                                viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7">
-                                </path>
-                            </svg>
-                            <span>Lorem ipsum</span>
-                        </li>
-                        <li class="flex items-start border-b border-gray-600 pb-3">
-                            <svg class="h-5 w-5 text-green-500 mr-3 flex-shrink-0" fill="none" stroke="currentColor"
-                                viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7">
-                                </path>
-                            </svg>
-                            <span>Lorem ipsum</span>
-                        </li>
-                        <li class="flex items-start border-b border-gray-600 pb-3">
-                            <svg class="h-5 w-5 text-green-500 mr-3 flex-shrink-0 mt-0.5" fill="none"
-                                stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7">
-                                </path>
-                            </svg>
-                            <span class="leading-snug">Lorem ipsum dolor sit amet,<br>consectetur adipiscing elit</span>
-                        </li>
-                    </ul>
-
-                    <div class="text-center mt-auto">
-                        <p class="font-bold text-lg mb-6">Rp. xxx.xxx.xx / Orang</p>
-                        <a href="/pendaftaran"
-                            class="inline-block w-full sm:w-auto bg-amber-600 text-white px-8 py-3 rounded-full font-semibold hover:bg-amber-700 transition shadow-lg">
-                            Daftar Sekarang
-                        </a>
-                    </div>
-                </div>
-
-                <div class="bg-blue-950 rounded-xl shadow-xl p-8 md:p-10 text-white flex flex-col">
-                    <h3 class="text-xl md:text-2xl font-bold mb-2" style="font-family: 'Georgia', serif;">Paket Kelompok
-                    </h3>
-                    <p class="text-sm text-gray-300 border-b border-gray-600 pb-4 mb-4">Durasi : Sesuai Pemesanan</p>
-
-                    <ul class="space-y-4 mb-10 flex-grow text-sm md:text-base">
-                        <li class="flex items-start border-b border-gray-600 pb-3">
-                            <svg class="h-5 w-5 text-green-500 mr-3 flex-shrink-0" fill="none" stroke="currentColor"
-                                viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7">
-                                </path>
-                            </svg>
-                            <span>Lorem ipsum</span>
-                        </li>
-                        <li class="flex items-start border-b border-gray-600 pb-3">
-                            <svg class="h-5 w-5 text-green-500 mr-3 flex-shrink-0" fill="none" stroke="currentColor"
-                                viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7">
-                                </path>
-                            </svg>
-                            <span>Lorem ipsum</span>
-                        </li>
-                        <li class="flex items-start border-b border-gray-600 pb-3">
-                            <svg class="h-5 w-5 text-green-500 mr-3 flex-shrink-0" fill="none" stroke="currentColor"
-                                viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7">
-                                </path>
-                            </svg>
-                            <span>Lorem ipsum</span>
-                        </li>
-                        <li class="flex items-start border-b border-gray-600 pb-3">
-                            <svg class="h-5 w-5 text-green-500 mr-3 flex-shrink-0" fill="none" stroke="currentColor"
-                                viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7">
-                                </path>
-                            </svg>
-                            <span>Lorem ipsum</span>
-                        </li>
-                        <li class="flex items-start border-b border-gray-600 pb-3">
-                            <svg class="h-5 w-5 text-green-500 mr-3 flex-shrink-0 mt-0.5" fill="none"
-                                stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7">
-                                </path>
-                            </svg>
-                            <span class="leading-snug">Lorem ipsum dolor sit amet,<br>consectetur adipiscing elit</span>
-                        </li>
-                    </ul>
-
-                    <div class="text-center mt-auto">
-                        <p class="font-bold text-lg mb-6">Rp. xxx.xxx.xx / Kelompok</p>
-                        <a href="/pendaftaran"
-                            class="inline-block w-full sm:w-auto bg-amber-600 text-white px-8 py-3 rounded-full font-semibold hover:bg-amber-700 transition shadow-lg">
-                            Daftar Sekarang
-                        </a>
-                    </div>
-                </div>
-
+            <div class="bg-blue-950 rounded-xl shadow-xl p-8 md:p-10 text-white">
+                <h3 class="text-xl md:text-2xl font-bold mb-6" style="font-family: 'Georgia', serif;">
+                    {{ $programTypes['group']['title'] ?? 'Program Kelompok' }}
+                </h3>
+                <p class="text-sm md:text-base text-gray-200 leading-relaxed text-justify">
+                    {{ $programTypes['group']['description'] ?? 'Pelatihan kolaboratif untuk sekolah, komunitas, atau instansi dengan skema materi yang fleksibel sesuai kebutuhan.' }}
+                </p>
             </div>
-        </section>
+
+        </div>
+    </section>
+
+
+    <section class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+
+        <h2 class="text-3xl md:text-4xl font-bold text-center text-blue-950 mb-12" style="font-family: 'Georgia', serif;">
+            Paket Program
+        </h2>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12">
+
+            <div class="bg-blue-950 rounded-xl shadow-xl p-8 md:p-10 text-white flex flex-col">
+                <h3 class="text-xl md:text-2xl font-bold mb-2" style="font-family: 'Georgia', serif;">Paket Individu
+                </h3>
+                <p class="text-sm text-gray-300 border-b border-gray-600 pb-4 mb-4">Durasi :
+                    {{ $programPackages['individual']['duration'] ?? '20 Hari' }}</p>
+
+                <ul class="space-y-4 mb-10 flex-grow text-sm md:text-base">
+                    @foreach ($programPackages['individual']['features'] ?? [] as $feature)
+                        <li class="flex items-start border-b border-gray-600 pb-3">
+                            <svg class="h-5 w-5 text-green-500 mr-3 flex-shrink-0" fill="none" stroke="currentColor"
+                                viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7">
+                                </path>
+                            </svg>
+                            <span>{{ $feature }}</span>
+                        </li>
+                    @endforeach
+                </ul>
+
+                <div class="text-center mt-auto">
+                    <p class="font-bold text-lg mb-6">
+                        {{ $programPackages['individual']['price'] ?? 'Hubungi Admin untuk Info Biaya / Orang' }}</p>
+                    <a href="/pendaftaran"
+                        class="inline-block w-full sm:w-auto bg-amber-600 text-white px-8 py-3 rounded-full font-semibold hover:bg-amber-700 transition shadow-lg">
+                        Daftar Sekarang
+                    </a>
+                </div>
+            </div>
+
+            <div class="bg-blue-950 rounded-xl shadow-xl p-8 md:p-10 text-white flex flex-col">
+                <h3 class="text-xl md:text-2xl font-bold mb-2" style="font-family: 'Georgia', serif;">Paket Kelompok
+                </h3>
+                <p class="text-sm text-gray-300 border-b border-gray-600 pb-4 mb-4">Durasi :
+                    {{ $programPackages['group']['duration'] ?? 'Sesuai Pemesanan' }}</p>
+
+                <ul class="space-y-4 mb-10 flex-grow text-sm md:text-base">
+                    @foreach ($programPackages['group']['features'] ?? [] as $feature)
+                        <li class="flex items-start border-b border-gray-600 pb-3">
+                            <svg class="h-5 w-5 text-green-500 mr-3 flex-shrink-0" fill="none" stroke="currentColor"
+                                viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7">
+                                </path>
+                            </svg>
+                            <span>{{ $feature }}</span>
+                        </li>
+                    @endforeach
+                </ul>
+
+                <div class="text-center mt-auto">
+                    <p class="font-bold text-lg mb-6">
+                        {{ $programPackages['group']['price'] ?? 'Hubungi Admin untuk Info Biaya / Kelompok' }}</p>
+                    <a href="/pendaftaran"
+                        class="inline-block w-full sm:w-auto bg-amber-600 text-white px-8 py-3 rounded-full font-semibold hover:bg-amber-700 transition shadow-lg">
+                        Daftar Sekarang
+                    </a>
+                </div>
+            </div>
+
+        </div>
+    </section>
 
     <section class="py-20 bg-white">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

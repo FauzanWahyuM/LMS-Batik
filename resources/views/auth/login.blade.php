@@ -59,7 +59,7 @@
                     <img src="{{ asset('img/komunitasbatik.png') }}" alt="Logo LPK" class="h-full w-full object-cover"
                         onerror="this.style.display='none'">
                 </div>
-                <h1 class="text-2xl font-bold text-slate-800 tracking-tight">Selamat Datang Kembali</h1>
+                <h1 class="text-2xl font-bold text-slate-800 tracking-tight">Selamat Datang</h1>
                 <p class="text-sm text-slate-500 mt-2">
                     Silakan masukkan username dan kata sandi Anda untuk melanjutkan.
                 </p>

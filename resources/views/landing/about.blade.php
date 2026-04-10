@@ -27,10 +27,10 @@
                 Tentang Kami
             </h2>
             <p class="text-gray-700 leading-relaxed text-base md:text-lg">
-                Lorem ipsum dolor sit amet consectetur adipiscing elit. Ut et massa mi. Aliquam in hendrerit urna.
-                Pellentesque
-                sit amet sapien fringilla vestibulum nec eget metus sodales. Praesent non sem facilisis hendrerit nisi vitae
-                volutpat quam. Quisque id nunc tristique enim quis interdum odio. Integer at tempus magna.
+                LPK Kama Praja Madiun adalah lembaga pelatihan yang berfokus pada penguatan keterampilan membatik secara
+                terstruktur, praktis, dan relevan dengan kebutuhan industri kreatif. Kami menggabungkan nilai tradisi batik
+                nusantara dengan pendekatan pembelajaran modern agar peserta mampu berkarya, berwirausaha, dan menjaga
+                kelestarian budaya lokal secara berkelanjutan.
             </p>
         </div>
     </section>
@@ -43,8 +43,8 @@
                         Visi
                     </h3>
                     <p class="text-gray-700 leading-relaxed">
-                        Lorem ipsum dolor sit amet consectetur adipiscing elit. Ut et massa mi. Aliquam in hendrerit urna.
-                        Pellentesque sit amet sapien fringilla vestibulum nec eget metus sodales.
+                        Menjadi pusat pelatihan batik unggulan di Madiun yang mencetak pembatik kreatif, berdaya saing, dan
+                        berkarakter budaya.
                     </p>
                 </div>
 
@@ -53,8 +53,8 @@
                         Misi
                     </h3>
                     <p class="text-gray-700 leading-relaxed">
-                        Lorem ipsum dolor sit amet consectetur adipiscing elit. Ut et massa mi. Aliquam in hendrerit urna.
-                        Pellentesque sit amet sapien fringilla vestibulum nec eget metus sodales.
+                        Menyelenggarakan pelatihan berbasis praktik, membangun ekosistem pembelajaran kolaboratif, dan
+                        mendampingi peserta agar mampu menghasilkan karya batik berkualitas serta bernilai ekonomi.
                     </p>
                 </div>
             </div>

@@ -21,50 +21,61 @@
 
     </section>
 
-    <div class="bg-white py-20 relative z-10">
-        <h2 class="text-2xl md:text-3xl font-bold text-center text-blue-950" style="font-family: 'Georgia', serif;">
-            Hasil Karya Peserta
-        </h2>
-    </div>
-
-    <section>
+    <section class="py-16 bg-white border-t border-gray-100">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 md:gap-10 min-h-[400px]">
-                @forelse ($gallery as $item)
-                    <article
-                        class="group relative overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-lg">
-                        <div class="aspect-4/3 w-full overflow-hidden bg-slate-100">
-                            <img src="{{ route('public-file', ['path' => ltrim($item->image_path, '/')]) }}"
-                                alt="{{ $item->title }}"
-                                class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105">
-                        </div>
-                        <div class="p-4 md:p-5 transition-opacity duration-300 group-hover:opacity-0">
-                            <h3 class="text-lg font-bold text-slate-900" style="font-family: 'Georgia', serif;">
-                                {{ $item->title }}</h3>
-                            <p class="mt-4 text-xs font-semibold uppercase tracking-wide text-amber-700">
-                                Karya: {{ $item->creator_name }}
-                            </p>
-                        </div>
+            <div class="mb-10 text-center">
+                <div class="mx-auto">
+                    <h2 class="text-3xl md:text-4xl font-bold text-gray-900" style="font-family: 'Georgia', serif;">
+                        Galeri Karya Peserta
+                    </h2>
+                    <p class="mt-2 text-sm text-gray-600">Karya terbaru yang diunggah oleh peserta pelatihan.</p>
+                </div>
+            </div>
 
-                        <div
-                            class="pointer-events-none absolute inset-0 flex flex-col justify-center bg-blue-950/90 px-6 py-8 text-center opacity-0 transition-opacity duration-300 group-hover:opacity-100">
-                            <h3 class="text-2xl font-bold text-white" style="font-family: 'Georgia', serif;">
-                                {{ $item->title }}</h3>
-                            <p class="mt-3 text-sm leading-relaxed text-slate-200">
-                                {{ \Illuminate\Support\Str::limit($item->description, 140) }}
+            <div class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                @forelse (($gallery ?? collect()) as $artwork)
+                    <article
+                        class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-lg">
+                        <div class="h-56 overflow-hidden bg-slate-100">
+                            <img src="{{ route('public-file', ['path' => ltrim($artwork->image_path, '/')]) }}"
+                                alt="{{ $artwork->title }}"
+                                class="h-full w-full object-cover transition-transform duration-500 hover:scale-105">
+                        </div>
+                        <div class="p-4">
+                            <h3 class="text-lg font-bold text-slate-900" style="font-family: 'Georgia', serif;">
+                                {{ $artwork->title }}</h3>
+                            <p class="mt-2 text-sm text-slate-600 leading-relaxed">
+                                {{ \Illuminate\Support\Str::limit($artwork->description, 120) }}
                             </p>
-                            <p class="mt-4 text-xs font-semibold uppercase tracking-wide text-amber-300">
-                                Karya: {{ $item->creator_name }}
-                            </p>
+                            <p class="mt-4 text-xs font-semibold uppercase tracking-wide text-amber-700">Karya:
+                                {{ $artwork->creator_name }}</p>
                         </div>
                     </article>
                 @empty
                     <div
                         class="col-span-full rounded-xl border border-dashed border-slate-300 bg-slate-50 p-8 text-center text-sm text-slate-600">
-                        Belum ada karya yang ditampilkan.
+                        Belum ada karya peserta yang dipublikasikan.
                     </div>
                 @endforelse
             </div>
+
+            @if (($gallery ?? null) instanceof \Illuminate\Contracts\Pagination\LengthAwarePaginator && $gallery->total() > 6)
+                <div class="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
+                    <a href="{{ $gallery->previousPageUrl() ?? '#' }}"
+                        class="inline-flex items-center rounded-full border border-gray-300 px-5 py-2 text-sm font-semibold text-gray-700 transition {{ $gallery->onFirstPage() ? 'pointer-events-none opacity-50' : 'hover:border-amber-500 hover:text-amber-700' }}"
+                        aria-disabled="{{ $gallery->onFirstPage() ? 'true' : 'false' }}">
+                        Sebelumnya
+                    </a>
+                    <p class="text-sm text-gray-600">
+                        Halaman {{ $gallery->currentPage() }} dari {{ $gallery->lastPage() }}
+                    </p>
+                    <a href="{{ $gallery->nextPageUrl() ?? '#' }}"
+                        class="inline-flex items-center rounded-full border border-gray-300 px-5 py-2 text-sm font-semibold text-gray-700 transition {{ $gallery->hasMorePages() ? 'hover:border-amber-500 hover:text-amber-700' : 'pointer-events-none opacity-50' }}"
+                        aria-disabled="{{ $gallery->hasMorePages() ? 'false' : 'true' }}">
+                        Berikutnya
+                    </a>
+                </div>
+            @endif
         </div>
     </section>
 
@@ -83,6 +94,12 @@
                         @forelse (($achievements ?? collect()) as $achievement)
                             @php
                                 $rank = $achievement->rank;
+                                $rankLabel = match ($rank) {
+                                    1 => 'Gold',
+                                    2 => 'Silver',
+                                    3 => 'Bronze',
+                                    default => null,
+                                };
                                 $badgeClass = match ($rank) {
                                     1 => 'from-yellow-400 to-yellow-600',
                                     2 => 'from-slate-300 to-slate-500',
@@ -123,7 +140,7 @@
                                         @endif
                                     </div>
                                     <h3 class="text-xl font-bold text-gray-900 mb-2">
-                                        {{ $achievement->rank ? 'Juara ' . $achievement->rank : $achievement->title }}
+                                        {{ $rankLabel ?? $achievement->title }}
                                     </h3>
                                     <p class="text-gray-600 mb-2 text-sm">
                                         {{ $achievement->event_name }}{{ $achievement->year ? ' - ' . $achievement->year : '' }}
@@ -170,7 +187,8 @@
         <div class="absolute -right-10 bottom-0 h-52 w-52 rounded-full bg-sky-400/20 blur-2xl"></div>
 
         <div class="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="rounded-3xl bg-blue-950 border border-white/10 p-8 md:p-12 text-center backdrop-blur-sm shadow-2xl">
+            <div
+                class="rounded-3xl bg-blue-950 border border-white/10 p-8 md:p-12 text-center backdrop-blur-sm shadow-2xl">
                 <h2 class="text-3xl md:text-4xl font-bold text-white mb-5" style="font-family: 'Georgia', serif;">
                     Ciptakan Karya Batik Anda Sendiri
                 </h2>

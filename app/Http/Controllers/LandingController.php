@@ -4,16 +4,20 @@ namespace App\Http\Controllers;
 
 use App\Models\Achievement;
 use App\Models\Artwork;
+use App\Models\Module;
 use App\Models\RegistrationIndividual;
 use App\Models\RegistrationGroup;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class LandingController extends Controller
 {
     public function index()
     {
+        $programContent = $this->buildProgramContent();
+
         $latestArtworks = Schema::hasTable('artworks')
             ? Artwork::latest()->take(6)->get()
             : collect();
@@ -30,6 +34,7 @@ class LandingController extends Controller
         return view('landing.index', [
             'latestArtworks' => $latestArtworks,
             'featuredAchievements' => $featuredAchievements,
+            'programTypes' => $programContent['types'],
         ]);
     }
 
@@ -103,49 +108,22 @@ class LandingController extends Controller
 
     public function programs()
     {
-        $programs = [
-            [
-                'title' => 'Batik Tulis Dasar',
-                'description' => 'Pelajari teknik dasar batik tulis dari nol hingga mahir. Cocok untuk pemula yang ingin memulai perjalanan batik.',
-                'schedule' => 'Senin & Rabu, 09:00 - 12:00',
-                'instructor' => 'Ibu Sri Mulyani',
-                'duration' => '3 Bulan',
-                'level' => 'Pemula'
-            ],
-            [
-                'title' => 'Batik Cap',
-                'description' => 'Kuasai teknik batik cap dengan berbagai motif tradisional dan modern.',
-                'schedule' => 'Selasa & Kamis, 13:00 - 16:00',
-                'instructor' => 'Bapak Slamet Riyadi',
-                'duration' => '2 Bulan',
-                'level' => 'Menengah'
-            ],
-            [
-                'title' => 'Batik Kombinasi',
-                'description' => 'Pelajari teknik kombinasi batik tulis dan cap untuk hasil yang lebih artistik.',
-                'schedule' => 'Jumat & Sabtu, 09:00 - 12:00',
-                'instructor' => 'Ibu Dewi Kartika',
-                'duration' => '4 Bulan',
-                'level' => 'Lanjutan'
-            ],
-            [
-                'title' => 'Desain Motif Batik',
-                'description' => 'Kembangkan kreativitas dalam menciptakan motif batik kontemporer yang unik.',
-                'schedule' => 'Rabu & Jumat, 14:00 - 17:00',
-                'instructor' => 'Bapak Agus Prasetyo',
-                'duration' => '2 Bulan',
-                'level' => 'Semua Level'
-            ]
-        ];
+        $programContent = $this->buildProgramContent();
 
-        return view('landing.programs', compact('programs'));
+        return view('landing.programs', [
+            'programTypes' => $programContent['types'],
+            'programPackages' => $programContent['packages'],
+        ]);
     }
 
     public function gallery()
     {
         $gallery = Schema::hasTable('artworks')
-            ? Artwork::latest()->get()
-            : collect();
+            ? Artwork::latest()->paginate(6)->withQueryString()
+            : new LengthAwarePaginator([], 0, 6, 1, [
+                'path' => request()->url(),
+                'query' => request()->query(),
+            ]);
 
         $achievements = Schema::hasTable('achievements')
             ? Achievement::query()
@@ -156,5 +134,128 @@ class LandingController extends Controller
             : collect();
 
         return view('landing.gallery', compact('gallery', 'achievements'));
+    }
+
+    private function buildProgramContent(): array
+    {
+        $modules = Schema::hasTable('modules')
+            ? Module::query()
+                ->latest()
+                ->get(['title', 'description', 'duration'])
+            : collect();
+
+        $individualModules = $modules
+            ->values()
+            ->filter(fn ($module, int $index): bool => $index % 2 === 0)
+            ->take(5)
+            ->values();
+
+        $groupModules = $modules
+            ->values()
+            ->filter(fn ($module, int $index): bool => $index % 2 !== 0)
+            ->take(5)
+            ->values();
+
+        if ($individualModules->isEmpty() && $modules->isNotEmpty()) {
+            $individualModules = $modules->take(5)->values();
+        }
+
+        if ($groupModules->isEmpty() && $modules->isNotEmpty()) {
+            $groupModules = $modules->skip(1)->take(5)->values();
+        }
+
+        $types = [
+            'individual' => [
+                'title' => 'Program Individu',
+                'description' => $this->buildProgramDescription(
+                    $individualModules,
+                    'Pembelajaran personal dengan pendampingan langsung untuk memperkuat teknik membatik sesuai ritme belajar peserta.'
+                ),
+            ],
+            'group' => [
+                'title' => 'Program Kelompok',
+                'description' => $this->buildProgramDescription(
+                    $groupModules,
+                    'Pelatihan kolaboratif untuk sekolah, komunitas, dan instansi dengan materi yang menyesuaikan kebutuhan kelompok.'
+                ),
+            ],
+        ];
+
+        $packages = [
+            'individual' => [
+                'duration' => $this->buildDurationLabel($individualModules, '20 Hari'),
+                'features' => $this->buildFeatureList($individualModules),
+                'price' => 'Hubungi Admin untuk Info Biaya / Orang',
+            ],
+            'group' => [
+                'duration' => $this->buildDurationLabel($groupModules, 'Sesuai Pemesanan'),
+                'features' => $this->buildFeatureList($groupModules),
+                'price' => 'Hubungi Admin untuk Info Biaya / Kelompok',
+            ],
+        ];
+
+        return [
+            'types' => $types,
+            'packages' => $packages,
+        ];
+    }
+
+    private function buildProgramDescription($modules, string $fallback): string
+    {
+        $description = $modules
+            ->pluck('description')
+            ->filter()
+            ->map(fn (string $value): string => trim(strip_tags($value)))
+            ->first();
+
+        if (!empty($description)) {
+            return Str::limit($description, 220);
+        }
+
+        $titles = $modules
+            ->pluck('title')
+            ->filter()
+            ->take(2)
+            ->implode(', ');
+
+        if ($titles !== '') {
+            return $fallback . ' Materi utama: ' . $titles . '.';
+        }
+
+        return $fallback;
+    }
+
+    private function buildDurationLabel($modules, string $fallback): string
+    {
+        $duration = $modules
+            ->pluck('duration')
+            ->filter()
+            ->first();
+
+        return !empty($duration) ? (string) $duration : $fallback;
+    }
+
+    private function buildFeatureList($modules): array
+    {
+        $features = $modules
+            ->pluck('title')
+            ->filter()
+            ->map(fn (string $title): string => 'Materi ' . $title)
+            ->unique()
+            ->take(5)
+            ->values()
+            ->all();
+
+        if (!empty($features)) {
+            return $features;
+        }
+
+        return [
+            'Pendampingan oleh pengajar berpengalaman',
+            'Praktik langsung teknik canting dan pewarnaan',
+            'Evaluasi hasil karya di akhir sesi',
+            'Sertifikat penyelesaian program',
+            'Konsultasi lanjutan pengembangan karya',
+        ];
     }
 }

@@ -37,8 +37,9 @@
                         </div>
                     </div>
                     <p class="text-sm text-gray-700 leading-relaxed px-2">
-                        Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore
-                        et dolore magna aliqua.
+                        Batik mengajarkan ketelitian, kesabaran, dan karakter berkarya yang kuat dari proses mencanting
+                        hingga
+                        pewarnaan akhir.
                     </p>
                 </div>
 
@@ -50,8 +51,9 @@
                         </div>
                     </div>
                     <p class="text-sm text-gray-700 leading-relaxed px-2">
-                        Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore
-                        et dolore magna aliqua.
+                        Setiap motif batik memuat cerita budaya lokal yang memperkaya wawasan sekaligus menumbuhkan rasa
+                        cinta
+                        pada warisan bangsa.
                     </p>
                 </div>
 
@@ -63,8 +65,8 @@
                         </div>
                     </div>
                     <p class="text-sm text-gray-700 leading-relaxed px-2">
-                        Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore
-                        et dolore magna aliqua.
+                        Keterampilan membatik membuka peluang wirausaha kreatif melalui produk fesyen, dekorasi, dan karya
+                        seni bernilai ekonomi.
                     </p>
                 </div>
 
@@ -76,8 +78,9 @@
                         </div>
                     </div>
                     <p class="text-sm text-gray-700 leading-relaxed px-2">
-                        Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore
-                        et dolore magna aliqua.
+                        Pembelajaran batik melatih kolaborasi dan inovasi, sehingga peserta siap berkembang di industri
+                        kreatif
+                        berbasis budaya.
                     </p>
                 </div>
             </div>
@@ -99,10 +102,12 @@
                             class="w-full h-full object-cover transform group-hover:scale-110 transition duration-500">
                     </div>
                     <div
-                        class="absolute bottom-0 left-0 right-0 bg-linear-to-t from-blue-950 via-blue-950/95 to-transparent p-6">
-                        <h3 class="text-xl font-bold text-white mb-2">Pelatihan Individu</h3>
-                        <p class="text-gray-200 text-sm mb-3">Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed
-                            do eiusmod tempor incididunt ut labore.</p>
+                        class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-blue-950 via-blue-950/95 to-transparent p-6">
+                        <h3 class="text-xl font-bold text-white mb-2">
+                            {{ $programTypes['individual']['title'] ?? 'Program Individu' }}</h3>
+                        <p class="text-gray-200 text-sm mb-3">
+                            {{ \Illuminate\Support\Str::limit($programTypes['individual']['description'] ?? 'Pembelajaran personal membatik dengan pendampingan intensif.', 130) }}
+                        </p>
                     </div>
                 </div>
 
@@ -113,10 +118,12 @@
                             class="w-full h-full object-cover transform group-hover:scale-110 transition duration-500">
                     </div>
                     <div
-                        class="absolute bottom-0 left-0 right-0 bg-linear-to-t from-blue-950 via-blue-950/95 to-transparent p-6">
-                        <h3 class="text-xl font-bold text-white mb-2">Pelatihan Kelompok</h3>
-                        <p class="text-gray-200 text-sm mb-3">Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed
-                            do eiusmod tempor incididunt ut labore.</p>
+                        class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-blue-950 via-blue-950/95 to-transparent p-6">
+                        <h3 class="text-xl font-bold text-white mb-2">
+                            {{ $programTypes['group']['title'] ?? 'Program Kelompok' }}</h3>
+                        <p class="text-gray-200 text-sm mb-3">
+                            {{ \Illuminate\Support\Str::limit($programTypes['group']['description'] ?? 'Pelatihan membatik untuk kelompok dengan materi yang fleksibel.', 130) }}
+                        </p>
                     </div>
                 </div>
             </div>
@@ -137,45 +144,45 @@
 
             <div class="relative max-w-2xl mx-auto">
                 <div
-                    class="bg-linear-to-br from-blue-950 to-blue-900 rounded-xl shadow-xl px-6 md:px-10 py-8 md:py-10 text-white">
+                    class="bg-gradient-to-br from-blue-950 to-blue-900 rounded-xl shadow-xl px-6 md:px-10 py-8 md:py-10 text-white">
                     <div class="overflow-hidden">
                         <div id="testimonial-slider" class="flex transition-transform duration-500 ease-in-out">
 
                             <div class="min-w-full">
                                 <div class="text-center space-y-4">
-                                    <p class="text-sm md:text-lg text-black italic leading-relaxed px-2">
+                                    <p class="text-sm md:text-lg italic leading-relaxed px-2">
                                         "Pengalaman belajar yang luar biasa! Instrukturnya sangat sabar dan materi yang
                                         diajarkan sangat lengkap. Sekarang saya sudah bisa membuat batik sendiri."
                                     </p>
                                     <div>
                                         <p class="font-semibold text-base text-amber-300">Rina Wijaya</p>
-                                        <p class="text-xs md:text-sm text-gray-400">Peserta Program Batik Dasar</p>
+                                        <p class="text-xs md:text-sm text-gray-300">Peserta Program Batik Dasar</p>
                                     </div>
                                 </div>
                             </div>
 
                             <div class="min-w-full">
                                 <div class="text-center space-y-4">
-                                    <p class="text-sm md:text-lg text-black italic leading-relaxed px-2">
+                                    <p class="text-sm md:text-lg italic leading-relaxed px-2">
                                         "Platform yang sangat membantu untuk belajar batik. Jadwal kelasnya fleksibel dan
                                         bisa disesuaikan dengan waktu saya."
                                     </p>
                                     <div>
                                         <p class="font-semibold text-base text-amber-300">Ahmad Fauzi</p>
-                                        <p class="text-xs md:text-sm text-gray-400">Peserta Program Batik Lanjutan</p>
+                                        <p class="text-xs md:text-sm text-gray-300">Peserta Program Batik Lanjutan</p>
                                     </div>
                                 </div>
                             </div>
 
                             <div class="min-w-full">
                                 <div class="text-center space-y-4">
-                                    <p class="text-sm md:text-lg text-black italic leading-relaxed px-2">
+                                    <p class="text-sm md:text-lg italic leading-relaxed px-2">
                                         "Saya sangat puas dengan program desain motif batik. Sekarang saya bisa membuat
                                         desain sendiri."
                                     </p>
                                     <div>
                                         <p class="font-semibold text-base text-amber-300">Siti Nurhaliza</p>
-                                        <p class="text-xs md:text-sm text-gray-400">Peserta Program Desain Batik</p>
+                                        <p class="text-xs md:text-sm text-gray-300">Peserta Program Desain Batik</p>
                                     </div>
                                 </div>
                             </div>
@@ -200,50 +207,6 @@
                     </svg>
                 </button>
 
-            </div>
-        </div>
-    </section>
-
-    <section class="py-16 bg-white border-t border-gray-100">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="mb-10 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-                <div>
-                    <h2 class="text-3xl md:text-4xl font-bold text-gray-900" style="font-family: 'Georgia', serif;">
-                        Galeri Karya Peserta
-                    </h2>
-                    <p class="mt-2 text-sm text-gray-600">Karya terbaru yang diunggah oleh peserta pelatihan.</p>
-                </div>
-                <a href="{{ route('landing.gallery') }}"
-                    class="inline-flex items-center justify-center rounded-full bg-blue-950 px-5 py-2 text-sm font-semibold text-white transition hover:bg-blue-900">
-                    Lihat Semua Galeri
-                </a>
-            </div>
-
-            <div class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                @forelse (($latestArtworks ?? collect()) as $artwork)
-                    <article
-                        class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-lg">
-                        <div class="h-56 overflow-hidden bg-slate-100">
-                            <img src="{{ route('public-file', ['path' => ltrim($artwork->image_path, '/')]) }}"
-                                alt="{{ $artwork->title }}"
-                                class="h-full w-full object-cover transition-transform duration-500 hover:scale-105">
-                        </div>
-                        <div class="p-4">
-                            <h3 class="text-lg font-bold text-slate-900" style="font-family: 'Georgia', serif;">
-                                {{ $artwork->title }}</h3>
-                            <p class="mt-2 text-sm text-slate-600 leading-relaxed">
-                                {{ \Illuminate\Support\Str::limit($artwork->description, 120) }}
-                            </p>
-                            <p class="mt-4 text-xs font-semibold uppercase tracking-wide text-amber-700">Karya:
-                                {{ $artwork->creator_name }}</p>
-                        </div>
-                    </article>
-                @empty
-                    <div
-                        class="col-span-full rounded-xl border border-dashed border-slate-300 bg-slate-50 p-8 text-center text-sm text-slate-600">
-                        Belum ada karya peserta yang dipublikasikan.
-                    </div>
-                @endforelse
             </div>
         </div>
     </section>
