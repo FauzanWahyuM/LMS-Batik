@@ -128,7 +128,7 @@
                             {{ $discussion->created_at->diffForHumans() }}
                         </p>
                         <div
-                            class="mt-1 whitespace-pre-line rounded-lg border border-slate-200 bg-white p-3 text-sm leading-relaxed text-slate-700">
+                            class="mt-1 rounded-lg border border-slate-200 bg-white p-3 text-sm leading-relaxed text-slate-700">
                             {{ $discussion->content }}
                         </div>
                     </div>

@@ -65,7 +65,8 @@
                                 <div class="grid gap-4 md:grid-cols-2">
                                     @foreach ($chapter['images'] as $image)
                                         <div class="overflow-hidden rounded-lg bg-slate-200">
-                                            <img src="{{ $image }}" alt="Materi gambar"
+                                            <img src="{{ asset('storage/' . $image['path']) }}"
+                                                alt="{{ $image['title'] ?? 'Materi gambar' }}"
                                                 class="h-48 w-full object-cover">
                                         </div>
                                     @endforeach
