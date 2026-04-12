@@ -113,7 +113,7 @@
                             data-complete-url="{{ route('dashboard.participant.modules.material.complete', ['module' => $moduleSlug, 'material' => $selectedMaterial->slug]) }}"
                             data-completed="{{ !empty($selectedMaterial->is_completed) ? '1' : '0' }}"
                             class="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-emerald-700">
-                            {{ !empty($selectedMaterial->is_completed) ? 'Bab Selesai' : 'Tandai Bab Selesai' }}
+                            {{ !empty($selectedMaterial->is_completed) ? 'Bab Selesai' : 'Tandai Sebagai Selesai' }}
                         </button>
                     </div>
                     <div class="mt-3 text-sm leading-relaxed text-slate-700">
@@ -361,10 +361,14 @@
             }
 
             const data = await response.json();
-            const percentage = data?.progress ?? 0;
+            const percentage = data?.overall_progress ?? data?.progress ?? 0;
             const completed = data?.statistics?.completed_materials ?? 0;
             const total = data?.statistics?.total_materials ?? 0;
 
+            updateProgressSummary(percentage, completed, total);
+        }
+
+        function updateProgressSummary(percentage, completed, total) {
             if (progressBar) {
                 progressBar.style.width = `${percentage}%`;
             }
@@ -378,29 +382,27 @@
 
         function updateSelectedMaterialStatus(isCompleted) {
             const slug = selectedMaterialHeader?.dataset.materialSlug;
-            if (!slug) {
-                return;
-            }
-
-            const chip = document.querySelector(`[data-material-chip="${slug}"]`);
-            if (chip) {
-                const hasCheck = Array.from(chip.childNodes).some(node => node.textContent === '✓');
-                if (isCompleted && !hasCheck) {
-                    const check = document.createElement('span');
-                    check.className = 'ml-1';
-                    check.textContent = '✓';
-                    chip.appendChild(check);
-                }
-                if (!isCompleted && hasCheck) {
-                    const check = Array.from(chip.childNodes).find(node => node.textContent === '✓');
-                    if (check) {
-                        chip.removeChild(check);
+            if (slug) {
+                const chip = document.querySelector(`[data-material-chip="${slug}"]`);
+                if (chip) {
+                    const hasCheck = Array.from(chip.childNodes).some(node => node.textContent === '✓');
+                    if (isCompleted && !hasCheck) {
+                        const check = document.createElement('span');
+                        check.className = 'ml-1';
+                        check.textContent = '✓';
+                        chip.appendChild(check);
+                    }
+                    if (!isCompleted && hasCheck) {
+                        const check = Array.from(chip.childNodes).find(node => node.textContent === '✓');
+                        if (check) {
+                            chip.removeChild(check);
+                        }
                     }
                 }
             }
 
             if (markCompleteBtn) {
-                markCompleteBtn.textContent = isCompleted ? 'Bab Selesai' : 'Tandai Bab Selesai';
+                markCompleteBtn.textContent = isCompleted ? 'Bab Selesai' : 'Tandai Sebagai Selesai';
                 markCompleteBtn.dataset.completed = isCompleted ? '1' : '0';
             }
 
@@ -422,6 +424,7 @@
 
             this.disabled = true;
             this.textContent = 'Menyimpan...';
+            let completedState = this.dataset.completed === '1';
 
             try {
                 const response = await fetch(url, {
@@ -429,9 +432,11 @@
                     headers: {
                         'Accept': 'application/json',
                         'X-Requested-With': 'XMLHttpRequest',
-                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
                     },
                     credentials: 'same-origin',
+                    body: new URLSearchParams({
+                        _token: '{{ csrf_token() }}',
+                    }),
                 });
 
                 if (!response.ok) {
@@ -439,18 +444,34 @@
                 }
 
                 const data = await response.json();
-                const completed = data?.completed === true;
-                updateSelectedMaterialStatus(completed);
-                await refreshProgress();
+                if (data?.completed !== undefined) {
+                    completedState = Boolean(data.completed);
+                } else {
+                    // fallback kalau backend ga kirim
+                    completedState = !completedState;
+                }
+                updateSelectedMaterialStatus(completedState);
+
+                if (data?.progress?.overall !== undefined) {
+                    updateProgressSummary(
+                        data.progress.overall,
+                        data?.statistics?.completed_materials ?? 0,
+                        data?.statistics?.total_materials ?? 0,
+                    );
+                } else {
+                    await refreshProgress();
+                }
             } catch (error) {
                 alert('Tidak dapat mengubah status bab. Silakan coba lagi.');
             } finally {
                 if (markCompleteBtn) {
                     markCompleteBtn.disabled = false;
-                    markCompleteBtn.textContent = markCompleteBtn.dataset.completed === '1' ? 'Bab Selesai' :
-                        'Tandai Bab Selesai';
+                    markCompleteBtn.textContent = completedState ? 'Bab Selesai' : 'Tandai Sebagaiagai Selesai';
+                    markCompleteBtn.dataset.completed = completedState ? '1' : '0';
                 }
             }
         });
+
+        refreshProgress();
     </script>
 @endsection

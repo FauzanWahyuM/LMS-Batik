@@ -117,6 +117,7 @@ class ParticipantModuleService
         $progress = $this->getModuleProgress($module, $user);
         $assignments = $this->getUserAssignments($module, $user);
         $taskInstructions = $this->getTaskInstructions($module);
+        // Get completed materials by ID (for database materials)
         $completedMaterialIds = ParticipantProgress::where('user_id', $user->id)
             ->where('module_id', $module->id)
             ->where('status', 'completed')
@@ -124,14 +125,30 @@ class ParticipantModuleService
             ->pluck('material_id')
             ->all();
 
-        $completedCount = $materials->filter(function ($material) use ($completedMaterialIds) {
-            return isset($material->id) && in_array($material->id, $completedMaterialIds, true);
-        })->count();
+        // Get completed materials by slug (for chapter-based materials)
+        $completedMaterialSlugs = ParticipantProgress::where('user_id', $user->id)
+            ->where('module_id', $module->id)
+            ->where('status', 'completed')
+            ->whereNull('material_id')
+            ->whereNotNull('material_slug')
+            ->pluck('material_slug')
+            ->all();
+
+        $completedCount = ParticipantProgress::where('user_id', $user->id)
+            ->where('module_id', $module->id)
+            ->where('status', 'completed')
+            ->count();
         $totalCount = $materials->count();
         $overallProgress = $totalCount > 0 ? (int) round(($completedCount / $totalCount) * 100) : 0;
 
-        $materials = $materials->map(function ($material) use ($completedMaterialIds) {
-            $material->is_completed = isset($material->id) && in_array($material->id, $completedMaterialIds, true);
+        $materials = $materials->map(function ($material) use ($completedMaterialIds, $completedMaterialSlugs) {
+            if (isset($material->id)) {
+                // Database material
+                $material->is_completed = in_array($material->id, $completedMaterialIds, true);
+            } else {
+                // Chapter-based material
+                $material->is_completed = in_array($material->slug, $completedMaterialSlugs, true);
+            }
             return $material;
         });
 
@@ -186,6 +203,26 @@ class ParticipantModuleService
             })
             ->filter()
             ->values();
+    }
+
+    public function getProgressResponse(Module $module, User $user): array
+    {
+        $materials = $this->getMaterialsForModule($module);
+        $total = $materials->count();
+
+        $completed = ParticipantProgress::where('user_id', $user->id)
+            ->where('module_id', $module->id)
+            ->whereNotNull('material_id')
+            ->where('status', 'completed')
+            ->count();
+
+        $percentage = $total > 0 ? (int) round(($completed / $total) * 100) : 0;
+
+        return [
+            'completed' => $completed,
+            'total' => $total,
+            'percentage' => $percentage,
+        ];
     }
 
     /**
@@ -273,20 +310,32 @@ class ParticipantModuleService
     /**
      * Mark material as completed for a user
      */
-    public function markMaterialAsCompleted(Module $module, ModuleMaterial $material, User $user): ParticipantProgress
+    public function toggleMaterialCompletion(Module $module, ModuleMaterial $material, User $user): ParticipantProgress
     {
-        $progress = ParticipantProgress::updateOrCreate(
+        $progress = ParticipantProgress::firstOrCreate(
             [
                 'user_id' => $user->id,
                 'module_id' => $module->id,
                 'material_id' => $material->id,
             ],
             [
-                'status' => 'completed',
-                'progress_percentage' => 100,
-                'completed_at' => now(),
+                'status' => 'in_progress',
             ]
         );
+
+        if ($progress->status === 'completed') {
+            // ❌ kalau sudah selesai → balikin
+            $progress->status = 'in_progress';
+            $progress->progress_percentage = 0;
+            $progress->completed_at = null;
+        } else {
+            // ✅ kalau belum → tandai selesai
+            $progress->status = 'completed';
+            $progress->progress_percentage = 100;
+            $progress->completed_at = now();
+        }
+
+        $progress->save();
 
         return $progress;
     }

@@ -147,17 +147,34 @@ class ParticipantModuleController extends Controller
             abort(404);
         }
 
+        // First try to find material in database
         $material = $module->materials->firstWhere('slug', $materialSlug);
+
+        // If not found in database, check if it's a chapter-based material
+        if (! $material) {
+            $materials = $this->moduleService->getMaterialsForModule($module);
+            $material = $materials->firstWhere('slug', $materialSlug);
+        }
 
         if (! $material) {
             abort(404);
         }
 
-        $progress = \App\Models\ParticipantProgress::firstOrNew([
+        // For database materials, use material_id; for chapters, use null and track by slug
+        $progressQuery = [
             'user_id' => $user->id,
             'module_id' => $module->id,
-            'material_id' => $material->id,
-        ]);
+        ];
+
+        if (isset($material->id)) {
+            $progressQuery['material_id'] = $material->id;
+        } else {
+            // For chapters, we need to track by a unique identifier
+            // Since chapters don't have IDs, we'll use a combination of module_id, user_id, and a hash of the slug
+            $progressQuery['material_slug'] = $materialSlug;
+        }
+
+        $progress = \App\Models\ParticipantProgress::firstOrNew($progressQuery);
 
         $toggledCompleted = false;
 
@@ -186,13 +203,18 @@ class ParticipantModuleController extends Controller
                 ])->with('status', $toggledCompleted ? 'Bab berhasil ditandai selesai.' : 'Status bab diubah menjadi belum selesai.');
         }
 
+        $overallProgress = $this->moduleService->calculateOverallProgress($module, $user);
+        $statistics = $this->moduleService->getModuleStatistics($module, $user);
+
         return response()->json([
             'success' => true,
             'completed' => $toggledCompleted,
             'progress' => [
                 'status' => $progress->status,
                 'percentage' => $progress->progress_percentage,
+                'overall' => $overallProgress,
             ],
+            'statistics' => $statistics,
         ]);
     }
 
@@ -259,6 +281,11 @@ class ParticipantModuleController extends Controller
 
     private function resolveParticipantUser(Request $request): User
     {
+        // First, check if user is authenticated via Laravel Auth
+        if (auth()->check()) {
+            return auth()->user();
+        }
+
         $authUser = $request->session()->get('auth_user', []);
 
         if (!empty($authUser['email'])) {

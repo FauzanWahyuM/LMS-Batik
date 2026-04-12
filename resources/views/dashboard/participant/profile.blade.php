@@ -48,46 +48,65 @@
                 <div>
                     <label class="mb-1 block text-xs font-semibold text-slate-600">Password</label>
                     <div class="relative">
-                        <input id="participant-profile-password" type="password" name="password"
+                        <input id="participant-profile-password" type="text" name="password"
                             value="{{ old('password', $profile['password'] ?? '') }}" required
                             class="w-full rounded-lg border border-slate-300 px-3 py-2 pr-10 text-sm">
+
                         <button type="button" data-password-toggle data-password-target="participant-profile-password"
                             class="absolute inset-y-0 right-0 flex items-center px-3 text-slate-500"
-                            aria-label="Tampilkan kata sandi">
-                            <span data-icon="show">&#128065;</span>
-                            <span data-icon="hide" class="hidden">&#128584;</span>
+                            aria-label="Toggle password">
+
+                            <!-- ICON MATA TERTUTUP (FIXED) -->
+                            <svg data-icon="closed" class="hidden h-5 w-5" fill="none" stroke="currentColor"
+                                viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3l18 18" />
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M10.73 5.08A9.94 9.94 0 0112 5c4.478 0 8.268 2.943 9.542 7a9.956 9.956 0 01-1.258 2.593M6.1 6.1A9.956 9.956 0 002.458 12c1.274 4.057 5.064 7 9.542 7 1.358 0 2.65-.27 3.83-.756" />
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M9.88 9.88a3 3 0 104.24 4.24" />
+                            </svg>
+
+                            <!-- ICON MATA TERBUKA -->
+                            <svg data-icon="open" class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                            </svg>
                         </button>
                     </div>
                 </div>
 
-                <div>
+                <div class="sm:col-span-2">
                     <label class="mb-1 block text-xs font-semibold text-slate-600">Konfirmasi Password</label>
                     <div class="relative">
-                        <input id="participant-profile-password-confirmation" type="password" name="password_confirmation"
-                            value="{{ old('password_confirmation') }}" required
+                        <input id="participant-profile-password-confirmation" type="text" name="password_confirmation"
+                            value="{{ old('password_confirmation', $profile['password'] ?? '') }}" required
                             class="w-full rounded-lg border border-slate-300 px-3 py-2 pr-10 text-sm">
-                        <button type="button" data-password-toggle
-                            data-password-target="participant-profile-password-confirmation"
-                            class="absolute inset-y-0 right-0 flex items-center px-3 text-slate-500"
-                            aria-label="Tampilkan kata sandi">
-                            <span data-icon="show">&#128065;</span>
-                            <span data-icon="hide" class="hidden">&#128584;</span>
-                        </button>
-                    </div>
-                </div>
 
-                <div>
-                    <label class="mb-1 block text-xs font-semibold text-slate-600">Konfirmasi Password</label>
-                    <div class="relative">
-                        <input id="participant-profile-password-confirmation" type="password" name="password_confirmation"
-                            value="{{ old('password_confirmation') }}" required
-                            class="w-full rounded-lg border border-slate-300 px-3 py-2 pr-10 text-sm">
                         <button type="button" data-password-toggle
                             data-password-target="participant-profile-password-confirmation"
                             class="absolute inset-y-0 right-0 flex items-center px-3 text-slate-500"
-                            aria-label="Tampilkan kata sandi">
-                            <span data-icon="show">&#128065;</span>
-                            <span data-icon="hide" class="hidden">&#128584;</span>
+                            aria-label="Toggle password">
+
+                            <!-- ICON CLOSED FIX -->
+                            <svg data-icon="closed" class="hidden h-5 w-5" fill="none" stroke="currentColor"
+                                viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3l18 18" />
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M10.73 5.08A9.94 9.94 0 0112 5c4.478 0 8.268 2.943 9.542 7a9.956 9.956 0 01-1.258 2.593M6.1 6.1A9.956 9.956 0 002.458 12c1.274 4.057 5.064 7 9.542 7 1.358 0 2.65-.27 3.83-.756" />
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M9.88 9.88a3 3 0 104.24 4.24" />
+                            </svg>
+
+                            <!-- ICON OPEN -->
+                            <svg data-icon="open" class="h-5 w-5" fill="none" stroke="currentColor"
+                                viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                            </svg>
                         </button>
                     </div>
                 </div>
@@ -111,7 +130,8 @@
 
                 <div id="individual-fields" class="sm:col-span-2 space-y-4">
                     <div>
-                        <label class="mb-1 block text-xs font-semibold text-slate-600">Motivasi Singkat</label>
+                        <label class="mb-1 block text-xs font-semibold text-slate-600">Motivasi Singkat Anda Mengikuti
+                            Program!</label>
                         <textarea name="motivation" rows="3" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">{{ old('motivation', $profile['motivation']) }}</textarea>
                     </div>
                 </div>
@@ -146,7 +166,8 @@
     </section>
 
     <!-- Modal for password change notification -->
-    @if (session('force_password_change'))
+    @php $isDemoUser = session('auth_user.is_demo_user') ?? false; @endphp
+    @if (session('force_password_change') && !$isDemoUser)
         <div id="password-change-modal"
             class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
             <div class="mx-4 w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
@@ -177,13 +198,12 @@
                 button.addEventListener('click', function() {
                     const target = document.getElementById(button.getAttribute('data-password-target'));
                     if (!target) return;
-                    const show = target.type === 'password';
-                    target.type = show ? 'text' : 'password';
-                    const showIcon = button.querySelector('[data-icon="show"]');
-                    const hideIcon = button.querySelector('[data-icon="hide"]');
-                    if (showIcon && hideIcon) {
-                        showIcon.classList.toggle('hidden', show);
-                        hideIcon.classList.toggle('hidden', !show);
+                    target.type = target.type === 'text' ? 'password' : 'text';
+                    const closedIcon = button.querySelector('[data-icon="closed"]');
+                    const openIcon = button.querySelector('[data-icon="open"]');
+                    if (closedIcon && openIcon) {
+                        closedIcon.classList.toggle('hidden', target.type !== 'password');
+                        openIcon.classList.toggle('hidden', target.type === 'password');
                     }
                 });
             });

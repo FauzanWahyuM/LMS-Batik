@@ -27,6 +27,8 @@ class User extends Authenticatable
         'address',
         'education',
         'certificate',
+        'motivation',
+        'group_name',
         'status',
         'password_changed',
     ];

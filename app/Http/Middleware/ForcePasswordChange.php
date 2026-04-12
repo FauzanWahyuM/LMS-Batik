@@ -18,12 +18,16 @@ class ForcePasswordChange
         $authUser = $request->session()->get('auth_user');
 
         if ($authUser && $authUser['role'] === 'participant') {
+            if (!empty($authUser['is_demo_user']) && $authUser['is_demo_user'] === true) {
+                return $next($request);
+            }
+
             $dbUser = \App\Models\User::where('email', $authUser['email'])->first();
 
             if ($dbUser && !$dbUser->password_changed) {
                 $currentRoute = $request->route()->getName();
 
-                if ($currentRoute !== 'dashboard.participant.profile') {
+                if ($currentRoute !== 'dashboard.participant.profile' && $currentRoute !== 'logout') {
                     return redirect()->route('dashboard.participant.profile')
                         ->with('force_password_change', true);
                 }

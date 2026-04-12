@@ -30,7 +30,7 @@
                     <h2 class="text-xl font-bold text-slate-800">{{ $module->title }}</h2>
                     <p class="mt-2 text-sm font-semibold text-slate-700">Durasi: {{ $module->duration }} Jam</p>
                     <div class="mt-3 h-2 w-full rounded-full bg-slate-200">
-                        <div class="h-2 w-[{{ $progress }}%] rounded-full bg-blue-600"></div>
+                        <div class="h-2 rounded-full bg-blue-600" style="width: {{ $progress }}%"></div>
                     </div>
                     <p class="mt-1 text-right text-xs text-slate-500">{{ $progress }}% selesai</p>
                     <p class="mt-1 text-xs text-slate-500">Bab selesai: {{ $completedMaterials }}/{{ $totalMaterials }}</p>

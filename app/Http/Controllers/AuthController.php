@@ -125,7 +125,7 @@ class AuthController extends Controller
                 'email' => $dbUser->email,
                 'phone' => $dbUser->phone ?? '',
                 'address' => $dbUser->address ?? '',
-                'motivation' => $dbUser->role === 'peserta' ? ($dbUser->education ? '' : $defaults['motivation']) : $defaults['motivation'],
+                'motivation' => $dbUser->motivation ?? $defaults['motivation'],
                 'group_name' => '',
                 'pic_name' => '',
                 'role_label' => 'Peserta Individu',
@@ -179,6 +179,9 @@ class AuthController extends Controller
             ->first();
 
         if ($dbUser && Hash::check($credentials['password'], $dbUser->password)) {
+            // Use Laravel Auth for database users
+            auth()->login($dbUser);
+
             $request->session()->put('auth_user', [
                 'name' => $dbUser->name,
                 'username' => $dbUser->username ?: $dbUser->email,
@@ -210,6 +213,7 @@ class AuthController extends Controller
             'username' => $username,
             'email' => $user['email'],
             'role' => $user['role'],
+            'is_demo_user' => true,
         ]);
 
         $request->session()->regenerate();
@@ -323,6 +327,7 @@ class AuthController extends Controller
             'phone' => $registration->no_handphone,
             'address' => $registration->alamat,
             'education' => $registration->pendidikan_terakhir,
+            'motivation' => $registration->motivasi,
             'status' => 'Aktif',
             'password_changed' => false,
         ]);
@@ -423,6 +428,7 @@ class AuthController extends Controller
         }
 
         $sentGroupIds = $request->session()->get('manager_sent_group_ids', []);
+        $groupStatuses = $request->session()->get('manager_group_statuses', []);
         $pendingGroups = $this->getManagerPendingGroupValidations();
         $pendingGroups = array_values(array_filter($pendingGroups, function (array $group) use ($sentGroupIds): bool {
             return !in_array($group['id'], $sentGroupIds, true);
@@ -438,8 +444,15 @@ class AuthController extends Controller
                     'group_name' => $group['group_name'],
                     'members' => $group['members'],
                     'program' => $group['program'],
-                    'status' => 'Aktif',
+                    'status' => $groupStatuses[$group['id']] ?? 'Aktif',
                 ];
+            }
+        }
+
+        // Update statuses from session for all groups
+        foreach ($managedGroups as &$group) {
+            if (isset($groupStatuses[$group['id']])) {
+                $group['status'] = $groupStatuses[$group['id']];
             }
         }
 
@@ -474,12 +487,47 @@ class AuthController extends Controller
         $prefix = substr($prefix ?: 'group', 0, 8);
 
         for ($index = 1; $index <= (int) $selectedGroup['members']; $index++) {
+            $username = $prefix . str_pad((string) $index, 2, '0', STR_PAD_LEFT) . rand(1, 9);
+            while (User::where('username', $username)->exists()) {
+                $username = $prefix . str_pad((string) $index, 2, '0', STR_PAD_LEFT) . rand(1, 9);
+            }
+            $password = Str::upper(Str::random(2)) . rand(10, 99) . Str::lower(Str::random(2)) . '!';
+
+            // Create user account
+            User::create([
+                'name' => $selectedGroup['group_name'] . ' - Anggota ' . $index,
+                'username' => $username,
+                'email' => 'group' . $selectedGroup['id'] . 'member' . $index . '@lmsbatik.test',
+                'password' => Hash::make($password),
+                'role' => 'peserta',
+                'phone' => $selectedGroup['pic_phone'],
+                'address' => $selectedGroup['pic_address'],
+                'education' => '',
+                'motivation' => '',
+                'group_name' => $selectedGroup['group_name'],
+                'status' => 'Aktif',
+                'password_changed' => false,
+            ]);
+
             $credentials[] = [
                 'member_no' => $index,
-                'username' => $prefix . str_pad((string) $index, 2, '0', STR_PAD_LEFT) . rand(1, 9),
-                'password' => Str::upper(Str::random(2)) . rand(10, 99) . Str::lower(Str::random(2)) . '!',
+                'username' => $username,
+                'password' => $password,
             ];
         }
+
+        // Update registration status to approved
+        $registrationId = (int) str_replace('group-', '', $group);
+        $registration = RegistrationGroup::find($registrationId);
+        if ($registration) {
+            $registration->update(['status' => 'approved']);
+        }
+
+        $sentGroupIds = $request->session()->get('manager_sent_group_ids', []);
+        if (!in_array($selectedGroup['id'], $sentGroupIds, true)) {
+            $sentGroupIds[] = $selectedGroup['id'];
+        }
+        $request->session()->put('manager_sent_group_ids', $sentGroupIds);
 
         $request->session()->put('manager_generated_group_credential', [
             'group_id' => $selectedGroup['id'],
@@ -543,12 +591,6 @@ class AuthController extends Controller
         $path = $directory . DIRECTORY_SEPARATOR . $filename;
         file_put_contents($path, $csvContent);
 
-        $sentGroupIds = $request->session()->get('manager_sent_group_ids', []);
-        if (!in_array($group, $sentGroupIds, true)) {
-            $sentGroupIds[] = $group;
-        }
-
-        $request->session()->put('manager_sent_group_ids', $sentGroupIds);
         $request->session()->put('manager_group_last_export', [
             'group_id' => $group,
             'group_name' => $generated['group_name'],
@@ -598,9 +640,13 @@ class AuthController extends Controller
             'status' => ['required', 'string', 'in:Aktif,Lulus,Nonaktif'],
         ]);
 
+        $groupStatuses = $request->session()->get('manager_group_statuses', []);
+        $groupStatuses[$group] = $request->input('status');
+        $request->session()->put('manager_group_statuses', $groupStatuses);
+
         return redirect()
             ->route('dashboard.manager.participants.group')
-            ->with('status', 'Status kelompok ' . strtoupper($group) . ' diperbarui (simulasi).');
+            ->with('status', 'Status kelompok diperbarui.');
     }
 
     public function managerInstructors(Request $request): View|RedirectResponse
@@ -1781,6 +1827,7 @@ class AuthController extends Controller
         $dbUser->password = Hash::make($validated['password']);
         $dbUser->phone = $validated['phone'];
         $dbUser->address = $validated['address'];
+        $dbUser->motivation = $validated['motivation'] ?? null;
         $dbUser->password_changed = true; // Mark as changed
 
         $dbUser->save();
@@ -3112,6 +3159,15 @@ class AuthController extends Controller
         $authUser = $request->session()->get('auth_user');
 
         if ($authUser && $authUser['role'] === 'participant') {
+            if (!empty($authUser['is_demo_user']) && $authUser['is_demo_user'] === true) {
+                auth()->logout();
+                $request->session()->forget('auth_user');
+                $request->session()->invalidate();
+                $request->session()->regenerateToken();
+
+                return redirect()->route('login')->with('status', 'Anda berhasil logout.');
+            }
+
             $dbUser = User::where('email', $authUser['email'])->first();
             if ($dbUser && !$dbUser->password_changed) {
                 return redirect()->route('dashboard.participant.profile')
@@ -3119,6 +3175,7 @@ class AuthController extends Controller
             }
         }
 
+        auth()->logout();
         $request->session()->forget('auth_user');
         $request->session()->invalidate();
         $request->session()->regenerateToken();

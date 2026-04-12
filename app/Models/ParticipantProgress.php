@@ -14,6 +14,7 @@ class ParticipantProgress extends Model
         'user_id',
         'module_id',
         'material_id',
+        'material_slug',
         'status',
         'progress_percentage',
         'started_at',
