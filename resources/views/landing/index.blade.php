@@ -89,44 +89,89 @@
 
     <section class="py-16 bg-white">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <h2 class="text-3xl md:text-4xl font-bold text-center text-gray-900 mb-12"
+            <h2 class="text-3xl md:text-4xl font-bold text-center text-gray-900 mb-3"
                 style="font-family: 'Georgia', serif;">
-                Program Kami
+                Daftar Program
             </h2>
+            <p class="text-center text-gray-600 text-sm md:text-base mb-12 max-w-2xl mx-auto">
+                Pilih program yang paling sesuai dan mulai perjalanan membatik Anda bersama kami.
+            </p>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-5xl mx-auto">
-                <div class="relative rounded-lg overflow-hidden shadow-xl group">
-                    <div class="h-64 overflow-hidden">
-                        <img src="https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=600&h=400&fit=crop"
-                            alt="Pelatihan Individu"
-                            class="w-full h-full object-cover transform group-hover:scale-110 transition duration-500">
-                    </div>
-                    <div
-                        class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-blue-950 via-blue-950/95 to-transparent p-6">
-                        <h3 class="text-xl font-bold text-white mb-2">
-                            {{ $programTypes['individual']['title'] ?? 'Program Individu' }}</h3>
-                        <p class="text-gray-200 text-sm mb-3">
-                            {{ \Illuminate\Support\Str::limit($programTypes['individual']['description'] ?? 'Pembelajaran personal membatik dengan pendampingan intensif.', 130) }}
-                        </p>
-                    </div>
-                </div>
+            @php
+                $programCollection = $programs ?? collect();
+                $programCount = $programCollection->count();
+            @endphp
 
-                <div class="relative rounded-lg overflow-hidden shadow-xl group">
-                    <div class="h-64 overflow-hidden">
-                        <img src="https://images.unsplash.com/photo-1552664730-d307ca884978?w=600&h=400&fit=crop"
-                            alt="Pelatihan Kelompok"
-                            class="w-full h-full object-cover transform group-hover:scale-110 transition duration-500">
-                    </div>
-                    <div
-                        class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-blue-950 via-blue-950/95 to-transparent p-6">
-                        <h3 class="text-xl font-bold text-white mb-2">
-                            {{ $programTypes['group']['title'] ?? 'Program Kelompok' }}</h3>
-                        <p class="text-gray-200 text-sm mb-3">
-                            {{ \Illuminate\Support\Str::limit($programTypes['group']['description'] ?? 'Pelatihan membatik untuk kelompok dengan materi yang fleksibel.', 130) }}
-                        </p>
-                    </div>
+            @if ($programCount === 1)
+                <div class="max-w-2xl mx-auto">
+                    @foreach ($programCollection as $program)
+                        <article
+                            class="rounded-2xl border border-slate-200 bg-blue-950 shadow-lg p-8 transition hover:-translate-y-1 hover:shadow-xl">
+                            <h3 class="text-2xl font-bold text-white mb-3" style="font-family: 'Georgia', serif;">
+                                {{ $program->name }}
+                            </h3>
+                            <p class="text-sm text-slate-300 leading-relaxed mb-6">
+                                {{ \Illuminate\Support\Str::limit($program->description, 180) }}
+                            </p>
+                            <a href="{{ route('landing.programs') }}"
+                                class="inline-flex items-center rounded-full bg-amber-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-amber-700">
+                                Lihat Program
+                            </a>
+                        </article>
+                    @endforeach
                 </div>
-            </div>
+            @elseif ($programCount > 1)
+                <div class="relative max-w-6xl mx-auto">
+                    <div class="overflow-hidden">
+                        <div id="program-slider" class="flex transition-transform duration-500 ease-in-out">
+                            @foreach ($programCollection as $program)
+                                <div class="min-w-full md:min-w-[50%] lg:min-w-[33.333%] shrink-0 px-3">
+                                    <article
+                                        class="h-full rounded-2xl border border-slate-200 bg-white shadow-lg p-8 transition hover:-translate-y-1 hover:shadow-xl">
+                                        <div
+                                            class="inline-flex items-center rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-800 mb-4">
+                                            Program
+                                        </div>
+                                        <h3 class="text-2xl font-bold text-slate-900 mb-3"
+                                            style="font-family: 'Georgia', serif;">
+                                            {{ $program->name }}
+                                        </h3>
+                                        <p class="text-sm text-slate-600 leading-relaxed mb-6">
+                                            {{ \Illuminate\Support\Str::limit($program->description, 180) }}
+                                        </p>
+                                        <a href="{{ route('landing.programs') }}"
+                                            class="inline-flex items-center rounded-full bg-amber-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-amber-700">
+                                            Lihat Program
+                                        </a>
+                                    </article>
+                                </div>
+                            @endforeach
+                        </div>
+                    </div>
+
+                    <button id="prev-program"
+                        class="hidden md:flex absolute -left-5 top-1/2 -translate-y-1/2 bg-white text-blue-950 hover:bg-amber-500 hover:text-white border border-gray-200 p-3 rounded-full shadow-lg transition z-10">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7">
+                            </path>
+                        </svg>
+                    </button>
+                    <button id="next-program"
+                        class="hidden md:flex absolute -right-5 top-1/2 -translate-y-1/2 bg-white text-blue-950 hover:bg-amber-500 hover:text-white border border-gray-200 p-3 rounded-full shadow-lg transition z-10">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                        </svg>
+                    </button>
+
+                    <div id="program-dots" class="flex justify-center mt-6 space-x-2"></div>
+                </div>
+            @else
+                <div class="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-8 text-center text-slate-600">
+                    Program belum tersedia.
+                </div>
+            @endif
+            <div class="sr-only" id="program-slider-meta" data-total-programs="{{ $programCount }}"></div>
+        </div>
         </div>
     </section>
 
@@ -143,8 +188,7 @@
             </div>
 
             <div class="relative max-w-2xl mx-auto">
-                <div
-                    class="bg-gradient-to-br from-blue-950 to-blue-900 rounded-xl shadow-xl px-6 md:px-10 py-8 md:py-10 text-white">
+                <div class="bg-blue-950 rounded-xl shadow-xl px-6 md:px-10 py-8 md:py-10 text-white">
                     <div class="overflow-hidden">
                         <div id="testimonial-slider" class="flex transition-transform duration-500 ease-in-out">
 
@@ -236,7 +280,7 @@
                     const dot = document.createElement('button');
                     dot.className =
                         `h-3 rounded-full transition-all duration-300 ${i === 0 ? 'bg-amber-500 w-8' : 'bg-gray-300 hover:bg-gray-400 w-3'}`;
-                    dot.setAttribute('aria-label', `Go to slide ${i + 1}`);
+                    dot.setAttribute('aria-label', `Buka slide ${i + 1}`);
                     dot.addEventListener('click', () => {
                         goToSlide(i);
                         resetAutoSlide(); // Reset timer saat diklik manual
@@ -316,6 +360,61 @@
 
             // Inisialisasi Slider Testimoni (tampil 1 per slide baik di HP maupun Laptop)
             createSlider("testimonial-slider", "testimonial-dots", "prev-testimonial", "next-testimonial", 1);
+
+            const programSlider = document.getElementById('program-slider');
+            const programDots = document.getElementById('program-dots');
+            const prevProgramBtn = document.getElementById('prev-program');
+            const nextProgramBtn = document.getElementById('next-program');
+
+            if (programSlider && programDots) {
+                let currentProgram = 0;
+                const slides = programSlider.children;
+                const totalPrograms = slides.length;
+
+                if (totalPrograms > 1) {
+                    programDots.innerHTML = '';
+
+                    for (let index = 0; index < totalPrograms; index++) {
+                        const dot = document.createElement('button');
+                        dot.className = index === 0 ?
+                            'h-3 w-8 rounded-full bg-amber-500 transition-all duration-300' :
+                            'h-3 w-3 rounded-full bg-gray-300 transition-all duration-300 hover:bg-gray-400';
+                        dot.setAttribute('aria-label', `Buka program ${index + 1}`);
+                        dot.addEventListener('click', () => goToProgram(index));
+                        programDots.appendChild(dot);
+                    }
+
+                    const dots = programDots.children;
+
+                    function goToProgram(index) {
+                        if (index < 0) {
+                            currentProgram = totalPrograms - 1;
+                        } else if (index >= totalPrograms) {
+                            currentProgram = 0;
+                        } else {
+                            currentProgram = index;
+                        }
+
+                        programSlider.style.transform = `translateX(-${currentProgram * 100}%)`;
+
+                        Array.from(dots).forEach((dot, dotIndex) => {
+                            dot.className = dotIndex === currentProgram ?
+                                'h-3 w-8 rounded-full bg-amber-500 transition-all duration-300' :
+                                'h-3 w-3 rounded-full bg-gray-300 transition-all duration-300 hover:bg-gray-400';
+                        });
+                    }
+
+                    if (prevProgramBtn) {
+                        prevProgramBtn.addEventListener('click', () => goToProgram(currentProgram - 1));
+                    }
+
+                    if (nextProgramBtn) {
+                        nextProgramBtn.addEventListener('click', () => goToProgram(currentProgram + 1));
+                    }
+
+                    window.addEventListener('resize', () => goToProgram(currentProgram));
+                }
+            }
 
         });
     </script>

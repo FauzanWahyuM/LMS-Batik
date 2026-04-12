@@ -21,103 +21,56 @@
 
     </section>
 
-    <div class="bg-white py-16 relative z-10">
-        <h2 class="text-2xl md:text-3xl font-bold text-center text-blue-950" style="font-family: 'Georgia', serif;">
-            Pilih Program
-        </h2>
-    </div>
-
-    <section class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 mb-20">
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12">
-
-            <div class="bg-blue-950 rounded-xl shadow-xl p-8 md:p-10 text-white">
-                <h3 class="text-xl md:text-2xl font-bold mb-6" style="font-family: 'Georgia', serif;">
-                    {{ $programTypes['individual']['title'] ?? 'Program Individu' }}
-                </h3>
-                <p class="text-sm md:text-base text-gray-200 leading-relaxed text-justify">
-                    {{ $programTypes['individual']['description'] ?? 'Pembelajaran personal dengan pendampingan intensif untuk memperkuat teknik membatik dari dasar hingga lanjutan.' }}
-                </p>
+    <section class="bg-white py-16">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-12">
+                <h2 class="text-3xl md:text-4xl font-bold text-blue-950 mb-4" style="font-family: 'Georgia', serif;">
+                    Daftar Program
+                </h2>
+                <p class="text-gray-600 max-w-2xl mx-auto">Dapatkan informasi lengkap tentang program-program yang tersedia di LPK Kama Praja Madiun.</p>
             </div>
 
-            <div class="bg-blue-950 rounded-xl shadow-xl p-8 md:p-10 text-white">
-                <h3 class="text-xl md:text-2xl font-bold mb-6" style="font-family: 'Georgia', serif;">
-                    {{ $programTypes['group']['title'] ?? 'Program Kelompok' }}
-                </h3>
-                <p class="text-sm md:text-base text-gray-200 leading-relaxed text-justify">
-                    {{ $programTypes['group']['description'] ?? 'Pelatihan kolaboratif untuk sekolah, komunitas, atau instansi dengan skema materi yang fleksibel sesuai kebutuhan.' }}
-                </p>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                @forelse (($programs ?? collect()) as $program)
+                    <article class="bg-blue-950 rounded-xl shadow-xl p-8 text-white flex flex-col">
+                        <h3 class="text-2xl font-bold mb-4" style="font-family: 'Georgia', serif;">{{ $program->name }}</h3>
+
+                        <div class="space-y-2 text-sm text-gray-200 mb-4">
+                            <p><span class="font-semibold text-white">Durasi:</span>
+                                {{ number_format((float) $program->duration_hours, 1, ',', '.') }} jam</p>
+                            <p><span class="font-semibold text-white">Biaya:</span> Rp
+                                {{ number_format((float) $program->fee_amount, 0, ',', '.') }} / {{ $program->fee_unit }}
+                            </p>
+                        </div>
+
+                        <p class="text-sm md:text-base leading-relaxed text-gray-100 mb-4">{{ $program->description }}</p>
+
+                        <div class="rounded-lg border border-blue-800 bg-blue-900/40 p-4 text-sm text-gray-100 mb-6">
+                            <p class="font-semibold text-white mb-2">Benefit Program</p>
+                            <ul class="space-y-1">
+                                @foreach ((array) $program->benefits as $benefit)
+                                    <li class="flex items-start gap-2">
+                                        <span class="text-amber-400 shrink-0">★</span>
+                                        <span>{{ $benefit }}</span>
+                                    </li>
+                                @endforeach
+                            </ul>
+                        </div>
+
+                        <div class="mt-auto">
+                            <a href="{{ route('landing.registration') }}"
+                                class="inline-block w-full sm:w-auto bg-amber-600 text-white px-8 py-3 rounded-full font-semibold hover:bg-amber-700 transition shadow-lg">
+                                Daftar Sekarang
+                            </a>
+                        </div>
+                    </article>
+                @empty
+                    <div
+                        class="md:col-span-2 rounded-xl border border-dashed border-slate-300 bg-slate-50 p-8 text-center text-slate-600">
+                        Program belum tersedia.
+                    </div>
+                @endforelse
             </div>
-
-        </div>
-    </section>
-
-
-    <section class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-
-        <h2 class="text-3xl md:text-4xl font-bold text-center text-blue-950 mb-12" style="font-family: 'Georgia', serif;">
-            Paket Program
-        </h2>
-
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12">
-
-            <div class="bg-blue-950 rounded-xl shadow-xl p-8 md:p-10 text-white flex flex-col">
-                <h3 class="text-xl md:text-2xl font-bold mb-2" style="font-family: 'Georgia', serif;">Paket Individu
-                </h3>
-                <p class="text-sm text-gray-300 border-b border-gray-600 pb-4 mb-4">Durasi :
-                    {{ $programPackages['individual']['duration'] ?? '20 Hari' }}</p>
-
-                <ul class="space-y-4 mb-10 flex-grow text-sm md:text-base">
-                    @foreach ($programPackages['individual']['features'] ?? [] as $feature)
-                        <li class="flex items-start border-b border-gray-600 pb-3">
-                            <svg class="h-5 w-5 text-green-500 mr-3 flex-shrink-0" fill="none" stroke="currentColor"
-                                viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7">
-                                </path>
-                            </svg>
-                            <span>{{ $feature }}</span>
-                        </li>
-                    @endforeach
-                </ul>
-
-                <div class="text-center mt-auto">
-                    <p class="font-bold text-lg mb-6">
-                        {{ $programPackages['individual']['price'] ?? 'Hubungi Admin untuk Info Biaya / Orang' }}</p>
-                    <a href="/pendaftaran"
-                        class="inline-block w-full sm:w-auto bg-amber-600 text-white px-8 py-3 rounded-full font-semibold hover:bg-amber-700 transition shadow-lg">
-                        Daftar Sekarang
-                    </a>
-                </div>
-            </div>
-
-            <div class="bg-blue-950 rounded-xl shadow-xl p-8 md:p-10 text-white flex flex-col">
-                <h3 class="text-xl md:text-2xl font-bold mb-2" style="font-family: 'Georgia', serif;">Paket Kelompok
-                </h3>
-                <p class="text-sm text-gray-300 border-b border-gray-600 pb-4 mb-4">Durasi :
-                    {{ $programPackages['group']['duration'] ?? 'Sesuai Pemesanan' }}</p>
-
-                <ul class="space-y-4 mb-10 flex-grow text-sm md:text-base">
-                    @foreach ($programPackages['group']['features'] ?? [] as $feature)
-                        <li class="flex items-start border-b border-gray-600 pb-3">
-                            <svg class="h-5 w-5 text-green-500 mr-3 flex-shrink-0" fill="none" stroke="currentColor"
-                                viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7">
-                                </path>
-                            </svg>
-                            <span>{{ $feature }}</span>
-                        </li>
-                    @endforeach
-                </ul>
-
-                <div class="text-center mt-auto">
-                    <p class="font-bold text-lg mb-6">
-                        {{ $programPackages['group']['price'] ?? 'Hubungi Admin untuk Info Biaya / Kelompok' }}</p>
-                    <a href="/pendaftaran"
-                        class="inline-block w-full sm:w-auto bg-amber-600 text-white px-8 py-3 rounded-full font-semibold hover:bg-amber-700 transition shadow-lg">
-                        Daftar Sekarang
-                    </a>
-                </div>
-            </div>
-
         </div>
     </section>
 
@@ -150,8 +103,8 @@
                             </path>
                         </svg>
                     </div>
-                    <h3 class="text-lg font-bold text-gray-900 mb-2">Kelas Kecil</h3>
-                    <p class="text-gray-600 text-sm">Maksimal 10 peserta per kelas untuk pembelajaran optimal</p>
+                    <h3 class="text-lg font-bold text-gray-900 mb-2">Pendaftaran Fleksibel</h3>
+                    <p class="text-gray-600 text-sm">Dapat mendaftar secara individu ataupun kelompok dimana saja dan kapan saja</p>
                 </div>
 
                 <div class="bg-gray-50 border border-gray-100 p-6 rounded-xl shadow-sm hover:shadow-md transition">

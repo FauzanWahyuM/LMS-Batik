@@ -21,7 +21,7 @@
 
 <body class="bg-gray-50">
     <!-- Navigation -->
-    <nav class="bg-gradient-to-r from-blue-900 to-blue-800 shadow-lg fixed w-full top-0 z-50">
+    <nav class="bg-gradient-to-r from-blue-800 to-blue-950 shadow-lg fixed w-full top-0 z-50">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex justify-between h-16">
                 <div class="flex items-center">
@@ -35,23 +35,23 @@
                 <!-- Desktop Menu -->
                 <div class="hidden md:flex md:items-center md:space-x-1">
                     <a href="{{ route('landing.index') }}"
-                        class="text-white hover:text-amber-300 px-4 py-2 text-sm font-medium transition {{ request()->routeIs('landing.index') ? 'text-amber-300' : '' }}">
+                        class="text-white hover:text-amber-500 px-4 py-2 text-sm font-medium transition {{ request()->routeIs('landing.index') ? 'text-amber-300' : '' }}">
                         Beranda
                     </a>
                     <a href="{{ route('landing.about') }}"
-                        class="text-white hover:text-amber-300 px-4 py-2 text-sm font-medium transition {{ request()->routeIs('landing.about') ? 'text-amber-300' : '' }}">
+                        class="text-white hover:text-amber-500 px-4 py-2 text-sm font-medium transition {{ request()->routeIs('landing.about') ? 'text-amber-300' : '' }}">
                         Tentang
                     </a>
                     <a href="{{ route('landing.programs') }}"
-                        class="text-white hover:text-amber-300 px-4 py-2 text-sm font-medium transition {{ request()->routeIs('landing.programs') ? 'text-amber-300' : '' }}">
+                        class="text-white hover:text-amber-500 px-4 py-2 text-sm font-medium transition {{ request()->routeIs('landing.programs') ? 'text-amber-300' : '' }}">
                         Program
                     </a>
                     <a href="{{ route('landing.gallery') }}"
-                        class="text-white hover:text-amber-300 px-4 py-2 text-sm font-medium transition {{ request()->routeIs('landing.gallery') ? 'text-amber-300' : '' }}">
+                        class="text-white hover:text-amber-500 px-4 py-2 text-sm font-medium transition {{ request()->routeIs('landing.gallery') ? 'text-amber-300' : '' }}">
                         Galeri
                     </a>
                     <a href="{{ route('landing.registration') }}"
-                        class="text-white hover:text-amber-300 px-4 py-2 text-sm font-medium transition {{ request()->routeIs('landing.registration') ? 'text-amber-300' : '' }}">
+                        class="text-white hover:text-amber-500 px-4 py-2 text-sm font-medium transition {{ request()->routeIs('landing.registration') ? 'text-amber-300' : '' }}">
                         Pendaftaran
                     </a>
                     <a href="/login"

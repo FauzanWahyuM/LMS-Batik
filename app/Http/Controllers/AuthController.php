@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use Barryvdh\DomPDF\Facade\Pdf;
 use App\Models\Achievement;
 use App\Models\Artwork;
 use App\Models\ParticipantAssignment;
+use App\Models\Program;
 use App\Models\RegistrationGroup;
 use App\Models\RegistrationIndividual;
 use App\Models\User;
@@ -15,8 +17,10 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class AuthController extends Controller
 {
@@ -903,15 +907,20 @@ class AuthController extends Controller
             return $guard;
         }
 
-        $search = strtolower(trim((string) $request->query('search', '')));
-        $programs = $this->getManagerManagedPrograms($request);
+        $search = trim((string) $request->query('search', ''));
 
-        if ($search !== '') {
-            $programs = array_values(array_filter($programs, function (array $program) use ($search): bool {
-                return (strpos(strtolower((string) $program['name']), $search) !== false)
-                    || (strpos(strtolower((string) $program['description']), $search) !== false);
-            }));
-        }
+        $programs = Schema::hasTable('programs')
+            ? Program::query()
+                ->when($search !== '', function ($query) use ($search) {
+                    $query->where(function ($builder) use ($search) {
+                        $builder->where('name', 'like', '%' . $search . '%')
+                            ->orWhere('description', 'like', '%' . $search . '%')
+                            ->orWhere('benefits', 'like', '%' . $search . '%');
+                    });
+                })
+                ->latest()
+                ->get()
+            : collect();
 
         return view('dashboard.manager.programs', [
             'user' => $request->session()->get('auth_user'),
@@ -929,24 +938,31 @@ class AuthController extends Controller
             return $guard;
         }
 
+        if (!Schema::hasTable('programs')) {
+            return redirect()->route('dashboard.manager.programs')
+                ->withErrors(['programs' => 'Tabel program belum tersedia. Jalankan migrasi terlebih dahulu.']);
+        }
+
         $payload = $request->validate([
             'name' => ['required', 'string', 'min:3', 'max:120'],
-            'duration' => ['required', 'string', 'min:2', 'max:60'],
-            'description' => ['required', 'string', 'min:10', 'max:500'],
-            'cost' => ['required', 'integer', 'min:0'],
+            'duration_hours' => ['required', 'numeric', 'min:0.5', 'max:10000'],
+            'fee_amount' => ['required', 'numeric', 'min:0'],
+            'fee_unit' => ['required', 'string', 'min:2', 'max:50'],
+            'description' => ['required', 'string', 'min:10', 'max:2000'],
+            'benefits' => ['required', 'array', 'min:1'],
+            'benefits.*' => ['required', 'string', 'min:3', 'max:255'],
+            'is_active' => ['nullable', 'boolean'],
         ]);
 
-        $programs = $this->getManagerManagedPrograms($request);
-        $programs[] = [
-            'id' => 'pr-' . strtolower(Str::random(6)),
+        Program::create([
             'name' => $payload['name'],
-            'duration' => $payload['duration'],
+            'duration_hours' => $payload['duration_hours'],
+            'fee_amount' => $payload['fee_amount'],
+            'fee_unit' => $payload['fee_unit'],
             'description' => $payload['description'],
-            'cost' => (int) $payload['cost'],
-            'status' => 'Aktif',
-        ];
-
-        $request->session()->put('manager_programs_data', $programs);
+            'benefits' => array_filter($payload['benefits'], fn ($b) => !empty(trim($b))),
+            'is_active' => (bool) ($payload['is_active'] ?? false),
+        ]);
 
         return redirect()
             ->route('dashboard.manager.programs')
@@ -961,35 +977,39 @@ class AuthController extends Controller
             return $guard;
         }
 
+        if (!Schema::hasTable('programs')) {
+            return redirect()->route('dashboard.manager.programs')
+                ->withErrors(['programs' => 'Tabel program belum tersedia. Jalankan migrasi terlebih dahulu.']);
+        }
+
         $payload = $request->validate([
             'name' => ['required', 'string', 'min:3', 'max:120'],
-            'duration' => ['required', 'string', 'min:2', 'max:60'],
-            'description' => ['required', 'string', 'min:10', 'max:500'],
-            'cost' => ['required', 'integer', 'min:0'],
+            'duration_hours' => ['required', 'numeric', 'min:0.5', 'max:10000'],
+            'fee_amount' => ['required', 'numeric', 'min:0'],
+            'fee_unit' => ['required', 'string', 'min:2', 'max:50'],
+            'description' => ['required', 'string', 'min:10', 'max:2000'],
+            'benefits' => ['required', 'array', 'min:1'],
+            'benefits.*' => ['required', 'string', 'min:3', 'max:255'],
+            'is_active' => ['nullable', 'boolean'],
         ]);
 
-        $programs = $this->getManagerManagedPrograms($request);
-        $found = false;
+        $target = Program::find($program);
 
-        $updated = array_map(function (array $item) use ($program, $payload, &$found): array {
-            if ($item['id'] === $program) {
-                $found = true;
-                $item['name'] = $payload['name'];
-                $item['duration'] = $payload['duration'];
-                $item['description'] = $payload['description'];
-                $item['cost'] = (int) $payload['cost'];
-            }
-
-            return $item;
-        }, $programs);
-
-        if (!$found) {
+        if (!$target) {
             return redirect()
                 ->route('dashboard.manager.programs')
                 ->withErrors(['programs' => 'Program tidak ditemukan untuk diedit.']);
         }
 
-        $request->session()->put('manager_programs_data', array_values($updated));
+        $target->update([
+            'name' => $payload['name'],
+            'duration_hours' => $payload['duration_hours'],
+            'fee_amount' => $payload['fee_amount'],
+            'fee_unit' => $payload['fee_unit'],
+            'description' => $payload['description'],
+            'benefits' => array_filter($payload['benefits'], fn ($b) => !empty(trim($b))),
+            'is_active' => (bool) ($payload['is_active'] ?? false),
+        ]);
 
         return redirect()
             ->route('dashboard.manager.programs')
@@ -1004,12 +1024,9 @@ class AuthController extends Controller
             return $guard;
         }
 
-        $programs = $this->getManagerManagedPrograms($request);
-        $remaining = array_values(array_filter($programs, function (array $item) use ($program): bool {
-            return $item['id'] !== $program;
-        }));
-
-        $request->session()->put('manager_programs_data', $remaining);
+        if (Schema::hasTable('programs')) {
+            Program::where('id', $program)->delete();
+        }
 
         return redirect()
             ->route('dashboard.manager.programs')
@@ -1024,13 +1041,29 @@ class AuthController extends Controller
             return $guard;
         }
 
-        $request->validate([
-            'status' => ['required', 'string', 'in:Aktif,Draf,Ditutup'],
+        if (!Schema::hasTable('programs')) {
+            return redirect()->route('dashboard.manager.programs')
+                ->withErrors(['programs' => 'Tabel program belum tersedia. Jalankan migrasi terlebih dahulu.']);
+        }
+
+        $payload = $request->validate([
+            'is_active' => ['required', 'boolean'],
+        ]);
+
+        $target = Program::find($program);
+
+        if (!$target) {
+            return redirect()->route('dashboard.manager.programs')
+                ->withErrors(['programs' => 'Program tidak ditemukan untuk diperbarui.']);
+        }
+
+        $target->update([
+            'is_active' => (bool) $payload['is_active'],
         ]);
 
         return redirect()
             ->route('dashboard.manager.programs')
-            ->with('status', 'Status program ' . strtoupper($program) . ' diperbarui (simulasi).');
+            ->with('status', 'Status program berhasil diperbarui.');
     }
 
     public function managerReports(Request $request): View|RedirectResponse
@@ -1079,7 +1112,7 @@ class AuthController extends Controller
         ]);
     }
 
-    public function managerReportsExport(Request $request): RedirectResponse
+    public function managerReportsExport(Request $request): BinaryFileResponse|RedirectResponse
     {
         $guard = $this->ensureManagerRole($request);
 
@@ -1087,21 +1120,62 @@ class AuthController extends Controller
             return $guard;
         }
 
-        $month = (int) $request->input('month', now()->month);
+        $monthInput = (string) $request->input('month', (string) now()->month);
         $year = (int) $request->input('year', now()->year);
-        $exportType = $request->input('export_type', 'pdf');
+        $exportType = (string) $request->input('export_type', 'pdf');
+        $isAnnual = $monthInput === 'all';
+        $month = $isAnnual ? now()->month : max(1, min(12, (int) $monthInput));
 
-        if ($exportType === 'pdf') {
-            $filename = 'Laporan-' . $this->getMonthName($month) . '-' . $year . '.pdf';
-            return redirect()
-                ->route('dashboard.manager.reports')
-                ->with('status', 'Laporan bulan ' . $this->getMonthName($month) . ' ' . $year . ' berhasil diunduh (simulasi).');
-        } else {
-            $filename = 'Laporan-Tahunan-' . $year . '.csv';
-            return redirect()
-                ->route('dashboard.manager.reports')
-                ->with('status', 'Laporan tahunan ' . $year . ' berhasil diunduh (simulasi).');
+        $reportData = $isAnnual
+            ? $this->buildAnnualReportExportData($year)
+            : $this->buildMonthlyReportExportData($month, $year);
+
+        $settings = $request->session()->get('manager_settings', $this->getManagerSettingsData());
+        $logoPublicPath = public_path('img/Logo.png');
+        if (!file_exists($logoPublicPath)) {
+            $logoPublicPath = public_path('img/komunitasbatik.png');
         }
+
+        $logoDataUri = null;
+        if (file_exists($logoPublicPath)) {
+            $logoMime = mime_content_type($logoPublicPath) ?: 'image/png';
+            $logoDataUri = 'data:' . $logoMime . ';base64,' . base64_encode((string) file_get_contents($logoPublicPath));
+        }
+
+        $reportData['branding'] = [
+            'organization_name' => (string) ($settings['organization_name'] ?? 'LPK Kama Praja Madiun'),
+            'address' => (string) ($settings['organization_address'] ?? 'Kantor LPK Kama Praja Madiun'),
+            'phone' => (string) (($settings['contacts']['whatsapp'] ?? '') ?: '081234567890'),
+            'logo_data_uri' => $logoDataUri,
+        ];
+
+        $baseFilename = $isAnnual
+            ? 'Laporan-Tahunan-' . $year
+            : 'Laporan-' . $this->getMonthName($month) . '-' . $year;
+
+        if ($exportType === 'csv') {
+            $filename = $baseFilename . '.csv';
+            $content = $this->buildReportCsv($reportData);
+            $mimeType = 'text/csv; charset=UTF-8';
+        } else {
+            $filename = $baseFilename . '.pdf';
+            if (extension_loaded('gd')) {
+                $content = Pdf::loadView('dashboard.manager.report-export-template', [
+                    'reportData' => $reportData,
+                ])->setPaper('a4', 'portrait')->output();
+            } else {
+                // Fallback PDF generator when GD extension is not available.
+                $content = $this->buildFallbackReportPdf($reportData);
+            }
+            $mimeType = 'application/pdf';
+        }
+
+        $relativePath = 'reports/' . now()->format('YmdHis') . '-' . $filename;
+        Storage::disk('local')->put($relativePath, $content);
+
+        return response()->download(Storage::disk('local')->path($relativePath), $filename, [
+            'Content-Type' => $mimeType,
+        ])->deleteFileAfterSend(true);
     }
 
     public function managerAchievements(Request $request): View|RedirectResponse
@@ -2464,45 +2538,6 @@ class AuthController extends Controller
     /**
      * @return array<int, array<string, string|int>>
      */
-    private function getManagerPrograms(): array
-    {
-        return [
-            [
-                'id' => 'pr-01',
-                'name' => 'Program Individu',
-                'duration' => '2 Januari 2026',
-                'description' => 'Deskripsi: Lorem ipsum dolor sit amet consectetur.',
-                'cost' => 350000,
-                'status' => 'Aktif',
-            ],
-            [
-                'id' => 'pr-02',
-                'name' => 'Program Kelompok',
-                'duration' => '2 Januari 2026',
-                'description' => 'Deskripsi: Lorem ipsum dolor sit amet consectetur.',
-                'cost' => 500000,
-                'status' => 'Aktif',
-            ],
-        ];
-    }
-
-    /**
-     * @return array<int, array<string, string|int>>
-     */
-    private function getManagerManagedPrograms(Request $request): array
-    {
-        $sessionData = $request->session()->get('manager_programs_data');
-
-        if (is_array($sessionData)) {
-            return $sessionData;
-        }
-
-        $defaults = $this->getManagerPrograms();
-        $request->session()->put('manager_programs_data', $defaults);
-
-        return $defaults;
-    }
-
     /**
      * @return array<string, int|string>
      */
@@ -2609,6 +2644,236 @@ class AuthController extends Controller
         }
         return $monthsData;
     }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function buildMonthlyReportExportData(int $month, int $year): array
+    {
+        $monthlyData = $this->getMonthlyReportData($month, $year);
+
+        $individualRows = array_map(function (array $participant) use ($monthlyData): array {
+            return [
+                'type' => 'Individual',
+                'name' => (string) ($participant['name'] ?? '-'),
+                'program' => (string) ($participant['program'] ?? '-'),
+                'date' => (string) ($participant['registration_date'] ?? '-'),
+                'members' => '1',
+                'status' => (string) ($participant['status'] ?? '-'),
+                'revenue' => (int) ($participant['cost'] ?? $monthlyData['individual_cost']),
+            ];
+        }, $monthlyData['individual_participants']);
+
+        $groupRows = array_map(function (array $group) use ($monthlyData): array {
+            $members = (int) ($group['members'] ?? 0);
+            return [
+                'type' => 'Group',
+                'name' => (string) ($group['group_name'] ?? '-'),
+                'program' => (string) ($group['program'] ?? '-'),
+                'date' => (string) ($group['registration_date'] ?? '-'),
+                'members' => (string) $members,
+                'status' => (string) ($group['status'] ?? '-'),
+                'revenue' => $members * (int) $monthlyData['group_cost'],
+            ];
+        }, $monthlyData['group_participants']);
+
+        return [
+            'mode' => 'monthly',
+            'title' => 'Laporan Bulan ' . $monthlyData['month_name'] . ' ' . $monthlyData['year'],
+            'summary' => [
+                'Individual Registrations' => $monthlyData['total_individual_registrations'],
+                'Group Registrations' => $monthlyData['total_group_registrations'],
+                'Total Revenue' => (int) $monthlyData['total_profit'],
+                'Peak Registration Date' => $monthlyData['peak_registration_date'],
+            ],
+            'rows' => array_merge($individualRows, $groupRows),
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function buildAnnualReportExportData(int $year): array
+    {
+        $monthlyRows = [];
+        $totalIndividual = 0;
+        $totalGroup = 0;
+        $totalRevenue = 0;
+        $peakMonth = '-';
+        $peakRevenue = 0;
+
+        foreach ($this->getAllMonthsData($year) as $monthData) {
+            $monthNumber = (int) ($monthData['month'] ?? 0);
+            $monthlyBreakdown = $this->getMonthlyReportData($monthNumber, $year);
+            $totalIndividual += (int) $monthlyBreakdown['total_individual_registrations'];
+            $totalGroup += (int) $monthlyBreakdown['total_group_registrations'];
+            $totalRevenue += (int) $monthlyBreakdown['total_profit'];
+
+            if ((int) $monthData['total_profit'] > $peakRevenue) {
+                $peakRevenue = (int) $monthData['total_profit'];
+                $peakMonth = $monthData['month_name'];
+            }
+
+            $monthlyRows[] = [
+                'month' => $monthData['month_name'],
+                'registrations' => (int) $monthData['total_registrations'],
+                'revenue' => (int) $monthData['total_profit'],
+            ];
+        }
+
+        return [
+            'mode' => 'annual',
+            'title' => 'Laporan Tahunan ' . $year,
+            'summary' => [
+                'Individual Registrations' => $totalIndividual,
+                'Group Registrations' => $totalGroup,
+                'Total Revenue' => $totalRevenue,
+                'Peak Registration Date' => $peakMonth,
+            ],
+            'rows' => $monthlyRows,
+        ];
+    }
+
+    /**
+     * @param array<string, mixed> $reportData
+     */
+    private function buildReportCsv(array $reportData): string
+    {
+        $stream = fopen('php://temp', 'r+');
+        fputcsv($stream, [$reportData['title']]);
+        fputcsv($stream, []);
+        fputcsv($stream, ['Ringkasan']);
+
+        foreach ($reportData['summary'] as $label => $value) {
+            fputcsv($stream, [$label, is_int($value) ? number_format($value, 0, ',', '.') : (string) $value]);
+        }
+
+        fputcsv($stream, []);
+        fputcsv($stream, ['Data']);
+
+        if (($reportData['mode'] ?? '') === 'annual') {
+            fputcsv($stream, ['Bulan', 'Total Pendaftaran', 'Total Pendapatan']);
+            foreach ($reportData['rows'] as $row) {
+                fputcsv($stream, [
+                    $row['month'],
+                    $row['registrations'],
+                    $row['revenue'],
+                ]);
+            }
+        } else {
+            fputcsv($stream, ['Tipe', 'Nama', 'Program', 'Tanggal', 'Jumlah Anggota', 'Status', 'Pendapatan']);
+            foreach ($reportData['rows'] as $row) {
+                fputcsv($stream, [
+                    $row['type'],
+                    $row['name'],
+                    $row['program'],
+                    $row['date'],
+                    $row['members'],
+                    $row['status'],
+                    $row['revenue'],
+                ]);
+            }
+        }
+
+        rewind($stream);
+        $csv = stream_get_contents($stream) ?: '';
+        fclose($stream);
+
+        return "\xEF\xBB\xBF" . $csv;
+    }
+
+    /**
+     * @param array<string, mixed> $reportData
+     */
+    private function buildFallbackReportPdf(array $reportData): string
+    {
+        $lines = [];
+        $branding = $reportData['branding'] ?? [];
+
+        $lines[] = (string) ($branding['organization_name'] ?? 'LPK Kama Praja Madiun');
+        $lines[] = 'Alamat: ' . (string) ($branding['address'] ?? '-');
+        $lines[] = 'No. Telepon: ' . (string) ($branding['phone'] ?? '-');
+        $lines[] = '';
+        $lines[] = (string) ($reportData['title'] ?? 'Laporan');
+        $lines[] = '';
+        $lines[] = 'Ringkasan';
+
+        foreach (($reportData['summary'] ?? []) as $label => $value) {
+            $lines[] = $label . ': ' . (is_int($value) ? number_format($value, 0, ',', '.') : (string) $value);
+        }
+
+        $lines[] = '';
+        $lines[] = 'Data';
+
+        if (empty($reportData['rows'])) {
+            $lines[] = 'No data available.';
+        } elseif (($reportData['mode'] ?? '') === 'annual') {
+            foreach ($reportData['rows'] as $row) {
+                $lines[] = ($row['month'] ?? '-') . ' | Pendaftaran: ' . number_format((int) ($row['registrations'] ?? 0), 0, ',', '.')
+                    . ' | Pendapatan: Rp ' . number_format((int) ($row['revenue'] ?? 0), 0, ',', '.');
+            }
+        } else {
+            foreach ($reportData['rows'] as $row) {
+                $lines[] = ($row['type'] ?? '-') . ' | ' . ($row['name'] ?? '-') . ' | ' . ($row['program'] ?? '-')
+                    . ' | ' . ($row['date'] ?? '-') . ' | ' . ($row['status'] ?? '-') . ' | Rp '
+                    . number_format((int) ($row['revenue'] ?? 0), 0, ',', '.');
+            }
+        }
+
+        return $this->createSimplePdf($lines);
+    }
+
+    /**
+     * @param array<int, string> $lines
+     */
+    private function createSimplePdf(array $lines): string
+    {
+        $escapedLines = array_map(fn (string $line): string => $this->escapePdfText($line), $lines);
+
+        $content = "BT\n/F1 11 Tf\n50 800 Td\n";
+        foreach ($escapedLines as $index => $line) {
+            if ($index > 0) {
+                $content .= "T*\n";
+            }
+
+            $content .= '(' . $line . ') Tj\n';
+        }
+        $content .= "ET";
+
+        $objects = [];
+        $objects[] = "1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n";
+        $objects[] = "2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n";
+        $objects[] = "3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>\nendobj\n";
+        $objects[] = "4 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n";
+        $objects[] = '5 0 obj' . "\n<< /Length " . strlen($content) . " >>\nstream\n" . $content . "\nendstream\nendobj\n";
+
+        $pdf = "%PDF-1.4\n";
+        $offsets = [0];
+
+        foreach ($objects as $object) {
+            $offsets[] = strlen($pdf);
+            $pdf .= $object;
+        }
+
+        $xrefPosition = strlen($pdf);
+        $pdf .= "xref\n0 6\n";
+        $pdf .= "0000000000 65535 f \n";
+
+        for ($i = 1; $i <= 5; $i++) {
+            $pdf .= sprintf('%010d 00000 n ', $offsets[$i]) . "\n";
+        }
+
+        $pdf .= "trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n" . $xrefPosition . "\n%%EOF";
+
+        return $pdf;
+    }
+
+    private function escapePdfText(string $text): string
+    {
+        return str_replace(['\\', '(', ')'], ['\\\\', '\\(', '\\)'], $text);
+    }
+
+    
 
     /**
      * Get available years (current year and 2 future years)

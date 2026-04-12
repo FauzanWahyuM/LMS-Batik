@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Achievement;
 use App\Models\Artwork;
 use App\Models\Module;
+use App\Models\Program;
 use App\Models\RegistrationIndividual;
 use App\Models\RegistrationGroup;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -16,10 +17,16 @@ class LandingController extends Controller
 {
     public function index()
     {
-        $programContent = $this->buildProgramContent();
-
         $latestArtworks = Schema::hasTable('artworks')
             ? Artwork::latest()->take(6)->get()
+            : collect();
+
+        $programs = Schema::hasTable('programs')
+            ? Program::query()
+                ->where('is_active', true)
+                ->latest()
+                ->take(6)
+                ->get()
             : collect();
 
         $featuredAchievements = Schema::hasTable('achievements')
@@ -34,7 +41,7 @@ class LandingController extends Controller
         return view('landing.index', [
             'latestArtworks' => $latestArtworks,
             'featuredAchievements' => $featuredAchievements,
-            'programTypes' => $programContent['types'],
+            'programs' => $programs,
         ]);
     }
 
@@ -108,11 +115,10 @@ class LandingController extends Controller
 
     public function programs()
     {
-        $programContent = $this->buildProgramContent();
-
         return view('landing.programs', [
-            'programTypes' => $programContent['types'],
-            'programPackages' => $programContent['packages'],
+            'programs' => Schema::hasTable('programs')
+                ? Program::query()->where('is_active', true)->latest()->get()
+                : collect(),
         ]);
     }
 
@@ -130,8 +136,12 @@ class LandingController extends Controller
                 ->where('is_active', true)
                 ->orderByRaw('CASE WHEN rank IS NULL THEN 99 ELSE rank END')
                 ->orderByDesc('year')
-                ->get()
-            : collect();
+                ->paginate(3)
+                ->withQueryString()
+            : new LengthAwarePaginator([], 0, 3, 1, [
+                'path' => request()->url(),
+                'query' => request()->query(),
+            ]);
 
         return view('landing.gallery', compact('gallery', 'achievements'));
     }
