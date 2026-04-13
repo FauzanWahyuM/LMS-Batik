@@ -27,7 +27,7 @@ class ForcePasswordChange
             if ($dbUser && !$dbUser->password_changed) {
                 $currentRoute = $request->route()->getName();
 
-                if ($currentRoute !== 'dashboard.participant.profile' && $currentRoute !== 'logout') {
+                if ($currentRoute !== 'dashboard.participant.profile' && $currentRoute !== 'dashboard.participant.profile.update' && $currentRoute !== 'logout') {
                     return redirect()->route('dashboard.participant.profile')
                         ->with('force_password_change', true);
                 }

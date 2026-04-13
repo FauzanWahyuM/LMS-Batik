@@ -6,6 +6,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class RegistrationGroup extends Model
 {
+    protected $table = 'registration_groups';
+
     protected $fillable = [
         'nama_lembaga',
         'alamat_pic',

@@ -59,7 +59,7 @@ class LandingController extends Controller
     {
         $request->validate([
             'nama_lengkap'      => ['required', 'string', 'max:255'],
-            'email'             => ['required', 'email', 'max:255', 'unique:registration_individuals,email'],
+            'email'             => ['required', 'email', 'max:255'],
             'no_handphone'      => ['required', 'string', 'max:20'],
             'alamat'            => ['required', 'string', 'max:500'],
             'pendidikan_terakhir' => ['required', 'string', 'max:100'],
@@ -73,7 +73,7 @@ class LandingController extends Controller
             'alamat',
             'pendidikan_terakhir',
             'motivasi',
-        ]));
+        ]) + ['status' => 'pending']);
 
         return redirect()->route('landing.registration')
             ->with('success', 'Pendaftaran individu berhasil dikirim. Kami akan menghubungi Anda segera.');
@@ -84,7 +84,7 @@ class LandingController extends Controller
         $request->validate([
             'nama_lembaga'      => ['required', 'string', 'max:255'],
             'alamat_pic'        => ['required', 'string', 'max:500'],
-            'email_pic'         => ['required', 'email', 'max:255', 'unique:registration_groups,email_pic'],
+            'email_pic'         => ['required', 'email', 'max:255'],
             'no_handphone_pic'  => ['required', 'string', 'max:20'],
             'nama_pic'          => ['required', 'string', 'max:255'],
             'jumlah_peserta'    => ['required', 'integer', 'min:1'],
@@ -106,6 +106,8 @@ class LandingController extends Controller
             $filePath = $file->store('registration_documents', 'public');
             $data['surat_resmi'] = $filePath;
         }
+
+        $data['status'] = 'pending';
 
         RegistrationGroup::create($data);
 

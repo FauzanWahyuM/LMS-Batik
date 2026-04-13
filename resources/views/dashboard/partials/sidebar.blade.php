@@ -147,7 +147,7 @@
             <p class="mt-1 text-sm font-semibold text-slate-800">{{ $user['name'] ?? 'User' }}</p>
             <p class="text-xs text-slate-500">{{ $user['email'] ?? '-' }}</p>
             <span
-                class="mt-2 inline-block rounded-full px-2.5 py-1 text-xs font-semibold {{ $dashboard['roleBadgeClasses'] }}">{{ ucfirst($user['role'] ?? 'participant') }}</span>
+                class="mt-2 inline-block rounded-full px-2.5 py-1 text-xs font-semibold {{ $dashboard['roleBadgeClasses'] }}">{{ $user['sidebar_role_label'] ?? ucfirst($user['role'] ?? 'participant') }}</span>
         </a>
 
         <form method="POST" action="{{ route('logout') }}">

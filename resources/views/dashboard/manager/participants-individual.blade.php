@@ -154,7 +154,7 @@
                             <td class="px-3 py-3 text-slate-700">{{ $participant['progress'] }}%</td>
                             <td class="px-3 py-3">
                                 <span
-                                    class="rounded-full bg-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-700">{{ $participant['status'] }}</span>
+                                    class="rounded-full bg-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-700">{{ $participant['status_label'] ?? $participant['status'] }}</span>
                             </td>
                             <td class="px-3 py-3">
                                 <form method="POST"
@@ -163,9 +163,9 @@
                                     @csrf
                                     <select name="status"
                                         class="rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs text-slate-700">
-                                        <option value="Aktif" @selected($participant['status'] === 'Aktif')>Aktif</option>
-                                        <option value="Lulus" @selected($participant['status'] === 'Lulus')>Lulus</option>
-                                        <option value="Nonaktif" @selected($participant['status'] === 'Nonaktif')>Nonaktif</option>
+                                        <option value="active" @selected(($participant['status'] ?? 'active') === 'active')>active</option>
+                                        <option value="graduated" @selected(($participant['status'] ?? '') === 'graduated')>graduated</option>
+                                        <option value="non-active" @selected(($participant['status'] ?? '') === 'non-active')>non-active</option>
                                     </select>
                                     <button type="submit"
                                         class="rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-slate-700">Update</button>

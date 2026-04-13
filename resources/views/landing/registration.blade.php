@@ -6,13 +6,13 @@
     <style>
         /* Latar belakang kontainer tab (dibuat lebih gelap dari form agar kontras) */
         .tab-slider-bg {
-            background-color: #78350f; 
+            background-color: #78350f;
             /* amber-900 */
         }
 
         /* Tombol tab yang aktif warnanya sama dengan warna form */
         .tab-btn-active {
-            background-color: #92400e; 
+            background-color: #92400e;
             /* amber-800 */
             color: #fff;
         }
@@ -20,18 +20,20 @@
         /* Tombol tab yang tidak aktif */
         .tab-btn-inactive {
             background-color: transparent;
-            color: #d1d5db; /* gray-300 */
+            color: #d1d5db;
+            /* gray-300 */
         }
 
         /* Form dibuat sewarna dengan tab yang aktif dan tanpa garis tepi (menyatu) */
         .form-card-bg {
-            background-color: #92400e; 
+            background-color: #92400e;
             /* amber-800 */
         }
 
         .slider-track {
             display: flex;
-            align-items: flex-start; /* Mencegah form yang pendek ikut memanjang */
+            align-items: flex-start;
+            /* Mencegah form yang pendek ikut memanjang */
             transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1), height 0.4s cubic-bezier(0.4, 0, 0.2, 1);
             will-change: transform, height;
         }
@@ -58,22 +60,58 @@
     </section>
 
     {{-- Registration Form Section --}}
-    @if (session('success'))
-        <div class="fixed top-20 left-1/2 -translate-x-1/2 z-50 max-w-lg w-full px-4" id="flash-success">
-            <div
-                class="bg-green-100 border border-green-400 text-green-800 px-5 py-4 rounded-lg shadow-lg flex items-start space-x-3">
-                <svg class="h-5 w-5 text-green-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <p class="text-sm font-medium">{{ session('success') }}</p>
+    @if ($errors->any())
+        <div class="fixed top-20 left-1/2 z-50 w-full max-w-lg -translate-x-1/2 px-4" id="flash-errors">
+            <div class="rounded-lg border border-rose-300 bg-rose-50 px-5 py-4 shadow-lg">
+                <p class="text-sm font-semibold text-rose-800">Pendaftaran gagal disimpan</p>
+                <ul class="mt-2 list-disc space-y-1 pl-5 text-sm text-rose-700">
+                    @foreach ($errors->all() as $error)
+                        <li>{{ $error }}</li>
+                    @endforeach
+                </ul>
             </div>
         </div>
         <script>
             setTimeout(function() {
-                var el = document.getElementById('flash-success');
+                var el = document.getElementById('flash-errors');
                 if (el) el.remove();
-            }, 5000);
+            }, 7000);
+        </script>
+    @endif
+
+    @if (session('success'))
+        <div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 px-4"
+            id="registration-success-modal">
+            <div class="w-full max-w-md rounded-2xl border border-emerald-200 bg-white p-6 shadow-2xl">
+                <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100">
+                    <svg class="h-7 w-7 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                </div>
+                <h2 class="mt-4 text-center text-xl font-bold text-slate-900">Pendaftaran Berhasil</h2>
+                <p class="mt-2 text-center text-sm leading-6 text-slate-600">{{ session('success') }}</p>
+                <div class="mt-6 flex justify-center">
+                    <button type="button" onclick="closeRegistrationSuccessModal()"
+                        class="rounded-lg bg-slate-900 px-5 py-2 text-sm font-semibold text-white hover:bg-slate-700">
+                        Tutup
+                    </button>
+                </div>
+            </div>
+        </div>
+        <script>
+            window.addEventListener('DOMContentLoaded', function() {
+                setTimeout(function() {
+                    closeRegistrationSuccessModal();
+                }, 7000);
+            });
+
+            function closeRegistrationSuccessModal() {
+                var modal = document.getElementById('registration-success-modal');
+                if (modal) {
+                    modal.remove();
+                }
+            }
         </script>
     @endif
 
@@ -83,7 +121,7 @@
 
             {{-- Wrapper Utama --}}
             <div class="rounded-xl shadow-2xl overflow-hidden flex flex-col">
-                
+
                 {{-- Tab Switcher --}}
                 <div class="tab-slider-bg p-1.5 flex z-10">
                     <button id="tab-individu" onclick="switchTab('individu')"
@@ -105,7 +143,8 @@
                         {{-- Slide 1: Individu (Tambahkan ID panel-individu) --}}
                         <div class="slide-panel" id="panel-individu">
                             <div class="p-8 md:p-10">
-                                <form action="{{ route('landing.registration.individu') }}" method="POST" id="form-individu">
+                                <form action="{{ route('landing.registration.individu') }}" method="POST"
+                                    id="form-individu">
                                     @csrf
                                     <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
                                         <div class="md:col-span-2">
@@ -133,13 +172,16 @@
                                                 required>
                                         </div>
                                         <div class="md:col-span-2">
-                                            <label class="block text-sm font-medium text-white mb-1">Pendidikan Terakhir</label>
-                                            <input type="text" name="pendidikan_terakhir" placeholder="Contoh: SMA, D3, S1"
+                                            <label class="block text-sm font-medium text-white mb-1">Pendidikan
+                                                Terakhir</label>
+                                            <input type="text" name="pendidikan_terakhir"
+                                                placeholder="Contoh: SMA, D3, S1"
                                                 class="w-full border border-gray-300 text-gray-900 rounded-md px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent transition"
                                                 required>
                                         </div>
                                         <div class="md:col-span-2">
-                                            <label class="block text-sm font-medium text-white mb-1">Motivasi Singkat Anda Mengikuti Program!</label>
+                                            <label class="block text-sm font-medium text-white mb-1">Motivasi Singkat Anda
+                                                Mengikuti Program!</label>
                                             <textarea name="motivasi" rows="4" placeholder="Tuliskan motivasi singkat Anda..."
                                                 class="w-full border border-gray-300 text-gray-900 rounded-md px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent transition resize-none"
                                                 required></textarea>
@@ -163,8 +205,10 @@
                                     @csrf
                                     <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
                                         <div class="md:col-span-2">
-                                            <label class="block text-sm font-medium text-white mb-1">Nama Lembaga/Kelompok</label>
-                                            <input type="text" name="nama_lembaga" placeholder="Nama Lembaga atau Kelompok"
+                                            <label class="block text-sm font-medium text-white mb-1">Nama
+                                                Lembaga/Kelompok</label>
+                                            <input type="text" name="nama_lembaga"
+                                                placeholder="Nama Lembaga atau Kelompok"
                                                 class="w-full border border-gray-300 text-gray-900 rounded-md px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent transition"
                                                 required>
                                         </div>
@@ -181,7 +225,8 @@
                                                 required>
                                         </div>
                                         <div>
-                                            <label class="block text-sm font-medium text-white mb-1">No. Handphone PIC</label>
+                                            <label class="block text-sm font-medium text-white mb-1">No. Handphone
+                                                PIC</label>
                                             <input type="tel" name="no_handphone_pic"
                                                 placeholder="08xxxxxxxxxx | No. Handphone PIC"
                                                 class="w-full border border-gray-300 text-gray-900 rounded-md px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent transition"
@@ -189,7 +234,8 @@
                                         </div>
                                         <div>
                                             <label class="block text-sm font-medium text-white mb-1">Nama PIC</label>
-                                            <input type="text" name="nama_pic" placeholder="Nama PIC (Person in Charge)"
+                                            <input type="text" name="nama_pic"
+                                                placeholder="Nama PIC (Person in Charge)"
                                                 class="w-full border border-gray-300 text-gray-900 rounded-md px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent transition"
                                                 required>
                                         </div>
@@ -223,10 +269,12 @@
                                                         untuk memilih</p>
                                                     <p class="text-xs text-gray-400 mt-1">PDF, JPG, PNG (maks. 5MB)</p>
                                                 </div>
-                                                <div id="upload-preview" class="hidden items-center justify-center space-x-2">
-                                                    <svg class="h-5 w-5 text-amber-500" fill="none" stroke="currentColor"
-                                                        viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                <div id="upload-preview"
+                                                    class="hidden items-center justify-center space-x-2">
+                                                    <svg class="h-5 w-5 text-amber-500" fill="none"
+                                                        stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                                            stroke-width="2"
                                                             d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                                                     </svg>
                                                     <span id="file-name"

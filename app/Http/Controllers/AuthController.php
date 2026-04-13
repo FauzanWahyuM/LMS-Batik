@@ -24,6 +24,8 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class AuthController extends Controller
 {
+    private const WA_VALIDATION_SENDER_NUMBER = '081332650772';
+
     /**
      * Hardcoded users for temporary authentication simulation.
      *
@@ -186,11 +188,16 @@ class AuthController extends Controller
             // Use Laravel Auth for database users
             auth()->login($dbUser);
 
+            $sessionRole = $this->getSessionRoleFromDbRole($dbUser->role);
+            $normalizedStatus = $this->normalizeParticipantStatus((string) ($dbUser->status ?? 'active'));
+
             $request->session()->put('auth_user', [
                 'name' => $dbUser->name,
                 'username' => $dbUser->username ?: $dbUser->email,
                 'email' => $dbUser->email,
-                'role' => $this->getSessionRoleFromDbRole($dbUser->role),
+                'role' => $sessionRole,
+                'status' => $sessionRole === 'participant' ? $normalizedStatus : (string) ($dbUser->status ?? ''),
+                'sidebar_role_label' => $sessionRole === 'participant' ? $this->buildParticipantRoleLabel($normalizedStatus) : null,
             ]);
 
             $request->session()->regenerate();
@@ -332,7 +339,7 @@ class AuthController extends Controller
             'address' => $registration->alamat,
             'education' => $registration->pendidikan_terakhir,
             'motivation' => $registration->motivasi,
-            'status' => 'Aktif',
+            'status' => 'active',
             'password_changed' => false,
         ]);
 
@@ -372,6 +379,13 @@ class AuthController extends Controller
                 ->withErrors(['credential' => 'Silakan generate kredensial terlebih dahulu sebelum mengirim via WhatsApp.']);
         }
 
+        $targetNumber = $this->normalizeWhatsappNumber((string) ($generatedCredential['participant_whatsapp'] ?? ''));
+        if ($targetNumber === '') {
+            return redirect()
+                ->route('dashboard.manager.participants.individual')
+                ->withErrors(['credential' => 'Nomor WhatsApp peserta tidak valid atau tidak tersedia.']);
+        }
+
         $sentParticipantIds = $request->session()->get('manager_sent_individual_ids', []);
         if (!in_array($participant, $sentParticipantIds, true)) {
             $sentParticipantIds[] = $participant;
@@ -380,9 +394,17 @@ class AuthController extends Controller
         $request->session()->put('manager_sent_individual_ids', $sentParticipantIds);
         $request->session()->forget('manager_generated_credential');
 
-        return redirect()
-            ->route('dashboard.manager.participants.individual')
-            ->with('status', 'Kredensial login awal berhasil dikirim via WhatsApp (simulasi). Peserta dipindahkan ke daftar kelola peserta.');
+        $message = "*Hasil Validasi Pendaftaran LMS Batik*\n"
+            . "Status validasi: Disetujui\n"
+            . "Nama peserta: {$generatedCredential['participant_name']}\n"
+            . "Username: {$generatedCredential['username']}\n"
+            . "Password awal: {$generatedCredential['password']}\n"
+            . "Silakan login dan ganti password pada login pertama.\n\n"
+            . "Pengirim (Admin): " . self::WA_VALIDATION_SENDER_NUMBER;
+
+        $waUrl = 'https://wa.me/' . $targetNumber . '?text=' . rawurlencode($message);
+
+        return redirect()->away($waUrl);
     }
 
     public function managerIndividualParticipantsUpdate(Request $request, string $participant): RedirectResponse
@@ -394,10 +416,10 @@ class AuthController extends Controller
         }
 
         $validated = $request->validate([
-            'status' => ['required', 'string', Rule::in(['Aktif', 'Lulus', 'Nonaktif'])],
+            'status' => ['required', 'string', Rule::in(['active', 'graduated', 'non-active', 'Aktif', 'Lulus', 'Nonaktif'])],
         ]);
 
-        $status = $validated['status'];
+        $status = $this->normalizeParticipantStatus($validated['status']);
 
         $query = User::query();
         if (is_numeric($participant)) {
@@ -420,7 +442,7 @@ class AuthController extends Controller
 
         return redirect()
             ->route('dashboard.manager.participants.individual')
-            ->with('status', 'Status peserta individu ' . $user->name . ' berhasil diperbarui menjadi ' . $status . '.');
+            ->with('status', 'Status peserta individu ' . $user->name . ' berhasil diperbarui menjadi ' . $this->buildParticipantRoleLabel($status) . '.');
     }
 
     public function managerGroupParticipants(Request $request): View|RedirectResponse
@@ -509,7 +531,7 @@ class AuthController extends Controller
                 'education' => '',
                 'motivation' => '',
                 'group_name' => $selectedGroup['group_name'],
-                'status' => 'Aktif',
+                'status' => 'active',
                 'password_changed' => false,
             ]);
 
@@ -1849,7 +1871,7 @@ class AuthController extends Controller
         }
 
         return view('dashboard.participant.profile', [
-            'user' => $request->session()->get('auth_user'),
+            'user' => $this->resolveSidebarUser($request),
             'dashboard' => $this->getParticipantDashboardConfig('profile'),
             'profile' => $this->getParticipantProfileData($request),
         ]);
@@ -2112,7 +2134,7 @@ class AuthController extends Controller
 
     private function renderParticipantPage(Request $request, string $page, array $extraData = []): View
     {
-        $user = $request->session()->get('auth_user');
+        $user = $this->resolveSidebarUser($request);
         $dashboard = $this->getParticipantDashboardConfig($page);
 
         return view($dashboard['view'], array_merge([
@@ -2375,14 +2397,88 @@ class AuthController extends Controller
             ->get();
 
         return $users->map(function ($user) {
+            $status = $this->normalizeParticipantStatus((string) ($user->status ?? 'active'));
+
             return [
                 'id' => $user->username ?: 'peserta-' . $user->id,
                 'name' => $user->name,
                 'program' => 'Program Individu',
                 'progress' => 0,
-                'status' => $user->status ?? 'Aktif',
+                'status' => $status,
+                'status_label' => $this->buildParticipantRoleLabel($status),
             ];
         })->toArray();
+    }
+
+    private function resolveSidebarUser(Request $request): array
+    {
+        $user = $request->session()->get('auth_user', []);
+
+        if (($user['role'] ?? null) !== 'participant') {
+            return $user;
+        }
+
+        $query = User::query()->where('role', 'peserta');
+
+        if (!empty($user['email'])) {
+            $query->where('email', $user['email']);
+        } elseif (!empty($user['username'])) {
+            $query->where('username', $user['username']);
+        }
+
+        $dbUser = $query->first();
+        if (!$dbUser) {
+            return $user;
+        }
+
+        $normalizedStatus = $this->normalizeParticipantStatus((string) ($dbUser->status ?? 'active'));
+
+        $user['status'] = $normalizedStatus;
+        $user['sidebar_role_label'] = $this->buildParticipantRoleLabel($normalizedStatus);
+        $request->session()->put('auth_user', $user);
+
+        return $user;
+    }
+
+    private function normalizeParticipantStatus(string $status): string
+    {
+        $normalized = strtolower(trim($status));
+
+        return match ($normalized) {
+            'aktif', 'active' => 'active',
+            'lulus', 'graduated' => 'graduated',
+            'nonaktif', 'non-active', 'non active' => 'non-active',
+            default => 'active',
+        };
+    }
+
+    private function buildParticipantRoleLabel(string $status): string
+    {
+        return match ($this->normalizeParticipantStatus($status)) {
+            'active' => 'Participant - Active',
+            'graduated' => 'Participant - Graduated (Alumni)',
+            'non-active' => 'Participant - Non-active',
+            default => 'Participant - Active',
+        };
+    }
+
+    private function normalizeWhatsappNumber(string $phone): string
+    {
+        $digits = preg_replace('/\D+/', '', $phone) ?? '';
+
+        if ($digits === '') {
+            return '';
+        }
+
+        if (str_starts_with($digits, '0')) {
+            return '62' . substr($digits, 1);
+        }
+
+        if (str_starts_with($digits, '62')) {
+            return $digits;
+        }
+
+        return $digits;
     }
 
     /**
