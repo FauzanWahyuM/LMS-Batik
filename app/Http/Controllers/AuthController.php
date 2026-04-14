@@ -5,7 +5,9 @@ namespace App\Http\Controllers;
 use Barryvdh\DomPDF\Facade\Pdf;
 use App\Models\Achievement;
 use App\Models\Artwork;
+use App\Models\Module;
 use App\Models\ParticipantAssignment;
+use App\Models\ParticipantProgress;
 use App\Models\Program;
 use App\Models\RegistrationGroup;
 use App\Models\RegistrationIndividual;
@@ -15,6 +17,7 @@ use App\Services\ParticipantModuleService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
@@ -68,7 +71,6 @@ class AuthController extends Controller
             'photo' => '',
             'full_name' => (string) ($authUser['name'] ?? 'Demo Instructor'),
             'username' => (string) ($authUser['username'] ?? 'instructor01'),
-            'password' => 'instructor123',
             'email' => (string) ($authUser['email'] ?? 'instructor@lmsbatik.test'),
             'phone' => '081298765432',
             'address' => 'Jl. Batik Madiun No. 21',
@@ -76,12 +78,33 @@ class AuthController extends Controller
         ];
 
         $sessionData = $request->session()->get('profile_instructor_data', []);
+        $profile = is_array($sessionData) ? array_merge($defaults, $sessionData) : $defaults;
 
-        if (!is_array($sessionData)) {
-            return $defaults;
+        $dbUser = null;
+        if (!empty($authUser['email']) || !empty($authUser['username'])) {
+            $query = User::query();
+            if (!empty($authUser['email'])) {
+                $query->where('email', $authUser['email']);
+            }
+            if (!empty($authUser['username'])) {
+                $query->orWhere('username', $authUser['username']);
+            }
+            $dbUser = $query->where('role', 'pengajar')->first();
         }
 
-        return array_merge($defaults, $sessionData);
+        if ($dbUser) {
+            return array_merge($profile, [
+                'photo' => (string) ($profile['photo'] ?? ''),
+                'full_name' => $dbUser->name,
+                'username' => (string) $dbUser->username,
+                'email' => $dbUser->email,
+                'phone' => (string) ($dbUser->phone ?? ''),
+                'address' => (string) ($dbUser->address ?? ''),
+                'role_label' => 'Pengajar',
+            ]);
+        }
+
+        return $profile;
     }
 
     /**
@@ -105,12 +128,10 @@ class AuthController extends Controller
         ];
 
         $sessionData = $request->session()->get('profile_participant_data', []);
+        $profile = is_array($sessionData) && count($sessionData) > 0
+            ? array_merge($defaults, $sessionData)
+            : $defaults;
 
-        if (is_array($sessionData) && count($sessionData) > 0) {
-            return array_merge($defaults, $sessionData);
-        }
-
-        $authUser = $request->session()->get('auth_user', []);
         $dbUser = null;
 
         if (!empty($authUser['email']) || !empty($authUser['username'])) {
@@ -125,20 +146,38 @@ class AuthController extends Controller
         }
 
         if ($dbUser) {
-            return array_merge($defaults, [
+            $participantType = !empty($dbUser->group_name) ? 'group' : 'individual';
+            $groupName = $participantType === 'group' ? (string) $dbUser->group_name : '';
+            $picName = '';
+
+            if ($participantType === 'group' && Schema::hasTable('registration_groups')) {
+                $registrationGroup = RegistrationGroup::query()
+                    ->where('nama_lembaga', $groupName)
+                    ->orderByDesc('created_at')
+                    ->first();
+
+                if ($registrationGroup) {
+                    $picName = (string) $registrationGroup->nama_pic;
+                }
+            }
+
+            return array_merge($profile, [
+                'participant_type' => $participantType,
                 'full_name' => $dbUser->name,
                 'username' => $dbUser->username,
                 'email' => $dbUser->email,
                 'phone' => $dbUser->phone ?? '',
                 'address' => $dbUser->address ?? '',
-                'motivation' => $dbUser->motivation ?? $defaults['motivation'],
-                'group_name' => '',
-                'pic_name' => '',
-                'role_label' => 'Peserta Individu',
+                'motivation' => $participantType === 'individual'
+                    ? ($dbUser->motivation ?? $defaults['motivation'])
+                    : '',
+                'group_name' => $groupName,
+                'pic_name' => $picName,
+                'role_label' => $participantType === 'group' ? 'Peserta Kelompok' : 'Peserta Individu',
             ]);
         }
 
-        return $defaults;
+        return $profile;
     }
 
     private array $users = [
@@ -260,11 +299,14 @@ class AuthController extends Controller
             return $guard;
         }
 
+        $registrationStats = $this->getManagerRegistrationStatistics();
+
         return view('dashboard.manager.index', [
             'user' => $request->session()->get('auth_user'),
             'dashboard' => $this->getManagerDashboardConfig('home'),
             'stats' => $this->getManagerStats(),
             'activities' => $this->getManagerActivities(),
+            'registrationStats' => $registrationStats,
         ]);
     }
 
@@ -454,33 +496,12 @@ class AuthController extends Controller
         }
 
         $sentGroupIds = $request->session()->get('manager_sent_group_ids', []);
-        $groupStatuses = $request->session()->get('manager_group_statuses', []);
         $pendingGroups = $this->getManagerPendingGroupValidations();
         $pendingGroups = array_values(array_filter($pendingGroups, function (array $group) use ($sentGroupIds): bool {
             return !in_array($group['id'], $sentGroupIds, true);
         }));
 
         $managedGroups = $this->getManagerGroupParticipants();
-        $managedGroupIds = array_column($managedGroups, 'id');
-
-        foreach ($this->getManagerPendingGroupValidations() as $group) {
-            if (in_array($group['id'], $sentGroupIds, true) && !in_array($group['id'], $managedGroupIds, true)) {
-                $managedGroups[] = [
-                    'id' => $group['id'],
-                    'group_name' => $group['group_name'],
-                    'members' => $group['members'],
-                    'program' => $group['program'],
-                    'status' => $groupStatuses[$group['id']] ?? 'Aktif',
-                ];
-            }
-        }
-
-        // Update statuses from session for all groups
-        foreach ($managedGroups as &$group) {
-            if (isset($groupStatuses[$group['id']])) {
-                $group['status'] = $groupStatuses[$group['id']];
-            }
-        }
 
         return view('dashboard.manager.participants-group', [
             'user' => $request->session()->get('auth_user'),
@@ -662,17 +683,39 @@ class AuthController extends Controller
             return $guard;
         }
 
-        $request->validate([
-            'status' => ['required', 'string', 'in:Aktif,Lulus,Nonaktif'],
+        $validated = $request->validate([
+            'status' => ['required', 'string', Rule::in(['active', 'graduated', 'non-active', 'Aktif', 'Lulus', 'Nonaktif'])],
         ]);
 
-        $groupStatuses = $request->session()->get('manager_group_statuses', []);
-        $groupStatuses[$group] = $request->input('status');
-        $request->session()->put('manager_group_statuses', $groupStatuses);
+        $status = $this->normalizeParticipantStatus($validated['status']);
+        $registrationId = str_starts_with($group, 'group-') ? (int) str_replace('group-', '', $group) : (int) $group;
+
+        $registration = RegistrationGroup::query()->find($registrationId);
+        if (!$registration) {
+            return redirect()
+                ->route('dashboard.manager.participants.group')
+                ->withErrors(['status' => 'Data lembaga tidak ditemukan untuk diperbarui.']);
+        }
+
+        $affectedUsers = User::query()
+            ->where('role', 'peserta')
+            ->where('group_name', $registration->nama_lembaga)
+            ->get();
+
+        if ($affectedUsers->isEmpty()) {
+            return redirect()
+                ->route('dashboard.manager.participants.group')
+                ->withErrors(['status' => 'Belum ada user yang berafiliasi dengan lembaga ini untuk diperbarui.']);
+        }
+
+        foreach ($affectedUsers as $user) {
+            $user->status = $status;
+            $user->save();
+        }
 
         return redirect()
             ->route('dashboard.manager.participants.group')
-            ->with('status', 'Status kelompok diperbarui.');
+            ->with('status', 'Status peserta kelompok untuk lembaga ' . $registration->nama_lembaga . ' berhasil diperbarui menjadi ' . $this->buildParticipantRoleLabel($status) . '.');
     }
 
     public function managerInstructors(Request $request): View|RedirectResponse
@@ -1504,11 +1547,9 @@ class AuthController extends Controller
             'photo' => ['nullable', 'image', 'max:2048'],
             'full_name' => ['required', 'string', 'min:3', 'max:120'],
             'username' => ['required', 'string', 'min:4', 'max:40'],
-            'password' => ['required', 'string', 'min:6', 'max:40'],
             'email' => ['required', 'email'],
             'phone' => ['required', 'string', 'min:7', 'max:20'],
             'address' => ['required', 'string', 'min:5', 'max:255'],
-            'role_label' => ['required', 'string', 'min:3', 'max:40'],
         ]);
 
         $profile = $this->getInstructorProfileData($request);
@@ -1522,13 +1563,28 @@ class AuthController extends Controller
 
         $profile['full_name'] = $validated['full_name'];
         $profile['username'] = $validated['username'];
-        $profile['password'] = $validated['password'];
         $profile['email'] = $validated['email'];
         $profile['phone'] = $validated['phone'];
         $profile['address'] = $validated['address'];
-        $profile['role_label'] = $validated['role_label'];
+        $profile['role_label'] = 'Pengajar';
 
         $request->session()->put('profile_instructor_data', $profile);
+
+        $dbUser = User::where('role', 'pengajar')
+            ->when(!empty($validated['email']), function ($query) use ($validated) {
+                $query->where('email', $validated['email']);
+            })
+            ->first();
+
+        if ($dbUser) {
+            $dbUser->name = $validated['full_name'];
+            $dbUser->username = $validated['username'];
+            $dbUser->email = $validated['email'];
+            $dbUser->phone = $validated['phone'];
+            $dbUser->address = $validated['address'];
+
+            $dbUser->save();
+        }
 
         $authUser = $request->session()->get('auth_user', []);
         $authUser['name'] = $validated['full_name'];
@@ -1690,12 +1746,26 @@ class AuthController extends Controller
         }
 
         $selected = (string) $request->query('participant', '');
+        $individualPage = (int) $request->query('individual_page', 1);
+        $groupPage = (int) $request->query('group_page', 1);
+
+        $allIndividual = $this->getInstructorIndividualParticipants();
+        $allGroup = $this->getInstructorGroupParticipants();
+
+        $paginatedIndividual = $this->paginateArray($allIndividual, $individualPage, 5);
+        $paginatedGroup = $this->paginateArray($allGroup, $groupPage, 5);
 
         return view('dashboard.instructor.participants', [
             'user' => $request->session()->get('auth_user'),
             'dashboard' => $this->getInstructorDashboardConfig('participants'),
-            'individualParticipants' => $this->getInstructorIndividualParticipants(),
-            'groupParticipants' => $this->getInstructorGroupParticipants(),
+            'individualParticipants' => $paginatedIndividual['items'],
+            'individualPage' => $individualPage,
+            'individualTotalPages' => $paginatedIndividual['total_pages'],
+            'individualTotal' => $paginatedIndividual['total'],
+            'groupParticipants' => $paginatedGroup['items'],
+            'groupPage' => $groupPage,
+            'groupTotalPages' => $paginatedGroup['total_pages'],
+            'groupTotal' => $paginatedGroup['total'],
             'selectedParticipant' => $selected,
         ]);
     }
@@ -1859,7 +1929,46 @@ class AuthController extends Controller
             return $guard;
         }
 
-        return $this->renderParticipantPage($request, 'home');
+        $participantUser = $this->resolveParticipantAccountUser($request);
+        $moduleService = app(ParticipantModuleService::class);
+        $modules = $moduleService->getAvailableModules();
+
+        $moduleProgressItems = $modules->map(function ($module) use ($moduleService, $participantUser): array {
+            $moduleData = $moduleService->getModuleForParticipant($module, $participantUser);
+
+            return [
+                'title' => $module->title,
+                'slug' => $module->slug,
+                'url' => route('dashboard.participant.modules.detail', ['module' => $module->slug]),
+                'progress' => (int) ($moduleData['overall_progress'] ?? 0),
+                'completed_count' => (int) ($moduleData['completed_count'] ?? 0),
+                'total_count' => (int) ($moduleData['total_count'] ?? 0),
+                'status_label' => (int) ($moduleData['overall_progress'] ?? 0) >= 100 ? 'Selesai' : 'Berjalan',
+            ];
+        })->values();
+
+        $nextModule = $moduleProgressItems->first(function (array $module): bool {
+            return $module['progress'] < 100;
+        }) ?? $moduleProgressItems->first();
+
+        $latestArtwork = null;
+        $artworkCount = 0;
+        if (Schema::hasTable('artworks') && !empty($participantUser->email)) {
+            $artworkQuery = Artwork::query()->where('creator_email', $participantUser->email)->latest();
+            $artworkCount = (clone $artworkQuery)->count();
+            $latestArtwork = $artworkQuery->first();
+        }
+
+        return $this->renderParticipantPage($request, 'home', [
+            'moduleProgressItems' => $moduleProgressItems,
+            'homeStats' => [
+                'module_total' => $moduleProgressItems->count(),
+                'module_completed' => $moduleProgressItems->where('progress', 100)->count(),
+                'artwork_total' => $artworkCount,
+            ],
+            'continueModuleUrl' => $nextModule['url'] ?? route('dashboard.participant.modules'),
+            'latestArtwork' => $latestArtwork,
+        ]);
     }
 
     public function participantProfile(Request $request): View|RedirectResponse
@@ -1901,19 +2010,17 @@ class AuthController extends Controller
             'role_label' => ['required', 'string', 'min:3', 'max:40'],
         ]);
 
-        if ($validated['participant_type'] === 'individual' && empty($validated['motivation'])) {
-            return back()->withErrors(['motivation' => 'Motivasi singkat wajib diisi untuk peserta individu.'])->withInput();
-        }
-
-        if ($validated['participant_type'] === 'group' && (empty($validated['group_name']) || empty($validated['pic_name']))) {
-            return back()->withErrors(['group_name' => 'Nama kelompok/lembaga dan nama PIC wajib diisi untuk peserta kelompok.'])->withInput();
-        }
-
         $authUser = $request->session()->get('auth_user', []);
         $dbUser = User::where('email', $authUser['email'])->first();
 
         if (!$dbUser) {
             return back()->withErrors(['general' => 'User tidak ditemukan.'])->withInput();
+        }
+
+        $participantType = !empty($dbUser->group_name) ? 'group' : 'individual';
+
+        if ($participantType === 'individual' && empty($validated['motivation'])) {
+            return back()->withErrors(['motivation' => 'Motivasi singkat wajib diisi untuk peserta individu.'])->withInput();
         }
 
         // Update user data
@@ -1923,7 +2030,7 @@ class AuthController extends Controller
         $dbUser->password = Hash::make($validated['password']);
         $dbUser->phone = $validated['phone'];
         $dbUser->address = $validated['address'];
-        $dbUser->motivation = $validated['motivation'] ?? null;
+        $dbUser->motivation = $participantType === 'individual' ? ($validated['motivation'] ?? null) : null;
         $dbUser->password_changed = true; // Mark as changed
 
         $dbUser->save();
@@ -2362,11 +2469,52 @@ class AuthController extends Controller
      */
     private function getManagerStats(): array
     {
+        $individualParticipants = 0;
+        $groupParticipants = 0;
+        $activeInstructors = 0;
+        $activePrograms = 0;
+
+        if (Schema::hasTable('users')) {
+            $individualParticipants = User::query()
+                ->where('role', 'peserta')
+                ->where(function ($query) {
+                    $query->whereNull('group_name')
+                        ->orWhere('group_name', '');
+                })
+                ->where(function ($query) {
+                    $query->whereNull('status')
+                        ->orWhereIn('status', ['Aktif', 'active']);
+                })
+                ->count();
+
+            $groupParticipants = User::query()
+                ->where('role', 'peserta')
+                ->whereNotNull('group_name')
+                ->where('group_name', '!=', '')
+                ->where(function ($query) {
+                    $query->whereNull('status')
+                        ->orWhereIn('status', ['Aktif', 'active']);
+                })
+                ->count();
+
+            $activeInstructors = User::query()
+                ->where('role', 'pengajar')
+                ->where(function ($query) {
+                    $query->whereNull('status')
+                        ->orWhereIn('status', ['Aktif', 'active']);
+                })
+                ->count();
+        }
+
+        if (Schema::hasTable('programs')) {
+            $activePrograms = Program::query()->where('is_active', true)->count();
+        }
+
         return [
-            'individualParticipants' => 120,
-            'groupParticipants' => 34,
-            'activeInstructors' => 9,
-            'activePrograms' => 6,
+            'individualParticipants' => $individualParticipants,
+            'groupParticipants' => $groupParticipants,
+            'activeInstructors' => $activeInstructors,
+            'activePrograms' => $activePrograms,
         ];
     }
 
@@ -2375,11 +2523,166 @@ class AuthController extends Controller
      */
     private function getManagerActivities(): array
     {
+        $activities = [];
+
+        if (Schema::hasTable('registration_individuals')) {
+            $latestIndividual = RegistrationIndividual::query()
+                ->latest()
+                ->first();
+
+            if ($latestIndividual) {
+                $activities[] = [
+                    'time' => $latestIndividual->created_at?->format('H:i') ?? '-',
+                    'title' => 'Pendaftaran individu baru',
+                    'description' => $latestIndividual->nama_lengkap . ' menunggu proses verifikasi dengan status ' . $latestIndividual->status . '.',
+                ];
+            }
+        }
+
+        if (Schema::hasTable('registration_groups')) {
+            $latestGroup = RegistrationGroup::query()
+                ->latest()
+                ->first();
+
+            if ($latestGroup) {
+                $activities[] = [
+                    'time' => $latestGroup->created_at?->format('H:i') ?? '-',
+                    'title' => 'Pendaftaran kelompok baru',
+                    'description' => $latestGroup->nama_lembaga . ' mengirim ' . $latestGroup->jumlah_peserta . ' peserta dengan status ' . $latestGroup->status . '.',
+                ];
+            }
+        }
+
+        if (Schema::hasTable('programs')) {
+            $latestProgram = Program::query()->latest()->first();
+
+            if ($latestProgram) {
+                $activities[] = [
+                    'time' => $latestProgram->updated_at?->format('H:i') ?? '-',
+                    'title' => 'Program diperbarui',
+                    'description' => 'Program ' . $latestProgram->name . ' saat ini ' . ($latestProgram->is_active ? 'ditampilkan' : 'disembunyikan') . ' di dashboard.',
+                ];
+            }
+        }
+
+        if (Schema::hasTable('users')) {
+            $latestInstructor = User::query()
+                ->where('role', 'pengajar')
+                ->latest()
+                ->first();
+
+            if ($latestInstructor) {
+                $activities[] = [
+                    'time' => $latestInstructor->updated_at?->format('H:i') ?? '-',
+                    'title' => 'Pengajar aktif',
+                    'description' => $latestInstructor->name . ' terdaftar sebagai pengajar aktif pada sistem.',
+                ];
+            }
+        }
+
+        if (empty($activities)) {
+            return [
+                ['time' => '-', 'title' => 'Belum ada aktivitas', 'description' => 'Data aktivitas akan muncul setelah ada transaksi pendaftaran atau pembaruan program.'],
+            ];
+        }
+
+        return array_slice($activities, 0, 4);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function getManagerRegistrationStatistics(): array
+    {
+        $months = [
+            1 => 'Januari',
+            2 => 'Februari',
+            3 => 'Maret',
+            4 => 'April',
+            5 => 'Mei',
+            6 => 'Juni',
+            7 => 'Juli',
+            8 => 'Agustus',
+            9 => 'September',
+            10 => 'Oktober',
+            11 => 'November',
+            12 => 'Desember',
+        ];
+
+        $individualDates = Schema::hasTable('registration_individuals')
+            ? RegistrationIndividual::query()->pluck('created_at')->filter()->values()
+            : collect();
+        $groupDates = Schema::hasTable('registration_groups')
+            ? RegistrationGroup::query()->pluck('created_at')->filter()->values()
+            : collect();
+
+        $allDates = $individualDates->merge($groupDates)->filter()->values();
+
+        if ($allDates->isEmpty()) {
+            $fallbackDate = Carbon::now()->startOfMonth();
+            $allDates = collect([$fallbackDate]);
+        }
+
+        $startDate = Carbon::parse($allDates->min())->startOfMonth();
+        $endDate = Carbon::parse($allDates->max())->startOfMonth();
+
+        $individualCounts = [];
+        foreach ($individualDates as $date) {
+            $key = Carbon::parse($date)->format('Y-m');
+            $individualCounts[$key] = ($individualCounts[$key] ?? 0) + 1;
+        }
+
+        $groupCounts = [];
+        foreach ($groupDates as $date) {
+            $key = Carbon::parse($date)->format('Y-m');
+            $groupCounts[$key] = ($groupCounts[$key] ?? 0) + 1;
+        }
+
+        $points = [];
+        $totalRegistrations = 0;
+        $peakMonthLabel = '-';
+        $peakMonthCount = 0;
+        $cursor = $startDate->copy();
+
+        while ($cursor->lessThanOrEqualTo($endDate)) {
+            $monthKey = $cursor->format('Y-m');
+            $monthNumber = (int) $cursor->format('n');
+            $monthLabel = $months[$monthNumber] . ' ' . $cursor->format('Y');
+            $individualCount = $individualCounts[$monthKey] ?? 0;
+            $groupCount = $groupCounts[$monthKey] ?? 0;
+            $total = $individualCount + $groupCount;
+
+            $points[] = [
+                'key' => $monthKey,
+                'label' => $monthLabel,
+                'individual' => $individualCount,
+                'group' => $groupCount,
+                'total' => $total,
+            ];
+
+            $totalRegistrations += $total;
+
+            if ($total > $peakMonthCount) {
+                $peakMonthCount = $total;
+                $peakMonthLabel = $monthLabel;
+            }
+
+            $cursor->addMonthNoOverflow();
+        }
+
+        $averageRegistration = count($points) > 0 ? (int) round($totalRegistrations / count($points)) : 0;
+        $firstHalf = array_sum(array_slice(array_column($points, 'total'), 0, 6));
+        $secondHalf = array_sum(array_slice(array_column($points, 'total'), 6, 6));
+        $growth = $firstHalf > 0 ? round((($secondHalf - $firstHalf) / $firstHalf) * 100, 1) : 0.0;
+
         return [
-            ['time' => '08:10', 'title' => 'Pendaftaran kelompok baru', 'description' => 'Kelompok Batik Lestari menunggu verifikasi berkas.'],
-            ['time' => '09:35', 'title' => 'Perubahan status program', 'description' => 'Program Teknik Warna Dasar ditandai aktif.'],
-            ['time' => '11:00', 'title' => 'Jadwal pengajar diperbarui', 'description' => 'Redistribusi jadwal pengajar untuk batch 4.'],
-            ['time' => '13:20', 'title' => 'Laporan partisipasi bulanan', 'description' => 'Ringkasan Maret siap diekspor.'],
+            'points' => $points,
+            'summary' => [
+                'total' => $totalRegistrations,
+                'average' => $averageRegistration,
+                'peakMonth' => $peakMonthLabel,
+                'growth' => $growth,
+            ],
         ];
     }
 
@@ -2393,7 +2696,11 @@ class AuthController extends Controller
         }
 
         $users = User::where('role', 'peserta')
-            ->orderByDesc('created_at')
+            ->where(function ($query) {
+                $query->whereNull('group_name')
+                    ->orWhere('group_name', '');
+            })
+            ->orderByRaw('LOWER(name) asc')
             ->get();
 
         return $users->map(function ($user) {
@@ -2438,6 +2745,31 @@ class AuthController extends Controller
         $request->session()->put('auth_user', $user);
 
         return $user;
+    }
+
+    private function resolveParticipantAccountUser(Request $request): User
+    {
+        $authUser = $request->session()->get('auth_user', []);
+        $query = User::query()->where('role', 'peserta');
+
+        if (!empty($authUser['email'])) {
+            $query->where('email', $authUser['email']);
+        } elseif (!empty($authUser['username'])) {
+            $query->where('username', $authUser['username']);
+        }
+
+        $dbUser = $query->first();
+        if ($dbUser) {
+            return $dbUser;
+        }
+
+        $fallbackUser = new User();
+        $fallbackUser->id = 0;
+        $fallbackUser->name = (string) ($authUser['name'] ?? 'Peserta Batik');
+        $fallbackUser->email = (string) ($authUser['email'] ?? 'peserta@lms-batik.local');
+        $fallbackUser->role = 'peserta';
+
+        return $fallbackUser;
     }
 
     private function normalizeParticipantStatus(string $status): string
@@ -2496,8 +2828,6 @@ class AuthController extends Controller
                 'registration_date' => $reg->created_at->format('Y-m-d'),
                 'name' => $reg->nama_lengkap,
                 'email' => $reg->email,
-                'phone' => $reg->no_handphone,
-                'address' => $reg->alamat,
                 'education' => $reg->pendidikan_terakhir,
                 'motivation' => $reg->motivasi,
                 'program' => 'Program Individu',
@@ -2511,11 +2841,35 @@ class AuthController extends Controller
      */
     private function getManagerGroupParticipants(): array
     {
-        return [
-            ['id' => 'pg-01', 'group_name' => 'Batik Lestari', 'members' => 5, 'program' => 'Teknik Canting Dasar', 'status' => 'Aktif'],
-            ['id' => 'pg-02', 'group_name' => 'Motif Muda', 'members' => 4, 'program' => 'Teknik Warna Dasar', 'status' => 'Lulus'],
-            ['id' => 'pg-03', 'group_name' => 'Sanggar Nawasena', 'members' => 6, 'program' => 'Komposisi Motif', 'status' => 'Nonaktif'],
-        ];
+        if (!Schema::hasTable('registration_groups')) {
+            return [];
+        }
+
+        return RegistrationGroup::query()
+            ->whereNotIn('status', ['pending', 'rejected'])
+            ->orderByDesc('created_at')
+            ->get()
+            ->map(function (RegistrationGroup $registration): array {
+                $status = User::query()
+                    ->where('role', 'peserta')
+                    ->where('group_name', $registration->nama_lembaga)
+                    ->pluck('status')
+                    ->map(fn ($value) => $this->normalizeParticipantStatus((string) $value))
+                    ->countBy()
+                    ->sortDesc()
+                    ->keys()
+                    ->first() ?? 'active';
+
+                return [
+                    'id' => 'group-' . $registration->id,
+                    'group_name' => $registration->nama_lembaga,
+                    'members' => (int) $registration->jumlah_peserta,
+                    'program' => 'Program Kelompok',
+                    'status' => $status,
+                    'status_label' => $this->buildParticipantRoleLabel($status),
+                ];
+            })
+            ->toArray();
     }
 
     /**
@@ -2969,7 +3323,7 @@ class AuthController extends Controller
         return str_replace(['\\', '(', ')'], ['\\\\', '\\(', '\\)'], $text);
     }
 
-    
+
 
     /**
      * Get available years (current year and 2 future years)
@@ -3146,15 +3500,70 @@ class AuthController extends Controller
      */
     private function getInstructorDashboardSummary(): array
     {
-        $activeParticipants = $this->getInstructorHomeParticipants();
-        $availableModules = $this->getInstructorHomeModules();
-        $pendingWorks = $this->getInstructorPendingWorks();
-
         return [
-            'activeParticipants' => count($activeParticipants),
-            'pendingReviews' => count($pendingWorks),
-            'totalModules' => count($availableModules),
+            'activeParticipants' => $this->getInstructorHomeParticipantsCount(),
+            'pendingReviews' => $this->getInstructorPendingWorksCount(),
+            'totalModules' => $this->getInstructorModulesCount(),
         ];
+    }
+
+    private function getInstructorHomeParticipantsCount(): int
+    {
+        if (!Schema::hasTable('users')) {
+            return 0;
+        }
+
+        return User::query()
+            ->where('role', 'peserta')
+            ->where(function ($query) {
+                $query->whereNull('status')
+                    ->orWhereIn('status', ['active', 'Aktif']);
+            })
+            ->count();
+    }
+
+    private function getInstructorPendingWorksCount(): int
+    {
+        if (!Schema::hasTable('participant_assignments')) {
+            return 0;
+        }
+
+        return ParticipantAssignment::query()
+            ->whereNull('graded_at')
+            ->count();
+    }
+
+    private function getInstructorModulesCount(): int
+    {
+        if (!Schema::hasTable('modules')) {
+            return 0;
+        }
+
+        return Module::query()->count();
+    }
+
+    private function formatInstructorStatus(string $status): string
+    {
+        $normalized = strtolower(trim($status));
+
+        return match ($normalized) {
+            'aktif', 'active' => 'Aktif',
+            'nonaktif', 'non-active', 'non active' => 'Nonaktif',
+            'lulus', 'graduated' => 'Lulus',
+            default => ucfirst($status),
+        };
+    }
+
+    private function formatInstructorModuleStatus(string $status): string
+    {
+        $normalized = strtolower(trim($status));
+
+        return match ($normalized) {
+            'aktif', 'active' => 'Aktif',
+            'revisi', 'revision', 'perlu revisi' => 'Perlu Revisi',
+            'nonaktif', 'non-active', 'non active' => 'Nonaktif',
+            default => ucfirst($status),
+        };
     }
 
     /**
@@ -3162,13 +3571,34 @@ class AuthController extends Controller
      */
     private function getInstructorHomeParticipants(): array
     {
-        return [
-            ['id' => 'p-01', 'name' => 'Anita Wijaya', 'program_type' => 'Teknik Canting Dasar', 'status' => 'Aktif'],
-            ['id' => 'p-02', 'name' => 'Bima Pradana', 'program_type' => 'Teknik Warna Dasar', 'status' => 'Aktif'],
-            ['id' => 'p-03', 'name' => 'Citra Kurnia', 'program_type' => 'Komposisi Motif Modern', 'status' => 'Aktif'],
-            ['id' => 'p-04', 'name' => 'Deni Santoso', 'program_type' => 'Teknik Canting Dasar', 'status' => 'Butuh Pendampingan'],
-            ['id' => 'p-05', 'name' => 'Eka Lestari', 'program_type' => 'Teknik Warna Dasar', 'status' => 'Aktif'],
-        ];
+        if (!Schema::hasTable('users')) {
+            return [];
+        }
+
+        return User::query()
+            ->where('role', 'peserta')
+            ->where(function ($query) {
+                $query->whereNull('status')
+                    ->orWhereIn('status', ['active', 'Aktif']);
+            })
+            ->orderByDesc('updated_at')
+            ->limit(5)
+            ->get()
+            ->map(function (User $user): array {
+                $latestProgress = ParticipantProgress::query()
+                    ->with('module')
+                    ->where('user_id', $user->id)
+                    ->latest('updated_at')
+                    ->first();
+
+                return [
+                    'id' => $user->username ?: 'p-' . $user->id,
+                    'name' => $user->name,
+                    'program_type' => $latestProgress?->module?->title ?: ($user->group_name ?: 'Program Individu'),
+                    'status' => $this->formatInstructorStatus((string) ($user->status ?? 'Aktif')),
+                ];
+            })
+            ->toArray();
     }
 
     /**
@@ -3176,12 +3606,23 @@ class AuthController extends Controller
      */
     private function getInstructorHomeModules(): array
     {
-        return [
-            ['id' => 'm-01', 'title' => 'Teknik Canting Dasar', 'summary' => 'Dasar penguasaan alat, malam, dan kontrol garis canting.', 'status' => 'Aktif'],
-            ['id' => 'm-02', 'title' => 'Teknik Warna Dasar', 'summary' => 'Pencampuran warna, proses fiksasi, dan hasil warna konsisten.', 'status' => 'Aktif'],
-            ['id' => 'm-03', 'title' => 'Komposisi Motif Modern', 'summary' => 'Perancangan motif kontemporer dengan akar visual tradisional.', 'status' => 'Perlu Revisi'],
-            ['id' => 'm-04', 'title' => 'Finishing dan Quality Control', 'summary' => 'Tahap akhir pengerjaan batik dan standar kualitas hasil karya.', 'status' => 'Aktif'],
-        ];
+        if (!Schema::hasTable('modules')) {
+            return [];
+        }
+
+        return Module::query()
+            ->latest('updated_at')
+            ->limit(4)
+            ->get()
+            ->map(function (Module $module): array {
+                return [
+                    'id' => 'm-' . $module->id,
+                    'title' => $module->title,
+                    'summary' => Str::limit((string) ($module->description ?? ''), 120),
+                    'status' => $this->formatInstructorModuleStatus((string) ($module->status ?? 'Aktif')),
+                ];
+            })
+            ->toArray();
     }
 
     /**
@@ -3189,12 +3630,26 @@ class AuthController extends Controller
      */
     private function getInstructorPendingWorks(): array
     {
-        return [
-            ['id' => 's-01', 'participant' => 'Anita Wijaya', 'module' => 'Teknik Canting Dasar', 'submitted_at' => '16 Mar 2026, 14:20', 'status' => 'Menunggu Penilaian'],
-            ['id' => 's-03', 'participant' => 'Citra Kurnia', 'module' => 'Komposisi Motif Modern', 'submitted_at' => '15 Mar 2026, 16:40', 'status' => 'Menunggu Penilaian'],
-            ['id' => 's-04', 'participant' => 'Eka Lestari', 'module' => 'Teknik Warna Dasar', 'submitted_at' => '15 Mar 2026, 09:30', 'status' => 'Menunggu Penilaian'],
-            ['id' => 's-05', 'participant' => 'Deni Santoso', 'module' => 'Finishing dan Quality Control', 'submitted_at' => '14 Mar 2026, 18:05', 'status' => 'Menunggu Penilaian'],
-        ];
+        if (!Schema::hasTable('participant_assignments')) {
+            return [];
+        }
+
+        return ParticipantAssignment::query()
+            ->with(['user', 'module'])
+            ->whereNull('graded_at')
+            ->latest('submitted_at')
+            ->limit(5)
+            ->get()
+            ->map(function (ParticipantAssignment $assignment): array {
+                return [
+                    'id' => 's-' . $assignment->id,
+                    'participant' => $assignment->user?->name ?? 'Peserta',
+                    'module' => $assignment->module?->title ?? 'Modul',
+                    'submitted_at' => $assignment->submitted_at?->format('d M Y, H:i') ?? '-',
+                    'status' => 'Menunggu Penilaian',
+                ];
+            })
+            ->toArray();
     }
 
     /**
@@ -3202,11 +3657,28 @@ class AuthController extends Controller
      */
     private function getInstructorModules(): array
     {
-        return [
-            ['id' => 'm-01', 'title' => 'Teknik Canting Dasar', 'category' => 'Dasar', 'lessons' => 8, 'participants' => 48, 'status' => 'Aktif', 'updated_at' => '17 Mar 2026'],
-            ['id' => 'm-02', 'title' => 'Teknik Warna Dasar', 'category' => 'Praktik', 'lessons' => 10, 'participants' => 44, 'status' => 'Aktif', 'updated_at' => '15 Mar 2026'],
-            ['id' => 'm-03', 'title' => 'Komposisi Motif Modern', 'category' => 'Lanjutan', 'lessons' => 6, 'participants' => 29, 'status' => 'Revisi', 'updated_at' => '12 Mar 2026'],
-        ];
+        if (!Schema::hasTable('modules')) {
+            return [];
+        }
+
+        return Module::query()
+            ->latest('updated_at')
+            ->limit(4)
+            ->get()
+            ->map(function (Module $module): array {
+                $lessonCount = $module->materials()->count();
+
+                return [
+                    'id' => 'm-' . $module->id,
+                    'title' => $module->title,
+                    'category' => 'Modul',
+                    'lessons' => $lessonCount,
+                    'participants' => (int) ($module->participants_count ?? 0),
+                    'status' => $this->formatInstructorModuleStatus((string) ($module->status ?? 'Aktif')),
+                    'updated_at' => optional($module->updated_at)->format('d M Y') ?? '-',
+                ];
+            })
+            ->toArray();
     }
 
     /**
@@ -3214,11 +3686,51 @@ class AuthController extends Controller
      */
     private function getInstructorParticipants(): array
     {
+        if (!Schema::hasTable('users')) {
+            return [];
+        }
+
+        return User::query()
+            ->where('role', 'peserta')
+            ->orderByDesc('updated_at')
+            ->limit(4)
+            ->get()
+            ->map(function (User $user): array {
+                $latestProgress = ParticipantProgress::query()
+                    ->where('user_id', $user->id)
+                    ->latest('updated_at')
+                    ->first();
+
+                return [
+                    'id' => $user->username ?: 'p-' . $user->id,
+                    'name' => $user->name,
+                    'batch' => $user->group_name ?: 'Batch Individu',
+                    'progress' => $latestProgress?->progress_percentage ?? 0,
+                    'last_activity' => $latestProgress?->updated_at?->diffForHumans() ?? 'Belum ada aktivitas',
+                ];
+            })
+            ->toArray();
+    }
+
+    /**
+     * @param array $items
+     * @param int $currentPage
+     * @param int $perPage
+     * @return array<string, mixed>
+     */
+    private function paginateArray(array $items, int $currentPage = 1, int $perPage = 5): array
+    {
+        $total = count($items);
+        $totalPages = (int) ceil($total / $perPage);
+        $currentPage = max(1, min($currentPage, $totalPages ?: 1));
+        $offset = ($currentPage - 1) * $perPage;
+
         return [
-            ['id' => 'p-01', 'name' => 'Anita Wijaya', 'batch' => 'Batch 3', 'progress' => 82, 'last_activity' => '2 jam lalu'],
-            ['id' => 'p-02', 'name' => 'Bima Pradana', 'batch' => 'Batch 3', 'progress' => 71, 'last_activity' => '1 jam lalu'],
-            ['id' => 'p-03', 'name' => 'Citra Kurnia', 'batch' => 'Batch 2', 'progress' => 91, 'last_activity' => '30 menit lalu'],
-            ['id' => 'p-04', 'name' => 'Deni Santoso', 'batch' => 'Batch 2', 'progress' => 66, 'last_activity' => '3 jam lalu'],
+            'items' => array_slice($items, $offset, $perPage),
+            'current_page' => $currentPage,
+            'total_pages' => $totalPages,
+            'total' => $total,
+            'per_page' => $perPage,
         ];
     }
 
@@ -3227,19 +3739,26 @@ class AuthController extends Controller
      */
     private function getInstructorIndividualParticipants(): array
     {
-        $registrations = Schema::hasTable('registration_individuals')
-            ? \App\Models\RegistrationIndividual::orderByDesc('created_at')->get()
+        $participants = Schema::hasTable('users')
+            ? User::where('role', 'peserta')
+                ->where(function ($query) {
+                    $query->whereNull('group_name')
+                        ->orWhere('group_name', '');
+                })
+                ->get()
+                ->sortBy(fn ($user) => $user->name, SORT_NATURAL | SORT_FLAG_CASE)
+                ->values()
             : collect();
 
-        return $registrations->map(function ($reg) {
+        return $participants->map(function ($user) {
             return [
-                'id' => 'individual-' . $reg->id,
-                'name' => $reg->nama_lengkap,
-                'email' => $reg->email,
-                'no_handphone' => $reg->no_handphone,
-                'alamat' => $reg->alamat,
-                'pendidikan_terakhir' => $reg->pendidikan_terakhir,
-                'motivasi' => $reg->motivasi,
+                'id' => 'individual-' . $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'no_handphone' => $user->phone,
+                'alamat' => $user->address,
+                'pendidikan_terakhir' => $user->education,
+                'motivasi' => $user->motivation,
             ];
         })->toArray();
     }
@@ -3249,20 +3768,25 @@ class AuthController extends Controller
      */
     private function getInstructorGroupParticipants(): array
     {
-        $registrations = Schema::hasTable('registration_groups')
-            ? \App\Models\RegistrationGroup::orderByDesc('created_at')->get()
+        $participants = Schema::hasTable('users')
+            ? User::where('role', 'peserta')
+                ->whereNotNull('group_name')
+                ->where('group_name', '!=', '')
+                ->get()
+                ->sortBy(fn ($user) => $user->name, SORT_NATURAL | SORT_FLAG_CASE)
+                ->values()
             : collect();
 
-        return $registrations->map(function ($reg) {
+        return $participants->map(function ($user) {
             return [
-                'id' => 'group-' . $reg->id,
-                'name' => $reg->nama_pic,
-                'group' => $reg->nama_lembaga,
-                'email' => $reg->email_pic,
-                'no_handphone' => $reg->no_handphone_pic,
-                'alamat' => $reg->alamat_pic,
-                'jumlah_peserta' => $reg->jumlah_peserta,
-                'surat_resmi' => $reg->surat_resmi,
+                'id' => 'group-' . $user->id,
+                'name' => $user->name,
+                'group' => $user->group_name,
+                'email' => $user->email,
+                'no_handphone' => $user->phone,
+                'alamat' => $user->address,
+                'jumlah_peserta' => '',
+                'surat_resmi' => '',
             ];
         })->toArray();
     }

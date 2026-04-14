@@ -18,18 +18,21 @@
 
             <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
                 <p class="text-sm font-semibold text-slate-800">Jenis Peserta</p>
+                <input type="hidden" name="participant_type"
+                    value="{{ old('participant_type', $profile['participant_type']) }}">
                 <div class="mt-3 grid gap-2 sm:grid-cols-2">
                     <label
-                        class="flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700">
+                        class="flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 opacity-80">
                         <input type="radio" name="participant_type" value="individual" @checked(old('participant_type', $profile['participant_type']) === 'individual')>
                         Peserta Individu
                     </label>
                     <label
-                        class="flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700">
+                        class="flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 opacity-80">
                         <input type="radio" name="participant_type" value="group" @checked(old('participant_type', $profile['participant_type']) === 'group')>
                         Peserta Kelompok
                     </label>
                 </div>
+                <p class="mt-2 text-xs text-slate-500">Jenis peserta mengikuti data akun yang terdaftar di sistem.</p>
             </div>
 
             <div class="grid gap-4 sm:grid-cols-2">
@@ -140,12 +143,12 @@
                     <div>
                         <label class="mb-1 block text-xs font-semibold text-slate-600">Nama Kelompok / Lembaga</label>
                         <input type="text" name="group_name" value="{{ old('group_name', $profile['group_name']) }}"
-                            class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
+                            readonly class="w-full rounded-lg border border-slate-300 bg-slate-100 px-3 py-2 text-sm">
                     </div>
                     <div>
                         <label class="mb-1 block text-xs font-semibold text-slate-600">Nama PIC</label>
                         <input type="text" name="pic_name" value="{{ old('pic_name', $profile['pic_name']) }}"
-                            class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
+                            readonly class="w-full rounded-lg border border-slate-300 bg-slate-100 px-3 py-2 text-sm">
                     </div>
                 </div>
 
@@ -193,6 +196,7 @@
 
     <script>
         (function() {
+            const participantTypeInput = document.querySelector('input[type="hidden"][name="participant_type"]');
             const toggles = document.querySelectorAll('[data-password-toggle]');
             toggles.forEach(function(button) {
                 button.addEventListener('click', function() {
@@ -211,10 +215,27 @@
             const radios = document.querySelectorAll('input[name="participant_type"]');
             const individualFields = document.getElementById('individual-fields');
             const groupFields = document.getElementById('group-fields');
+            const visibleRadios = Array.from(radios).filter(function(radio) {
+                return radio.type !== 'hidden';
+            });
+
+            visibleRadios.forEach(function(radio) {
+                radio.disabled = true;
+            });
 
             const syncTypeFields = function() {
-                const checked = document.querySelector('input[name="participant_type"]:checked');
-                const type = checked ? checked.value : 'individual';
+                let type = participantTypeInput ? participantTypeInput.value : 'individual';
+
+                if (!type) {
+                    const checkedVisible = visibleRadios.find(function(radio) {
+                        return radio.checked;
+                    });
+                    type = checkedVisible ? checkedVisible.value : 'individual';
+                }
+
+                visibleRadios.forEach(function(radio) {
+                    radio.checked = radio.value === type;
+                });
 
                 if (individualFields) {
                     individualFields.classList.toggle('hidden', type !== 'individual');
@@ -225,7 +246,7 @@
                 }
             };
 
-            radios.forEach(function(radio) {
+            visibleRadios.forEach(function(radio) {
                 radio.addEventListener('change', syncTypeFields);
             });
 

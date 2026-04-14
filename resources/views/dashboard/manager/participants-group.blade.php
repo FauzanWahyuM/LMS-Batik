@@ -172,18 +172,18 @@
 
     <section class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
         <h3 class="text-base font-bold text-slate-900 sm:text-lg">Kelola Peserta Kelompok</h3>
-        <p class="mt-1 text-xs text-slate-500 sm:text-sm">Data kelompok yang sudah menerima kredensial akan tampil di sini.
+        <p class="mt-1 text-xs text-slate-500 sm:text-sm">Data lembaga yang sudah tervalidasi akan tampil di sini.
         </p>
 
         <div class="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            @foreach ($groups as $group)
+            @forelse ($groups as $group)
                 <article class="rounded-xl border border-slate-200 bg-slate-50 p-4">
                     <h3 class="text-sm font-bold text-slate-900">{{ $group['group_name'] }}</h3>
                     <p class="mt-1 text-xs text-slate-500">Program: {{ $group['program'] }}</p>
                     <p class="mt-2 text-sm text-slate-700">Anggota: <span
                             class="font-semibold">{{ $group['members'] }}</span></p>
                     <p class="mt-1 text-sm text-slate-700">Status: <span
-                            class="font-semibold">{{ $group['status'] }}</span></p>
+                            class="font-semibold">{{ $group['status_label'] ?? $group['status'] }}</span></p>
 
                     <form method="POST"
                         action="{{ route('dashboard.manager.participants.group.update', ['group' => $group['id']]) }}"
@@ -191,15 +191,19 @@
                         @csrf
                         <select name="status"
                             class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700">
-                            <option value="Aktif" @selected($group['status'] === 'Aktif')>Aktif</option>
-                            <option value="Lulus" @selected($group['status'] === 'Lulus')>Lulus</option>
-                            <option value="Nonaktif" @selected($group['status'] === 'Nonaktif')>Nonaktif</option>
+                            <option value="active" @selected(($group['status'] ?? '') === 'active')>Aktif</option>
+                            <option value="graduated" @selected(($group['status'] ?? '') === 'graduated')>Lulus</option>
+                            <option value="non-active" @selected(($group['status'] ?? '') === 'non-active')>Nonaktif</option>
                         </select>
                         <button type="submit"
                             class="rounded-lg bg-slate-900 px-3 py-2 text-xs font-semibold text-white hover:bg-slate-700">Simpan</button>
                     </form>
                 </article>
-            @endforeach
+            @empty
+                <div class="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
+                    Belum ada lembaga tervalidasi.
+                </div>
+            @endforelse
         </div>
     </section>
 @endsection

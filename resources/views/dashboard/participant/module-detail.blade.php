@@ -163,8 +163,23 @@
                 <div class="mt-3 rounded-md border border-slate-400 bg-slate-100 p-4 text-sm text-slate-600">
                     @if ($selectedMaterial && $selectedMaterial->video_url)
                         @php
-                            $videoUrl = $selectedMaterial->video_url;
-                            $isDirectVideo = preg_match('/\.(mp4|webm|ogg|mov|m3u8)(\?|$)/i', $videoUrl);
+                            $videoUrl = trim((string) $selectedMaterial->video_url);
+                            $embedUrl = null;
+                            $isDirectVideo = preg_match('/\.(mp4|webm|ogg|mov|m3u8)(\?|$)/i', $videoUrl) === 1;
+
+                            if (!$isDirectVideo && filter_var($videoUrl, FILTER_VALIDATE_URL)) {
+                                if (preg_match('/youtube\.com\/watch\?v=([a-zA-Z0-9_-]+)/', $videoUrl, $matches)) {
+                                    $embedUrl = 'https://www.youtube.com/embed/' . $matches[1];
+                                } elseif (preg_match('/youtube\.com\/shorts\/([a-zA-Z0-9_-]+)/', $videoUrl, $matches)) {
+                                    $embedUrl = 'https://www.youtube.com/embed/' . $matches[1];
+                                } elseif (preg_match('/youtu\.be\/([a-zA-Z0-9_-]+)/', $videoUrl, $matches)) {
+                                    $embedUrl = 'https://www.youtube.com/embed/' . $matches[1];
+                                } elseif (preg_match('/youtube\.com\/embed\/([a-zA-Z0-9_-]+)/', $videoUrl, $matches)) {
+                                    $embedUrl = 'https://www.youtube.com/embed/' . $matches[1];
+                                } elseif (preg_match('/vimeo\.com\/(\d+)/', $videoUrl, $matches)) {
+                                    $embedUrl = 'https://player.vimeo.com/video/' . $matches[1];
+                                }
+                            }
                         @endphp
 
                         @if ($isDirectVideo)
@@ -172,11 +187,17 @@
                                 <source src="{{ $videoUrl }}" type="video/mp4">
                                 Browser Anda tidak mendukung pemutaran video.
                             </video>
-                        @else
+                        @elseif ($embedUrl)
                             <div class="relative h-64 w-full overflow-hidden rounded-lg bg-slate-900">
-                                <iframe class="h-full w-full" src="{{ $videoUrl }}" frameborder="0"
+                                <iframe class="h-full w-full" src="{{ $embedUrl }}" frameborder="0"
                                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                                     allowfullscreen></iframe>
+                            </div>
+                        @else
+                            <div class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                                Link video belum didukung untuk embed otomatis. Silakan buka link berikut:
+                                <a href="{{ $videoUrl }}" target="_blank" rel="noopener"
+                                    class="font-semibold underline">{{ $videoUrl }}</a>
                             </div>
                         @endif
                     @else
@@ -253,7 +274,8 @@
                             if (!$selectedMaterial) {
                                 return false;
                             }
-                            return $assignment->material_id == $selectedMaterial->id ||
+                            return (isset($selectedMaterial->id) &&
+                                $assignment->material_id == $selectedMaterial->id) ||
                                 $assignment->material_slug === $selectedMaterial->slug;
                         });
                     @endphp
@@ -466,7 +488,7 @@
             } finally {
                 if (markCompleteBtn) {
                     markCompleteBtn.disabled = false;
-                    markCompleteBtn.textContent = completedState ? 'Bab Selesai' : 'Tandai Sebagaiagai Selesai';
+                    markCompleteBtn.textContent = completedState ? 'Bab Selesai' : 'Tandai Sebagai Selesai';
                     markCompleteBtn.dataset.completed = completedState ? '1' : '0';
                 }
             }

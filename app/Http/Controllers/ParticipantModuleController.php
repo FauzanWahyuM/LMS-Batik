@@ -179,19 +179,21 @@ class ParticipantModuleController extends Controller
         $toggledCompleted = false;
 
         if ($progress->exists && $progress->status === 'completed') {
-            $progress->update([
+            $progress->fill([
                 'status' => 'in_progress',
                 'progress_percentage' => 0,
                 'completed_at' => null,
             ]);
+            $progress->save();
             $toggledCompleted = false;
         } else {
-            $progress->update([
+            $progress->fill([
                 'status' => 'completed',
                 'progress_percentage' => 100,
                 'completed_at' => now(),
                 'started_at' => $progress->started_at ?: now(),
             ]);
+            $progress->save();
             $toggledCompleted = true;
         }
 

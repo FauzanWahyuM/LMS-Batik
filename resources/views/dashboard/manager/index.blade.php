@@ -76,6 +76,12 @@
 
     <!-- Registration Statistics Section -->
     <section class="rounded-lg sm:rounded-xl border border-slate-200 bg-white p-4 sm:p-6 shadow-sm">
+        @php
+            $registrationPoints = $registrationStats['points'] ?? [];
+            $registrationSummary = $registrationStats['summary'] ?? [];
+            $registrationStartDefault = $registrationPoints[0]['key'] ?? '';
+            $registrationEndDefault = $registrationPoints[count($registrationPoints) - 1]['key'] ?? '';
+        @endphp
         <div class="mb-6">
             <h2 class="text-lg sm:text-xl font-bold text-slate-900 mb-2">Statistik Pendaftaran</h2>
             <p class="text-xs sm:text-sm text-slate-600">Jumlah peserta yang terdaftar per bulan</p>
@@ -87,12 +93,12 @@
                 <label class="block text-xs font-semibold text-slate-700 mb-1 sm:mb-2">Dari Bulan/Tahun</label>
                 <select id="startMonth"
                     class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs sm:text-sm text-slate-900 placeholder-slate-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500">
-                    <option value="2024-01">Januari 2024</option>
-                    <option value="2024-02">Februari 2024</option>
-                    <option value="2024-03">Maret 2024</option>
-                    <option value="2024-04">April 2024</option>
-                    <option value="2024-05">Mei 2024</option>
-                    <option value="2024-06" selected>Juni 2024</option>
+                    @foreach ($registrationPoints as $point)
+                        <option value="{{ $point['key'] }}"
+                            {{ $point['key'] === $registrationStartDefault ? 'selected' : '' }}>
+                            {{ $point['label'] }}
+                        </option>
+                    @endforeach
                 </select>
             </div>
 
@@ -100,12 +106,12 @@
                 <label class="block text-xs font-semibold text-slate-700 mb-1 sm:mb-2">Sampai Bulan/Tahun</label>
                 <select id="endMonth"
                     class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs sm:text-sm text-slate-900 placeholder-slate-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500">
-                    <option value="2024-06">Juni 2024</option>
-                    <option value="2024-07">Juli 2024</option>
-                    <option value="2024-08">Agustus 2024</option>
-                    <option value="2024-09">September 2024</option>
-                    <option value="2024-10">Oktober 2024</option>
-                    <option value="2024-11" selected>November 2024</option>
+                    @foreach ($registrationPoints as $point)
+                        <option value="{{ $point['key'] }}"
+                            {{ $point['key'] === $registrationEndDefault ? 'selected' : '' }}>
+                            {{ $point['label'] }}
+                        </option>
+                    @endforeach
                 </select>
             </div>
 
@@ -125,19 +131,24 @@
             <div class="grid grid-cols-2 gap-3 sm:grid-cols-4 pt-4 sm:pt-6 border-t border-slate-200">
                 <div>
                     <p class="text-xs text-slate-600 mb-1">Total Pendaftaran</p>
-                    <p class="text-lg sm:text-xl font-bold text-slate-900" id="totalRegistration">654</p>
+                    <p class="text-lg sm:text-xl font-bold text-slate-900" id="totalRegistration">
+                        {{ $registrationSummary['total'] ?? 0 }}</p>
                 </div>
                 <div>
                     <p class="text-xs text-slate-600 mb-1">Rata-rata/Bulan</p>
-                    <p class="text-lg sm:text-xl font-bold text-slate-900" id="avgRegistration">109</p>
+                    <p class="text-lg sm:text-xl font-bold text-slate-900" id="avgRegistration">
+                        {{ $registrationSummary['average'] ?? 0 }}</p>
                 </div>
                 <div>
                     <p class="text-xs text-slate-600 mb-1">Peak Month</p>
-                    <p class="text-lg sm:text-xl font-bold text-blue-600" id="peakMonth">Mei</p>
+                    <p class="text-lg sm:text-xl font-bold text-blue-600" id="peakMonth">
+                        {{ $registrationSummary['peakMonth'] ?? '-' }}</p>
                 </div>
                 <div>
                     <p class="text-xs text-slate-600 mb-1">Pertumbuhan</p>
-                    <p class="text-lg sm:text-xl font-bold text-green-600">+15%</p>
+                    <p class="text-lg sm:text-xl font-bold text-green-600" id="growthRegistration">
+                        {{ isset($registrationSummary['growth']) ? ($registrationSummary['growth'] >= 0 ? '+' : '') . $registrationSummary['growth'] . '%' : '+0%' }}
+                    </p>
                 </div>
             </div>
         </div>
@@ -215,26 +226,29 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <script>
-        // Sample chart data
-        const chartData = {
-            labels: ['Agustus 2018', 'September 2018', 'Oktober 2018', 'November 2018', 'Desember 2018', 'Januari 2019',
-                'Februari 2019', 'Maret 2019'
-            ],
-            datasets: [{
-                label: 'Pendaftaran',
-                data: [92, 105, 114, 128, 134, 121, 98, 110],
-                borderColor: '#2563eb',
-                backgroundColor: 'rgba(37, 99, 235, 0.1)',
-                borderWidth: 2,
-                fill: true,
-                tension: 0.4,
-                pointRadius: 4,
-                pointBackgroundColor: '#2563eb',
-                pointBorderColor: '#ffffff',
-                pointBorderWidth: 2,
-                pointHoverRadius: 6,
-            }]
-        };
+        const registrationPoints = @json($registrationPoints);
+
+        function buildChartData(points) {
+            return {
+                labels: points.map((point) => point.label),
+                datasets: [{
+                    label: 'Pendaftaran',
+                    data: points.map((point) => point.total),
+                    borderColor: '#2563eb',
+                    backgroundColor: 'rgba(37, 99, 235, 0.1)',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: 4,
+                    pointBackgroundColor: '#2563eb',
+                    pointBorderColor: '#ffffff',
+                    pointBorderWidth: 2,
+                    pointHoverRadius: 6,
+                }]
+            };
+        }
+
+        const chartData = buildChartData(registrationPoints);
 
         const chartConfig = {
             type: 'line',
@@ -320,16 +334,44 @@
         let chart = new Chart(ctx, chartConfig);
 
         // Update statistics
-        function updateStats() {
-            const total = chartData.datasets[0].data.reduce((a, b) => a + b, 0);
-            const avg = Math.round(total / chartData.datasets[0].data.length);
-            const max = Math.max(...chartData.datasets[0].data);
-            const maxIndex = chartData.datasets[0].data.indexOf(max);
-            const peakLabel = chartData.labels[maxIndex].split(' ')[0];
+        function updateStats(points) {
+            if (!points.length) {
+                document.getElementById('totalRegistration').textContent = '0';
+                document.getElementById('avgRegistration').textContent = '0';
+                document.getElementById('peakMonth').textContent = '-';
+                document.getElementById('growthRegistration').textContent = '+0%';
+                return;
+            }
+
+            const total = points.reduce((sum, point) => sum + point.total, 0);
+            const avg = Math.round(total / points.length);
+            const peakPoint = points.reduce((highest, point) => point.total > highest.total ? point : highest, points[0]);
+            const firstTotal = points[0].total;
+            const lastTotal = points[points.length - 1].total;
+            const growth = firstTotal > 0 ? Math.round(((lastTotal - firstTotal) / firstTotal) * 1000) / 10 : 0;
 
             document.getElementById('totalRegistration').textContent = total;
             document.getElementById('avgRegistration').textContent = avg;
-            document.getElementById('peakMonth').textContent = peakLabel;
+            document.getElementById('peakMonth').textContent = peakPoint.label;
+            document.getElementById('growthRegistration').textContent = (growth >= 0 ? '+' : '') + growth + '%';
+        }
+
+        function filterRegistrationPoints(startMonth, endMonth) {
+            if (!registrationPoints.length) {
+                return [];
+            }
+
+            const startIndex = registrationPoints.findIndex((point) => point.key === startMonth);
+            const endIndex = registrationPoints.findIndex((point) => point.key === endMonth);
+
+            if (startIndex === -1 || endIndex === -1) {
+                return registrationPoints;
+            }
+
+            const from = Math.min(startIndex, endIndex);
+            const to = Math.max(startIndex, endIndex);
+
+            return registrationPoints.slice(from, to + 1);
         }
 
         // Filter button functionality
@@ -337,9 +379,11 @@
             const startMonth = document.getElementById('startMonth').value;
             const endMonth = document.getElementById('endMonth').value;
 
-            // Update chart based on filters
-            // This is a placeholder - in a real app, you'd fetch new data from the server
-            console.log('Filter applied from', startMonth, 'to', endMonth);
+            const filteredPoints = filterRegistrationPoints(startMonth, endMonth);
+
+            chart.data = buildChartData(filteredPoints);
+            chart.update();
+            updateStats(filteredPoints);
 
             // Show feedback
             this.textContent = 'Data diperbarui!';
@@ -349,7 +393,7 @@
         });
 
         // Initialize stats on page load
-        updateStats();
+        updateStats(registrationPoints);
 
         // Responsive chart adjustment
         window.addEventListener('resize', function() {

@@ -23,25 +23,10 @@
                         class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
                 </div>
 
-                <div>
+                <div class="sm:col-span-2">
                     <label class="mb-1 block text-xs font-semibold text-slate-600">Username</label>
                     <input type="text" name="username" value="{{ old('username', $profile['username']) }}" required
                         class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
-                </div>
-
-                <div>
-                    <label class="mb-1 block text-xs font-semibold text-slate-600">Password</label>
-                    <div class="relative">
-                        <input id="instructor-profile-password" type="password" name="password"
-                            value="{{ old('password', $profile['password']) }}" required
-                            class="w-full rounded-lg border border-slate-300 px-3 py-2 pr-10 text-sm">
-                        <button type="button" data-password-toggle data-password-target="instructor-profile-password"
-                            class="absolute inset-y-0 right-0 flex items-center px-3 text-slate-500"
-                            aria-label="Tampilkan kata sandi">
-                            <span data-icon="show">&#128065;</span>
-                            <span data-icon="hide" class="hidden">&#128584;</span>
-                        </button>
-                    </div>
                 </div>
 
                 <div>
@@ -63,8 +48,8 @@
 
                 <div class="sm:col-span-2">
                     <label class="mb-1 block text-xs font-semibold text-slate-600">Role</label>
-                    <input type="text" name="role_label" value="{{ old('role_label', $profile['role_label']) }}" required
-                        class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
+                    <input type="text" value="{{ old('role_label', $profile['role_label']) }}" disabled
+                        class="w-full cursor-not-allowed rounded-lg border border-slate-300 bg-slate-100 px-3 py-2 text-sm text-slate-600">
                 </div>
             </div>
 
@@ -76,24 +61,4 @@
             </div>
         </form>
     </section>
-
-    <script>
-        (function() {
-            const toggles = document.querySelectorAll('[data-password-toggle]');
-            toggles.forEach(function(button) {
-                button.addEventListener('click', function() {
-                    const target = document.getElementById(button.getAttribute('data-password-target'));
-                    if (!target) return;
-                    const show = target.type === 'password';
-                    target.type = show ? 'text' : 'password';
-                    const showIcon = button.querySelector('[data-icon="show"]');
-                    const hideIcon = button.querySelector('[data-icon="hide"]');
-                    if (showIcon && hideIcon) {
-                        showIcon.classList.toggle('hidden', show);
-                        hideIcon.classList.toggle('hidden', !show);
-                    }
-                });
-            });
-        })();
-    </script>
 @endsection

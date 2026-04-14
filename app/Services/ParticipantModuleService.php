@@ -117,11 +117,17 @@ class ParticipantModuleService
         $progress = $this->getModuleProgress($module, $user);
         $assignments = $this->getUserAssignments($module, $user);
         $taskInstructions = $this->getTaskInstructions($module);
+        $materialIds = $materials->pluck('id')->filter()->values()->all();
+        $materialSlugs = $materials->pluck('slug')->filter()->values()->all();
+
         // Get completed materials by ID (for database materials)
         $completedMaterialIds = ParticipantProgress::where('user_id', $user->id)
             ->where('module_id', $module->id)
             ->where('status', 'completed')
             ->whereNotNull('material_id')
+            ->when(! empty($materialIds), function ($query) use ($materialIds) {
+                $query->whereIn('material_id', $materialIds);
+            })
             ->pluck('material_id')
             ->all();
 
@@ -131,13 +137,13 @@ class ParticipantModuleService
             ->where('status', 'completed')
             ->whereNull('material_id')
             ->whereNotNull('material_slug')
+            ->when(! empty($materialSlugs), function ($query) use ($materialSlugs) {
+                $query->whereIn('material_slug', $materialSlugs);
+            })
             ->pluck('material_slug')
             ->all();
 
-        $completedCount = ParticipantProgress::where('user_id', $user->id)
-            ->where('module_id', $module->id)
-            ->where('status', 'completed')
-            ->count();
+        $completedCount = count(array_unique(array_merge($completedMaterialIds, $completedMaterialSlugs)));
         $totalCount = $materials->count();
         $overallProgress = $totalCount > 0 ? (int) round(($completedCount / $totalCount) * 100) : 0;
 
@@ -210,11 +216,29 @@ class ParticipantModuleService
         $materials = $this->getMaterialsForModule($module);
         $total = $materials->count();
 
-        $completed = ParticipantProgress::where('user_id', $user->id)
+        $materialIds = $materials->pluck('id')->filter()->values()->all();
+        $materialSlugs = $materials->pluck('slug')->filter()->values()->all();
+
+        $completedById = ParticipantProgress::where('user_id', $user->id)
             ->where('module_id', $module->id)
             ->whereNotNull('material_id')
             ->where('status', 'completed')
+            ->when(! empty($materialIds), function ($query) use ($materialIds) {
+                $query->whereIn('material_id', $materialIds);
+            })
             ->count();
+
+        $completedBySlug = ParticipantProgress::where('user_id', $user->id)
+            ->where('module_id', $module->id)
+            ->whereNull('material_id')
+            ->whereNotNull('material_slug')
+            ->where('status', 'completed')
+            ->when(! empty($materialSlugs), function ($query) use ($materialSlugs) {
+                $query->whereIn('material_slug', $materialSlugs);
+            })
+            ->count();
+
+        $completed = $completedById + $completedBySlug;
 
         $percentage = $total > 0 ? (int) round(($completed / $total) * 100) : 0;
 
@@ -276,15 +300,28 @@ class ParticipantModuleService
         }
 
         $materialIds = $materials->pluck('id')->filter()->values();
-        if ($materialIds->isEmpty()) {
-            return 0;
-        }
+        $materialSlugs = $materials->pluck('slug')->filter()->values();
 
-        $completedMaterials = ParticipantProgress::where('user_id', $user->id)
+        $completedById = ParticipantProgress::where('user_id', $user->id)
             ->where('module_id', $module->id)
-            ->whereIn('material_id', $materialIds)
+            ->whereNotNull('material_id')
+            ->when($materialIds->isNotEmpty(), function ($query) use ($materialIds) {
+                $query->whereIn('material_id', $materialIds);
+            })
             ->where('status', 'completed')
             ->count();
+
+        $completedBySlug = ParticipantProgress::where('user_id', $user->id)
+            ->where('module_id', $module->id)
+            ->whereNull('material_id')
+            ->whereNotNull('material_slug')
+            ->when($materialSlugs->isNotEmpty(), function ($query) use ($materialSlugs) {
+                $query->whereIn('material_slug', $materialSlugs);
+            })
+            ->where('status', 'completed')
+            ->count();
+
+        $completedMaterials = $completedById + $completedBySlug;
 
         return (int) (($completedMaterials / $materials->count()) * 100);
     }
@@ -349,23 +386,38 @@ class ParticipantModuleService
         $fileName = Str::uuid() . '.' . $file->getClientOriginalExtension();
         $filePath = $file->storeAs('assignments', $fileName, 'public');
 
-        $existing = ParticipantAssignment::where('user_id', $user->id)
-            ->where('module_id', $module->id)
-            ->where('material_id', $material?->id)
-            ->first();
+        $resolvedMaterialSlug = $materialSlug ?: $material?->slug;
+
+        $existingQuery = ParticipantAssignment::where('user_id', $user->id)
+            ->where('module_id', $module->id);
+
+        if ($material?->id) {
+            $existingQuery->where('material_id', $material->id);
+        } else {
+            $existingQuery->whereNull('material_id')
+                ->where('material_slug', $resolvedMaterialSlug);
+        }
+
+        $existing = $existingQuery->first();
 
         if ($existing && $existing->file_path) {
             Storage::disk('public')->delete($existing->file_path);
         }
 
+        $attributes = [
+            'user_id' => $user->id,
+            'module_id' => $module->id,
+            'material_id' => $material?->id,
+        ];
+
+        if (! $material?->id) {
+            $attributes['material_slug'] = $resolvedMaterialSlug;
+        }
+
         return ParticipantAssignment::updateOrCreate(
+            $attributes,
             [
-                'user_id' => $user->id,
-                'module_id' => $module->id,
-                'material_id' => $material?->id,
-            ],
-            [
-                'material_slug' => $materialSlug ?: $material?->slug,
+                'material_slug' => $resolvedMaterialSlug,
                 'file_path' => $filePath,
                 'original_filename' => $file->getClientOriginalName(),
                 'file_size' => $file->getSize(),
@@ -400,17 +452,24 @@ class ParticipantModuleService
      */
     public function getModuleStatistics(Module $module, User $user): array
     {
-        $materials = $module->materials;
+        $materials = $this->getMaterialsForModule($module);
         $completedMaterials = 0;
         $totalAssignments = 0;
         $gradedAssignments = 0;
 
         foreach ($materials as $material) {
-            $progress = ParticipantProgress::where('user_id', $user->id)
+            $progressQuery = ParticipantProgress::where('user_id', $user->id)
                 ->where('module_id', $module->id)
-                ->where('material_id', $material->id)
-                ->where('status', 'completed')
-                ->first();
+                ->where('status', 'completed');
+
+            if (isset($material->id)) {
+                $progressQuery->where('material_id', $material->id);
+            } else {
+                $progressQuery->whereNull('material_id')
+                    ->where('material_slug', $material->slug);
+            }
+
+            $progress = $progressQuery->first();
 
             if ($progress) {
                 $completedMaterials++;
@@ -418,10 +477,17 @@ class ParticipantModuleService
 
             if ($material->type === 'assignment') {
                 $totalAssignments++;
-                $assignment = ParticipantAssignment::where('user_id', $user->id)
-                    ->where('module_id', $module->id)
-                    ->where('material_id', $material->id)
-                    ->first();
+                $assignmentQuery = ParticipantAssignment::where('user_id', $user->id)
+                    ->where('module_id', $module->id);
+
+                if (isset($material->id)) {
+                    $assignmentQuery->where('material_id', $material->id);
+                } else {
+                    $assignmentQuery->whereNull('material_id')
+                        ->where('material_slug', $material->slug);
+                }
+
+                $assignment = $assignmentQuery->first();
 
                 if ($assignment && $assignment->isGraded()) {
                     $gradedAssignments++;

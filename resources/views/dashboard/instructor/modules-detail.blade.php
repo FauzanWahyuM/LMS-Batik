@@ -78,18 +78,70 @@
                         @if (!empty($chapter['video_link']) || !empty($chapter['video_upload_url']))
                             <div class="rounded-lg border border-slate-200 bg-slate-50 p-4">
                                 <h3 class="mb-3 text-sm font-bold text-slate-900">Video Pembelajaran</h3>
-                                <div class="relative h-64 w-full overflow-hidden rounded-lg bg-slate-900">
-                                    @if (!empty($chapter['video_link']))
-                                        <iframe class="h-full w-full" src="{{ $chapter['video_link'] }}" frameborder="0"
-                                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                                            allowfullscreen></iframe>
+                                @php
+                                    $videoLink = trim((string) ($chapter['video_link'] ?? ''));
+                                    $embedUrl = null;
+                                    $isDirectVideo = preg_match('/\.(mp4|webm|ogg|mov|m3u8)(\?|$)/i', $videoLink) === 1;
+
+                                    if (
+                                        !empty($videoLink) &&
+                                        !$isDirectVideo &&
+                                        filter_var($videoLink, FILTER_VALIDATE_URL)
+                                    ) {
+                                        if (
+                                            preg_match(
+                                                '/youtube\.com\/watch\?v=([a-zA-Z0-9_-]+)/',
+                                                $videoLink,
+                                                $matches,
+                                            )
+                                        ) {
+                                            $embedUrl = 'https://www.youtube.com/embed/' . $matches[1];
+                                        } elseif (
+                                            preg_match('/youtube\.com\/shorts\/([a-zA-Z0-9_-]+)/', $videoLink, $matches)
+                                        ) {
+                                            $embedUrl = 'https://www.youtube.com/embed/' . $matches[1];
+                                        } elseif (preg_match('/youtu\.be\/([a-zA-Z0-9_-]+)/', $videoLink, $matches)) {
+                                            $embedUrl = 'https://www.youtube.com/embed/' . $matches[1];
+                                        } elseif (
+                                            preg_match('/youtube\.com\/embed\/([a-zA-Z0-9_-]+)/', $videoLink, $matches)
+                                        ) {
+                                            $embedUrl = 'https://www.youtube.com/embed/' . $matches[1];
+                                        } elseif (preg_match('/vimeo\.com\/(\d+)/', $videoLink, $matches)) {
+                                            $embedUrl = 'https://player.vimeo.com/video/' . $matches[1];
+                                        }
+                                    }
+                                @endphp
+
+                                @if (!empty($chapter['video_link']))
+                                    @if ($isDirectVideo)
+                                        <div class="relative h-64 w-full overflow-hidden rounded-lg bg-slate-900">
+                                            <video class="h-full w-full" controls>
+                                                <source src="{{ $videoLink }}">
+                                                Browser Anda tidak mendukung pemutaran video.
+                                            </video>
+                                        </div>
+                                    @elseif ($embedUrl)
+                                        <div class="relative h-64 w-full overflow-hidden rounded-lg bg-slate-900">
+                                            <iframe class="h-full w-full" src="{{ $embedUrl }}" frameborder="0"
+                                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                                allowfullscreen></iframe>
+                                        </div>
                                     @else
+                                        <div
+                                            class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                                            Link video belum didukung untuk embed otomatis. Silakan buka link berikut:
+                                            <a href="{{ $videoLink }}" target="_blank" rel="noopener"
+                                                class="font-semibold underline">{{ $videoLink }}</a>
+                                        </div>
+                                    @endif
+                                @else
+                                    <div class="relative h-64 w-full overflow-hidden rounded-lg bg-slate-900">
                                         <video class="h-full w-full" controls>
                                             <source src="{{ $chapter['video_upload_url'] }}">
                                             Browser Anda tidak mendukung pemutaran video.
                                         </video>
-                                    @endif
-                                </div>
+                                    </div>
+                                @endif
                             </div>
                         @endif
 
