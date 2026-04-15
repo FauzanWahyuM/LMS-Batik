@@ -1386,6 +1386,14 @@ class AuthController extends Controller
             ? $this->buildAnnualReportExportData($year)
             : $this->buildMonthlyReportExportData($month, $year);
 
+        $reportData = array_replace_recursive([
+            'mode' => $isAnnual ? 'annual' : 'monthly',
+            'title' => $isAnnual ? 'Laporan Tahunan ' . $year : 'Laporan ' . $this->getMonthName($month) . ' ' . $year,
+            'summary' => [],
+            'rows' => [],
+            'branding' => [],
+        ], is_array($reportData) ? $reportData : []);
+
         $settings = $request->session()->get('manager_settings', $this->getManagerSettingsData());
         $logoPublicPath = '';
         $sessionLogo = (string) ($settings['logo_filename'] ?? '');
@@ -1427,9 +1435,9 @@ class AuthController extends Controller
         } else {
             $filename = $baseFilename . '.pdf';
             try {
-                $content = Pdf::loadView('dashboard.manager.report-export-template', [
-                    'reportData' => $reportData,
-                ])->setPaper('a4', 'portrait')->output();
+                $content = Pdf::loadView('dashboard.manager.report-export-template', compact('reportData'))
+                    ->setPaper('a4', 'portrait')
+                    ->output();
             } catch (\Throwable $error) {
                 $content = $this->buildFallbackReportPdf($reportData);
             }
