@@ -13,7 +13,7 @@ Route::get('/files/{path}', function (string $path) {
 		abort(404);
 	}
 
-	return Storage::disk('public')->response($path);
+	return response()->file(Storage::disk('public')->path($path));
 })->where('path', '.*')->name('public-file');
 
 // Landing Page Routes
@@ -27,6 +27,8 @@ Route::post('/pendaftaran/kelompok', [LandingController::class, 'submitKelompok'
 
 Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
 Route::post('/login', [AuthController::class, 'login'])->name('login.attempt');
+Route::post('/login/forgot-password/request', [AuthController::class, 'requestForgotPasswordCode'])->name('login.forgot-password.request');
+Route::post('/login/forgot-password/reset', [AuthController::class, 'resetForgotPassword'])->name('login.forgot-password.reset');
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
 Route::middleware('simple.auth')->group(function (): void {
@@ -52,7 +54,7 @@ Route::middleware('simple.auth')->group(function (): void {
 		Route::get('/kelola-peserta-kelompok', [AuthController::class, 'managerGroupParticipants'])->name('participants.group');
 		Route::post('/kelola-peserta-kelompok/{group}/generate-credential', [AuthController::class, 'managerGroupParticipantsGenerateCredential'])->name('participants.group.generate-credential');
 		Route::post('/kelola-peserta-kelompok/{group}/send-credential', [AuthController::class, 'managerGroupParticipantsSendCredential'])->name('participants.group.send-credential');
-		Route::get('/kelola-peserta-kelompok/download-export', [AuthController::class, 'managerGroupParticipantsDownloadCredentialExport'])->name('participants.group.download-export');
+		Route::get('/kelola-peserta-kelompok/{group}/download-export', [AuthController::class, 'managerGroupParticipantsDownloadCredentialExport'])->name('participants.group.download-export');
 		Route::post('/kelola-peserta-kelompok/{group}/status', [AuthController::class, 'managerGroupParticipantsUpdate'])->name('participants.group.update');
 		Route::get('/kelola-pengajar', [AuthController::class, 'managerInstructors'])->name('instructors');
 		Route::post('/kelola-pengajar/create', [AuthController::class, 'managerInstructorsStore'])->name('instructors.store');
@@ -104,6 +106,8 @@ Route::middleware('simple.auth')->group(function (): void {
 		Route::post('/modul/{module}/tugas/upload', [ParticipantModuleController::class, 'submitAssignment'])->name('modules.tasks.upload');
 		Route::get('/modul/{module}/progress', [ParticipantModuleController::class, 'getProgress'])->name('modules.progress');
 		Route::post('/modul/{module}/material/{material}/start', [ParticipantModuleController::class, 'markMaterialStarted'])->name('modules.material.start');
+		Route::post('/modul/{module}/material/{material}/read', [ParticipantModuleController::class, 'markMaterialRead'])->name('modules.material.read');
+		Route::post('/modul/{module}/material/{material}/watch', [ParticipantModuleController::class, 'markMaterialWatched'])->name('modules.material.watch');
 		Route::post('/modul/{module}/material/{material}/complete', [ParticipantModuleController::class, 'markMaterialCompleted'])->name('modules.material.complete');
 		Route::get('/forum', [AuthController::class, 'participantForum'])->name('forum');
 		Route::get('/galeri', [AuthController::class, 'participantGallery'])->name('gallery');

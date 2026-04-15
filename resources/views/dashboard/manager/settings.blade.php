@@ -16,6 +16,14 @@
                     class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-700 focus:border-slate-500 focus:outline-none">
             </div>
 
+            <div class="sm:col-span-2">
+                <label class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Alamat
+                    Organisasi</label>
+                <input type="text" name="organization_address" required
+                    value="{{ old('organization_address', $settingsData['organization_address'] ?? 'Kantor LPK Kama Praja Madiun') }}"
+                    class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-700 focus:border-slate-500 focus:outline-none">
+            </div>
+
             <div>
                 <label class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Email Support</label>
                 <input type="email" name="support_email" required

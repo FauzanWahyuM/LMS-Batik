@@ -16,8 +16,10 @@ use App\Services\ForumDiscussionService;
 use App\Services\ParticipantModuleService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Str;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
@@ -28,6 +30,7 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
 class AuthController extends Controller
 {
     private const WA_VALIDATION_SENDER_NUMBER = '081332650772';
+    private const FORGOT_PASSWORD_CODE_TTL_MINUTES = 10;
 
     /**
      * Hardcoded users for temporary authentication simulation.
@@ -71,6 +74,7 @@ class AuthController extends Controller
             'photo' => '',
             'full_name' => (string) ($authUser['name'] ?? 'Demo Instructor'),
             'username' => (string) ($authUser['username'] ?? 'instructor01'),
+            'password' => 'instructor123',
             'email' => (string) ($authUser['email'] ?? 'instructor@lmsbatik.test'),
             'phone' => '081298765432',
             'address' => 'Jl. Batik Madiun No. 21',
@@ -93,10 +97,19 @@ class AuthController extends Controller
         }
 
         if ($dbUser) {
+            $storedPassword = (string) ($profile['password'] ?? '');
+            if (Schema::hasColumn('users', 'current_password')) {
+                $storedPassword = (string) ($dbUser->current_password ?? $storedPassword);
+            }
+            if ($storedPassword === '') {
+                $storedPassword = $defaults['password'];
+            }
+
             return array_merge($profile, [
                 'photo' => (string) ($profile['photo'] ?? ''),
                 'full_name' => $dbUser->name,
                 'username' => (string) $dbUser->username,
+                'password' => $storedPassword,
                 'email' => $dbUser->email,
                 'phone' => (string) ($dbUser->phone ?? ''),
                 'address' => (string) ($dbUser->address ?? ''),
@@ -118,8 +131,10 @@ class AuthController extends Controller
             'participant_type' => 'individual',
             'full_name' => (string) ($authUser['name'] ?? 'Demo Participant'),
             'username' => (string) ($authUser['username'] ?? 'participant01'),
+            'password' => 'participant123',
             'email' => (string) ($authUser['email'] ?? 'participant@lmsbatik.test'),
             'phone' => '081300112233',
+            'personal_phone' => '',
             'address' => 'Jl. Karya Batik No. 8',
             'motivation' => 'Ingin memperdalam teknik membatik untuk usaha mandiri.',
             'group_name' => '',
@@ -147,8 +162,19 @@ class AuthController extends Controller
 
         if ($dbUser) {
             $participantType = !empty($dbUser->group_name) ? 'group' : 'individual';
+            $storedPassword = (string) ($profile['password'] ?? '');
+
+            if (Schema::hasColumn('users', 'current_password')) {
+                $storedPassword = (string) ($dbUser->current_password ?? $storedPassword);
+            }
+
+            if ($storedPassword === '') {
+                $storedPassword = $defaults['password'];
+            }
+
             $groupName = $participantType === 'group' ? (string) $dbUser->group_name : '';
             $picName = '';
+            $picEmail = (string) $dbUser->email;
 
             if ($participantType === 'group' && Schema::hasTable('registration_groups')) {
                 $registrationGroup = RegistrationGroup::query()
@@ -158,6 +184,7 @@ class AuthController extends Controller
 
                 if ($registrationGroup) {
                     $picName = (string) $registrationGroup->nama_pic;
+                    $picEmail = (string) ($registrationGroup->email_pic ?? $dbUser->email);
                 }
             }
 
@@ -165,14 +192,18 @@ class AuthController extends Controller
                 'participant_type' => $participantType,
                 'full_name' => $dbUser->name,
                 'username' => $dbUser->username,
-                'email' => $dbUser->email,
+                'password' => $storedPassword,
+                'email' => $participantType === 'group' ? $picEmail : $dbUser->email,
                 'phone' => $dbUser->phone ?? '',
+                'personal_phone' => $participantType === 'group' ? ((string) ($dbUser->personal_phone ?? '')) : '',
                 'address' => $dbUser->address ?? '',
                 'motivation' => $participantType === 'individual'
                     ? ($dbUser->motivation ?? $defaults['motivation'])
                     : '',
                 'group_name' => $groupName,
+                'institution_name' => $groupName,
                 'pic_name' => $picName,
+                'pic_email' => $picEmail,
                 'role_label' => $participantType === 'group' ? 'Peserta Kelompok' : 'Peserta Individu',
             ]);
         }
@@ -271,6 +302,130 @@ class AuthController extends Controller
         return redirect()->route('dashboard.index');
     }
 
+    public function requestForgotPasswordCode(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'forgot_username' => ['required', 'string', 'min:3', 'max:120'],
+        ]);
+
+        $username = strtolower(trim((string) $validated['forgot_username']));
+        $user = User::query()
+            ->where('role', 'peserta')
+            ->where('username', $username)
+            ->first();
+
+        if (!$user) {
+            return redirect()
+                ->route('login')
+                ->withErrors([
+                    'forgot_password' => 'Akun peserta tidak ditemukan.',
+                ])
+                ->withInput(['forgot_username' => $username]);
+        }
+
+        $isGroupParticipant = !empty($user->group_name);
+        if ($isGroupParticipant && !(bool) ($user->forgot_password_enabled ?? false)) {
+            return redirect()
+                ->route('login')
+                ->withErrors([
+                    'forgot_password' => 'Fitur lupa password belum diaktifkan untuk akun kelompok ini. Hubungi admin.',
+                ])
+                ->withInput(['forgot_username' => $username]);
+        }
+
+        $targetNumber = $this->resolveForgotPasswordWhatsappNumber($user);
+
+        if ($targetNumber === '') {
+            return redirect()
+                ->route('login')
+                ->withErrors([
+                    'forgot_password' => 'Nomor WhatsApp verifikasi belum tersedia. Untuk peserta kelompok, isi nomor pribadi di profil saat ganti password pertama.',
+                ])
+                ->withInput(['forgot_username' => $username]);
+        }
+
+        $code = (string) random_int(100000, 999999);
+        Cache::put(
+            'forgot-password-code:' . $user->id,
+            [
+                'code' => $code,
+                'expires_at' => now()->addMinutes(self::FORGOT_PASSWORD_CODE_TTL_MINUTES)->toDateTimeString(),
+            ],
+            now()->addMinutes(self::FORGOT_PASSWORD_CODE_TTL_MINUTES)
+        );
+
+        $message = "*Kode Verifikasi Reset Password LMS Batik*\n"
+            . 'Username: ' . ($user->username ?? $user->email) . "\n"
+            . 'Kode verifikasi: ' . $code . "\n"
+            . 'Berlaku selama ' . self::FORGOT_PASSWORD_CODE_TTL_MINUTES . " menit.\n"
+            . 'Jangan bagikan kode ini kepada siapa pun.\n\n'
+            . 'Pengirim (Admin): ' . self::WA_VALIDATION_SENDER_NUMBER;
+
+        $waUrl = 'https://wa.me/' . $targetNumber . '?text=' . rawurlencode($message);
+
+        return redirect()
+            ->route('login')
+            ->with('status', 'Kode verifikasi berhasil dibuat. Klik tombol WhatsApp untuk mengirim kode.')
+            ->with('forgot_password_username', $username)
+            ->with('forgot_password_wa_url', $waUrl)
+            ->with('forgot_password_wa_target', $this->maskPhoneNumber($targetNumber));
+    }
+
+    public function resetForgotPassword(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'forgot_username' => ['required', 'string', 'min:3', 'max:120'],
+            'verification_code' => ['required', 'digits:6'],
+            'password' => ['required', 'string', 'min:6', 'max:40', 'confirmed'],
+        ]);
+
+        $username = strtolower(trim((string) $validated['forgot_username']));
+        $user = User::query()
+            ->where('role', 'peserta')
+            ->where('username', $username)
+            ->first();
+
+        if (!$user) {
+            return redirect()
+                ->route('login')
+            ->withErrors(['forgot_password' => 'Akun peserta tidak ditemukan.'])
+                ->withInput(['forgot_username' => $username]);
+        }
+
+        $isGroupParticipant = !empty($user->group_name);
+        if ($isGroupParticipant && !(bool) ($user->forgot_password_enabled ?? false)) {
+            return redirect()
+            ->route('login')
+            ->withErrors(['forgot_password' => 'Reset password tidak diizinkan untuk akun kelompok ini.'])
+            ->withInput(['forgot_username' => $username]);
+        }
+
+        $cachedCode = Cache::get('forgot-password-code:' . $user->id);
+        $isValidCode = is_array($cachedCode)
+            && isset($cachedCode['code'])
+            && hash_equals((string) $cachedCode['code'], (string) $validated['verification_code']);
+
+        if (!$isValidCode) {
+            return redirect()
+                ->route('login')
+                ->withErrors(['forgot_password' => 'Kode verifikasi tidak valid atau sudah kedaluwarsa.'])
+                ->withInput(['forgot_username' => $username]);
+        }
+
+        $user->password = Hash::make((string) $validated['password']);
+        $user->password_changed = true;
+        if (Schema::hasColumn('users', 'current_password')) {
+            $user->current_password = (string) $validated['password'];
+        }
+        $user->save();
+
+        Cache::forget('forgot-password-code:' . $user->id);
+
+        return redirect()
+            ->route('login')
+            ->with('status', 'Password berhasil direset. Silakan login menggunakan password baru.');
+    }
+
     public function dashboard(Request $request): View|RedirectResponse
     {
         $user = $request->session()->get('auth_user');
@@ -306,6 +461,7 @@ class AuthController extends Controller
             'dashboard' => $this->getManagerDashboardConfig('home'),
             'stats' => $this->getManagerStats(),
             'activities' => $this->getManagerActivities(),
+            'alumniAchievements' => $this->getManagerAlumniAchievements(),
             'registrationStats' => $registrationStats,
         ]);
     }
@@ -371,7 +527,7 @@ class AuthController extends Controller
 
         $password = Str::upper(Str::random(2)) . rand(10, 99) . Str::lower(Str::random(3)) . '!';
 
-        User::create([
+        $userData = [
             'name' => $registration->nama_lengkap,
             'username' => $username,
             'email' => $registration->email,
@@ -383,7 +539,22 @@ class AuthController extends Controller
             'motivation' => $registration->motivasi,
             'status' => 'active',
             'password_changed' => false,
-        ]);
+        ];
+
+        if (Schema::hasColumn('users', 'personal_phone')) {
+            $userData['personal_phone'] = null;
+        }
+
+        if (Schema::hasColumn('users', 'forgot_password_enabled')) {
+            // Individual participants can use forgot-password with their own registered phone number.
+            $userData['forgot_password_enabled'] = true;
+        }
+
+        if (Schema::hasColumn('users', 'current_password')) {
+            $userData['current_password'] = $password;
+        }
+
+        User::create($userData);
 
         $registration->update(['status' => 'approved']);
 
@@ -480,6 +651,7 @@ class AuthController extends Controller
         }
 
         $user->status = $status;
+        $user->forgot_password_enabled = $request->boolean('forgot_password_enabled');
         $user->save();
 
         return redirect()
@@ -502,11 +674,25 @@ class AuthController extends Controller
         }));
 
         $managedGroups = $this->getManagerGroupParticipants();
+        $perPage = 6;
+        $currentPage = max(1, (int) $request->query('page', 1));
+        $groupPageItems = array_slice($managedGroups, ($currentPage - 1) * $perPage, $perPage);
+        $groupPaginator = new LengthAwarePaginator(
+            $groupPageItems,
+            count($managedGroups),
+            $perPage,
+            $currentPage,
+            [
+                'path' => $request->url(),
+                'query' => $request->query(),
+            ]
+        );
 
         return view('dashboard.manager.participants-group', [
             'user' => $request->session()->get('auth_user'),
             'dashboard' => $this->getManagerDashboardConfig('participants-group'),
             'groups' => $managedGroups,
+            'groupPaginator' => $groupPaginator,
             'pendingGroups' => $pendingGroups,
             'generatedGroupCredential' => $request->session()->get('manager_generated_group_credential'),
             'groupExportMeta' => $request->session()->get('manager_group_last_export'),
@@ -530,18 +716,18 @@ class AuthController extends Controller
         }
 
         $credentials = [];
-        $prefix = strtolower(Str::slug($selectedGroup['group_name'], ''));
-        $prefix = substr($prefix ?: 'group', 0, 8);
+        $registrationId = (int) str_replace('group-', '', $group);
+        $prefix = 'pesertalmb';
 
         for ($index = 1; $index <= (int) $selectedGroup['members']; $index++) {
-            $username = $prefix . str_pad((string) $index, 2, '0', STR_PAD_LEFT) . rand(1, 9);
+            $username = $prefix . $registrationId . str_pad((string) $index, 2, '0', STR_PAD_LEFT) . rand(1, 9);
             while (User::where('username', $username)->exists()) {
-                $username = $prefix . str_pad((string) $index, 2, '0', STR_PAD_LEFT) . rand(1, 9);
+                $username = $prefix . $registrationId . str_pad((string) $index, 2, '0', STR_PAD_LEFT) . rand(1, 9);
             }
             $password = Str::upper(Str::random(2)) . rand(10, 99) . Str::lower(Str::random(2)) . '!';
 
             // Create user account
-            User::create([
+            $groupUserData = [
                 'name' => $selectedGroup['group_name'] . ' - Anggota ' . $index,
                 'username' => $username,
                 'email' => 'group' . $selectedGroup['id'] . 'member' . $index . '@lmsbatik.test',
@@ -554,7 +740,21 @@ class AuthController extends Controller
                 'group_name' => $selectedGroup['group_name'],
                 'status' => 'active',
                 'password_changed' => false,
-            ]);
+            ];
+
+            if (Schema::hasColumn('users', 'personal_phone')) {
+                $groupUserData['personal_phone'] = null;
+            }
+
+            if (Schema::hasColumn('users', 'forgot_password_enabled')) {
+                $groupUserData['forgot_password_enabled'] = false;
+            }
+
+            if (Schema::hasColumn('users', 'current_password')) {
+                $groupUserData['current_password'] = $password;
+            }
+
+            User::create($groupUserData);
 
             $credentials[] = [
                 'member_no' => $index,
@@ -564,7 +764,6 @@ class AuthController extends Controller
         }
 
         // Update registration status to approved
-        $registrationId = (int) str_replace('group-', '', $group);
         $registration = RegistrationGroup::find($registrationId);
         if ($registration) {
             $registration->update(['status' => 'approved']);
@@ -585,9 +784,20 @@ class AuthController extends Controller
             'credentials' => $credentials,
         ]);
 
+        $csvContent = $this->buildGroupCredentialExportCsv($selectedGroup['pic_name'], $credentials);
+        Storage::disk('public')->put('exports/group-credentials-' . $selectedGroup['id'] . '.csv', $csvContent);
+
+        $credentialHistory = $request->session()->get('manager_group_credentials_by_group', []);
+        $credentialHistory[$selectedGroup['id']] = $credentials;
+        $request->session()->put('manager_group_credentials_by_group', $credentialHistory);
+
+        $message = $selectedGroup['members'] > 20
+            ? 'If you register more than 20 participants, credentials will be sent manually for efficiency. Please wait 1–5 minutes.'
+            : 'Kredensial anggota kelompok berhasil digenerate. Lanjutkan download Excel dari halaman ini dan kirim ke PIC via WhatsApp.';
+
         return redirect()
             ->route('dashboard.manager.participants.group')
-            ->with('status', 'Kredensial anggota kelompok berhasil digenerate. Lanjutkan export Excel dan kirim ke PIC.');
+            ->with('status', $message);
     }
 
     public function managerGroupParticipantsSendCredential(Request $request, string $group): RedirectResponse
@@ -606,53 +816,35 @@ class AuthController extends Controller
                 ->withErrors(['group_credential' => 'Silakan generate kredensial kelompok terlebih dahulu.']);
         }
 
-        $csvRows = [
-            ['Group', 'PIC', 'PIC WhatsApp', 'PIC Email', 'Member No', 'Username', 'Password'],
-        ];
+        $registrationId = (int) str_replace('group-', '', $group);
+        $registration = RegistrationGroup::query()->find($registrationId);
+        $targetNumber = $this->normalizeWhatsappNumber((string) ($registration?->no_handphone_pic ?? ''));
 
-        foreach ($generated['credentials'] as $credential) {
-            $csvRows[] = [
-                $generated['group_name'],
-                $generated['pic_name'],
-                $generated['pic_whatsapp'],
-                $generated['pic_email'],
-                (string) $credential['member_no'],
-                $credential['username'],
-                $credential['password'],
-            ];
+        if ($targetNumber === '') {
+            return redirect()
+                ->route('dashboard.manager.participants.group')
+                ->withErrors(['group_credential' => 'Nomor WhatsApp PIC tidak tersedia di database.']);
         }
 
-        $csvContent = '';
-        foreach ($csvRows as $row) {
-            $csvContent .= implode(',', array_map(function (string $value): string {
-                return '"' . str_replace('"', '""', $value) . '"';
-            }, $row)) . "\n";
-        }
+        $credentialLines = array_map(function (array $credential): string {
+            return '- ' . $credential['username'] . ' / ' . $credential['password'];
+        }, $generated['credentials']);
 
-        $filename = 'group-credentials-' . $group . '-' . now()->format('YmdHis') . '.csv';
-        $directory = storage_path('app/private/exports');
-        if (!is_dir($directory)) {
-            mkdir($directory, 0777, true);
-        }
+        $message = "*Hasil Validasi Pendaftaran Kelompok LMS Batik*\n"
+            . "Status validasi: Disetujui\n"
+            . "Lembaga: {$generated['group_name']}\n"
+            . "PIC: {$generated['pic_name']}\n"
+            . "Kredensial peserta:\n" . implode("\n", $credentialLines) . "\n\n"
+            . "Pengirim (Admin): " . self::WA_VALIDATION_SENDER_NUMBER;
 
-        $path = $directory . DIRECTORY_SEPARATOR . $filename;
-        file_put_contents($path, $csvContent);
+        $waUrl = 'https://wa.me/' . $targetNumber . '?text=' . rawurlencode($message);
 
-        $request->session()->put('manager_group_last_export', [
-            'group_id' => $group,
-            'group_name' => $generated['group_name'],
-            'pic_name' => $generated['pic_name'],
-            'path' => $path,
-            'filename' => $filename,
-        ]);
         $request->session()->forget('manager_generated_group_credential');
 
-        return redirect()
-            ->route('dashboard.manager.participants.group')
-            ->with('status', 'Kredensial berhasil diexport (CSV kompatibel Excel) dan dikirim ke PIC via WhatsApp (simulasi). Data kelompok dipindahkan ke kelola peserta kelompok.');
+        return redirect()->away($waUrl);
     }
 
-    public function managerGroupParticipantsDownloadCredentialExport(Request $request)
+    public function managerGroupParticipantsDownloadCredentialExport(Request $request, string $group)
     {
         $guard = $this->ensureManagerRole($request);
 
@@ -660,18 +852,29 @@ class AuthController extends Controller
             return $guard;
         }
 
-        $exportMeta = $request->session()->get('manager_group_last_export');
-        $path = $exportMeta['path'] ?? null;
-        $filename = $exportMeta['filename'] ?? 'group-credentials.csv';
+        $registrationId = (int) str_replace('group-', '', $group);
+        $registration = RegistrationGroup::query()->find($registrationId);
 
-        if (!$path || !file_exists($path)) {
+        if (!$registration) {
             return redirect()
                 ->route('dashboard.manager.participants.group')
-                ->withErrors(['group_credential' => 'File export belum tersedia. Silakan kirim kredensial kelompok terlebih dahulu.']);
+                ->withErrors(['group_credential' => 'Data kelompok tidak ditemukan.']);
         }
 
-        return response()->download($path, $filename, [
-            'Content-Type' => 'text/csv',
+        $groupUsers = User::query()
+            ->where('role', 'peserta')
+            ->where('group_name', $registration->nama_lembaga)
+            ->orderBy('username')
+            ->get()
+            ->all();
+
+        $filename = 'group-data-' . $group . '.csv';
+        $csvContent = $this->buildGroupDataExportCsv($registration, $groupUsers);
+
+        return response()->streamDownload(function () use ($csvContent): void {
+            echo $csvContent;
+        }, $filename, [
+            'Content-Type' => 'text/csv; charset=UTF-8',
         ]);
     }
 
@@ -685,6 +888,7 @@ class AuthController extends Controller
 
         $validated = $request->validate([
             'status' => ['required', 'string', Rule::in(['active', 'graduated', 'non-active', 'Aktif', 'Lulus', 'Nonaktif'])],
+            'forgot_password_enabled' => ['nullable', 'boolean'],
         ]);
 
         $status = $this->normalizeParticipantStatus($validated['status']);
@@ -749,6 +953,7 @@ class AuthController extends Controller
             'phone' => ['required', 'string', 'min:8', 'max:20'],
             'address' => ['required', 'string', 'min:5', 'max:255'],
             'education' => ['required', 'string', 'min:2', 'max:100'],
+            'salary' => ['required', 'integer', 'min:0'],
             'certificate' => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:2048'],
         ]);
 
@@ -779,6 +984,7 @@ class AuthController extends Controller
             'phone' => $payload['phone'],
             'address' => $payload['address'],
             'education' => $payload['education'],
+            'salary' => (int) $payload['salary'],
             'certificate' => $certificateName,
             'status' => 'Aktif',
         ]);
@@ -814,20 +1020,9 @@ class AuthController extends Controller
                 ->with('status', 'Status pengajar ' . strtoupper($instructor) . ' berhasil diperbarui.');
         }
 
-        $instructors = $this->getManagerManagedInstructors($request);
-        $updatedInstructors = array_map(function (array $item) use ($instructor, $request): array {
-            if ($item['id'] === $instructor) {
-                $item['status'] = (string) $request->input('status');
-            }
-
-            return $item;
-        }, $instructors);
-
-        $request->session()->put('manager_instructors_data', array_values($updatedInstructors));
-
         return redirect()
             ->route('dashboard.manager.instructors')
-            ->with('status', 'Status pengajar ' . strtoupper($instructor) . ' diperbarui (simulasi).');
+            ->withErrors(['instructors' => 'Data pengajar tidak ditemukan untuk diperbarui.']);
     }
 
     public function managerInstructorsEdit(Request $request, string $instructor): RedirectResponse
@@ -853,6 +1048,7 @@ class AuthController extends Controller
             'phone' => ['required', 'string', 'min:8', 'max:20'],
             'address' => ['required', 'string', 'min:5', 'max:255'],
             'education' => ['required', 'string', 'min:2', 'max:100'],
+            'salary' => ['required', 'integer', 'min:0'],
             'certificate' => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:2048'],
             'status' => ['required', 'string', 'in:Aktif,Nonaktif'],
         ]);
@@ -870,6 +1066,7 @@ class AuthController extends Controller
             $dbUser->phone = $payload['phone'];
             $dbUser->address = $payload['address'];
             $dbUser->education = $payload['education'];
+            $dbUser->salary = (int) $payload['salary'];
             if ($certificateName !== null) {
                 $dbUser->certificate = $certificateName;
             }
@@ -907,6 +1104,7 @@ class AuthController extends Controller
                 $item['phone'] = $payload['phone'];
                 $item['address'] = $payload['address'];
                 $item['education'] = $payload['education'];
+                $item['salary'] = (int) $payload['salary'];
                 if ($certificateName !== null) {
                     $item['certificate'] = $certificateName;
                 }
@@ -921,8 +1119,6 @@ class AuthController extends Controller
                 ->route('dashboard.manager.instructors')
                 ->withErrors(['instructors' => 'Data pengajar tidak ditemukan untuk diedit.']);
         }
-
-        $request->session()->put('manager_instructors_data', array_values($updated));
 
         return redirect()
             ->route('dashboard.manager.instructors')
@@ -952,16 +1148,9 @@ class AuthController extends Controller
                 ->with('status', 'Data pengajar berhasil dihapus.');
         }
 
-        $instructors = $this->getManagerManagedInstructors($request);
-        $remaining = array_values(array_filter($instructors, function (array $item) use ($instructor): bool {
-            return $item['id'] !== $instructor;
-        }));
-
-        $request->session()->put('manager_instructors_data', $remaining);
-
         return redirect()
             ->route('dashboard.manager.instructors')
-            ->with('status', 'Data pengajar berhasil dihapus.');
+            ->withErrors(['instructors' => 'Data pengajar tidak ditemukan untuk dihapus.']);
     }
 
     public function managerPrograms(Request $request): View|RedirectResponse
@@ -1165,6 +1354,8 @@ class AuthController extends Controller
             12 => 'Desember',
         ];
 
+        $allMonthsData = $this->getAllMonthsData($year);
+
         return view('dashboard.manager.reports', [
             'user' => $request->session()->get('auth_user'),
             'dashboard' => $this->getManagerDashboardConfig('reports'),
@@ -1172,7 +1363,7 @@ class AuthController extends Controller
             'selectedMonth' => $month,
             'selectedYear' => $year,
             'availableYears' => $yearMonths,
-            'allMonthsData' => $this->getAllMonthsData($year),
+            'allMonthsData' => $allMonthsData,
             'monthNames' => $monthNames,
         ]);
     }
@@ -1196,9 +1387,20 @@ class AuthController extends Controller
             : $this->buildMonthlyReportExportData($month, $year);
 
         $settings = $request->session()->get('manager_settings', $this->getManagerSettingsData());
-        $logoPublicPath = public_path('img/Logo.png');
-        if (!file_exists($logoPublicPath)) {
-            $logoPublicPath = public_path('img/komunitasbatik.png');
+        $logoPublicPath = '';
+        $sessionLogo = (string) ($settings['logo_filename'] ?? '');
+        if ($sessionLogo !== '') {
+            $storageLogoPath = storage_path('app/public/logos/' . $sessionLogo);
+            if (file_exists($storageLogoPath)) {
+                $logoPublicPath = $storageLogoPath;
+            }
+        }
+
+        if ($logoPublicPath === '') {
+            $logoPublicPath = public_path('img/Logo.png');
+            if (!file_exists($logoPublicPath)) {
+                $logoPublicPath = public_path('img/komunitasbatik.png');
+            }
         }
 
         $logoDataUri = null;
@@ -1224,12 +1426,11 @@ class AuthController extends Controller
             $mimeType = 'text/csv; charset=UTF-8';
         } else {
             $filename = $baseFilename . '.pdf';
-            if (extension_loaded('gd')) {
+            try {
                 $content = Pdf::loadView('dashboard.manager.report-export-template', [
                     'reportData' => $reportData,
                 ])->setPaper('a4', 'portrait')->output();
-            } else {
-                // Fallback PDF generator when GD extension is not available.
+            } catch (\Throwable $error) {
                 $content = $this->buildFallbackReportPdf($reportData);
             }
             $mimeType = 'application/pdf';
@@ -1375,10 +1576,13 @@ class AuthController extends Controller
             return $guard;
         }
 
+        $defaults = $this->getManagerSettingsData();
+        $sessionSettings = $request->session()->get('manager_settings', []);
+
         return view('dashboard.manager.settings', [
             'user' => $request->session()->get('auth_user'),
             'dashboard' => $this->getManagerDashboardConfig('settings'),
-            'settingsData' => $this->getManagerSettingsData(),
+            'settingsData' => is_array($sessionSettings) ? array_replace_recursive($defaults, $sessionSettings) : $defaults,
         ]);
     }
 
@@ -1392,6 +1596,7 @@ class AuthController extends Controller
 
         $validated = $request->validate([
             'organization_name' => ['required', 'string', 'min:3', 'max:120'],
+            'organization_address' => ['required', 'string', 'min:5', 'max:255'],
             'support_email' => ['required', 'email'],
             'timezone' => ['required', 'string'],
             'logo' => ['nullable', 'image', 'max:2048', 'mimes:jpeg,png,jpg,webp'],
@@ -1416,6 +1621,7 @@ class AuthController extends Controller
 
         // Update basic settings
         $currentSettings['organization_name'] = $validated['organization_name'];
+        $currentSettings['organization_address'] = $validated['organization_address'];
         $currentSettings['support_email'] = $validated['support_email'];
         $currentSettings['timezone'] = $validated['timezone'];
         $currentSettings['logo_fit'] = $validated['logo_fit'] ?? 'contain';
@@ -1460,7 +1666,6 @@ class AuthController extends Controller
         }
 
         $validated = $request->validate([
-            'photo' => ['nullable', 'image', 'max:2048'],
             'full_name' => ['required', 'string', 'min:3', 'max:120'],
             'username' => ['required', 'string', 'min:4', 'max:40'],
             'password' => ['required', 'string', 'min:6', 'max:40'],
@@ -1471,13 +1676,6 @@ class AuthController extends Controller
         ]);
 
         $profile = $this->getManagerProfileData($request);
-
-        if ($request->hasFile('photo')) {
-            $photo = $request->file('photo');
-            $photoName = 'manager-' . now()->timestamp . '.' . $photo->getClientOriginalExtension();
-            $photo->storeAs('profiles', $photoName, 'public');
-            $profile['photo'] = $photoName;
-        }
 
         $profile['full_name'] = $validated['full_name'];
         $profile['username'] = $validated['username'];
@@ -1544,9 +1742,9 @@ class AuthController extends Controller
         }
 
         $validated = $request->validate([
-            'photo' => ['nullable', 'image', 'max:2048'],
             'full_name' => ['required', 'string', 'min:3', 'max:120'],
             'username' => ['required', 'string', 'min:4', 'max:40'],
+            'password' => ['required', 'string', 'min:6', 'max:40'],
             'email' => ['required', 'email'],
             'phone' => ['required', 'string', 'min:7', 'max:20'],
             'address' => ['required', 'string', 'min:5', 'max:255'],
@@ -1554,15 +1752,9 @@ class AuthController extends Controller
 
         $profile = $this->getInstructorProfileData($request);
 
-        if ($request->hasFile('photo')) {
-            $photo = $request->file('photo');
-            $photoName = 'instructor-' . now()->timestamp . '.' . $photo->getClientOriginalExtension();
-            $photo->storeAs('profiles', $photoName, 'public');
-            $profile['photo'] = $photoName;
-        }
-
         $profile['full_name'] = $validated['full_name'];
         $profile['username'] = $validated['username'];
+        $profile['password'] = $validated['password'];
         $profile['email'] = $validated['email'];
         $profile['phone'] = $validated['phone'];
         $profile['address'] = $validated['address'];
@@ -1580,8 +1772,13 @@ class AuthController extends Controller
             $dbUser->name = $validated['full_name'];
             $dbUser->username = $validated['username'];
             $dbUser->email = $validated['email'];
+            $dbUser->password = Hash::make($validated['password']);
             $dbUser->phone = $validated['phone'];
             $dbUser->address = $validated['address'];
+
+            if (Schema::hasColumn('users', 'current_password')) {
+                $dbUser->current_password = (string) $validated['password'];
+            }
 
             $dbUser->save();
         }
@@ -1994,8 +2191,8 @@ class AuthController extends Controller
             return $guard;
         }
 
-        $validated = $request->validate([
-            'photo' => ['nullable', 'image', 'max:2048'],
+        // Base validation rules
+        $rules = [
             'participant_type' => ['required', 'in:individual,group'],
             'full_name' => ['required', 'string', 'min:3', 'max:120'],
             'username' => ['required', 'string', 'min:4', 'max:40'],
@@ -2008,7 +2205,7 @@ class AuthController extends Controller
             'group_name' => ['nullable', 'string', 'max:120'],
             'pic_name' => ['nullable', 'string', 'max:120'],
             'role_label' => ['required', 'string', 'min:3', 'max:40'],
-        ]);
+        ];
 
         $authUser = $request->session()->get('auth_user', []);
         $dbUser = User::where('email', $authUser['email'])->first();
@@ -2018,9 +2215,27 @@ class AuthController extends Controller
         }
 
         $participantType = !empty($dbUser->group_name) ? 'group' : 'individual';
+        // Add personal_phone validation only for group participants
+        if ($participantType === 'group') {
+            $rules['personal_phone'] = ['required', 'string', 'min:7', 'max:20'];
+        }
+
+        $validated = $request->validate($rules);
 
         if ($participantType === 'individual' && empty($validated['motivation'])) {
             return back()->withErrors(['motivation' => 'Motivasi singkat wajib diisi untuk peserta individu.'])->withInput();
+        }
+
+        if ($participantType === 'group') {
+            $personalPhone = trim((string) ($validated['personal_phone'] ?? ''));
+
+            if ($personalPhone === '') {
+                return back()->withErrors(['personal_phone' => 'No. handphone pribadi wajib diisi untuk peserta kelompok saat mengganti password.'])->withInput();
+            }
+
+            if ($this->normalizeWhatsappNumber($personalPhone) === $this->normalizeWhatsappNumber((string) $validated['phone'])) {
+                return back()->withErrors(['personal_phone' => 'No. handphone pribadi harus berbeda dari no. handphone PIC.'])->withInput();
+            }
         }
 
         // Update user data
@@ -2029,9 +2244,21 @@ class AuthController extends Controller
         $dbUser->email = $validated['email'];
         $dbUser->password = Hash::make($validated['password']);
         $dbUser->phone = $validated['phone'];
+        
+        // Only update personal_phone for group participants
+        if ($participantType === 'group') {
+            $dbUser->personal_phone = trim((string) ($validated['personal_phone'] ?? ''));
+        }
+        
         $dbUser->address = $validated['address'];
         $dbUser->motivation = $participantType === 'individual' ? ($validated['motivation'] ?? null) : null;
         $dbUser->password_changed = true; // Mark as changed
+        if (Schema::hasColumn('users', 'forgot_password_enabled')) {
+            $dbUser->forgot_password_enabled = true;
+        }
+        if (Schema::hasColumn('users', 'current_password')) {
+            $dbUser->current_password = (string) $validated['password'];
+        }
 
         $dbUser->save();
 
@@ -2175,7 +2402,15 @@ class AuthController extends Controller
         }
 
         $search = trim((string) $request->query('search', ''));
-        $artworksQuery = Schema::hasTable('artworks') ? Artwork::query()->latest() : null;
+        $currentUserEmail = (string) data_get($request->session()->get('auth_user', []), 'email', '');
+
+        $artworksQuery = null;
+
+        if (Schema::hasTable('artworks') && $currentUserEmail !== '') {
+            $artworksQuery = Artwork::query()
+                ->where('creator_email', $currentUserEmail)
+                ->latest();
+        }
 
         if ($artworksQuery && $search !== '') {
             $artworksQuery->where(function ($query) use ($search) {
@@ -2590,6 +2825,35 @@ class AuthController extends Controller
     }
 
     /**
+     * @return array<int, array<string, string>>
+     */
+    private function getManagerAlumniAchievements(): array
+    {
+        if (! Schema::hasTable('achievements')) {
+            return [];
+        }
+
+        return Achievement::query()
+            ->where('is_active', true)
+            ->latest()
+            ->limit(5)
+            ->get()
+            ->map(function (Achievement $achievement): array {
+                $rankText = $achievement->rank ? ('Juara ' . $achievement->rank) : 'Partisipasi';
+
+                return [
+                    'title' => (string) ($achievement->title ?? '-'),
+                    'winner' => (string) ($achievement->winner_name ?? '-'),
+                    'event' => (string) ($achievement->event_name ?? '-'),
+                    'year' => (string) ($achievement->year ?? '-'),
+                    'rank' => $rankText,
+                ];
+            })
+            ->values()
+            ->all();
+    }
+
+    /**
      * @return array<string, mixed>
      */
     private function getManagerRegistrationStatistics(): array
@@ -2713,6 +2977,7 @@ class AuthController extends Controller
                 'progress' => 0,
                 'status' => $status,
                 'status_label' => $this->buildParticipantRoleLabel($status),
+                'forgot_password_enabled' => (bool) ($user->forgot_password_enabled ?? false),
             ];
         })->toArray();
     }
@@ -2739,9 +3004,22 @@ class AuthController extends Controller
         }
 
         $normalizedStatus = $this->normalizeParticipantStatus((string) ($dbUser->status ?? 'active'));
+        $sidebarEmail = (string) ($dbUser->email ?? ($user['email'] ?? '-'));
+
+        if (!empty($dbUser->group_name) && Schema::hasTable('registration_groups')) {
+            $registrationGroup = RegistrationGroup::query()
+                ->where('nama_lembaga', (string) $dbUser->group_name)
+                ->orderByDesc('created_at')
+                ->first();
+
+            if ($registrationGroup && !empty($registrationGroup->email_pic)) {
+                $sidebarEmail = (string) $registrationGroup->email_pic;
+            }
+        }
 
         $user['status'] = $normalizedStatus;
         $user['sidebar_role_label'] = $this->buildParticipantRoleLabel($normalizedStatus);
+        $user['sidebar_email'] = $sidebarEmail;
         $request->session()->put('auth_user', $user);
 
         return $user;
@@ -2828,6 +3106,8 @@ class AuthController extends Controller
                 'registration_date' => $reg->created_at->format('Y-m-d'),
                 'name' => $reg->nama_lengkap,
                 'email' => $reg->email,
+                'phone' => $reg->no_handphone,
+                'address' => $reg->alamat,
                 'education' => $reg->pendidikan_terakhir,
                 'motivation' => $reg->motivasi,
                 'program' => 'Program Individu',
@@ -2850,6 +3130,27 @@ class AuthController extends Controller
             ->orderByDesc('created_at')
             ->get()
             ->map(function (RegistrationGroup $registration): array {
+                $groupUsers = User::query()
+                    ->where('role', 'peserta')
+                    ->where('group_name', $registration->nama_lembaga)
+                    ->orderBy('username')
+                    ->get();
+                $detailPerPage = 5;
+                $detailPageName = 'group_' . $registration->id . '_page';
+                $detailCurrentPage = max(1, (int) request()->query($detailPageName, 1));
+                $detailItems = $groupUsers->slice(($detailCurrentPage - 1) * $detailPerPage, $detailPerPage)->values();
+                $participantCredentialsPaginator = new LengthAwarePaginator(
+                    $detailItems,
+                    $groupUsers->count(),
+                    $detailPerPage,
+                    $detailCurrentPage,
+                    [
+                        'path' => request()->url(),
+                        'query' => request()->query(),
+                        'pageName' => $detailPageName,
+                    ]
+                );
+
                 $status = User::query()
                     ->where('role', 'peserta')
                     ->where('group_name', $registration->nama_lembaga)
@@ -2860,13 +3161,35 @@ class AuthController extends Controller
                     ->keys()
                     ->first() ?? 'active';
 
+                $passwordChangedCount = $groupUsers->where('password_changed', true)->count();
+                $passwordTotal = $groupUsers->count();
+
                 return [
                     'id' => 'group-' . $registration->id,
                     'group_name' => $registration->nama_lembaga,
+                    'pic_name' => $registration->nama_pic,
+                    'pic_phone' => $registration->no_handphone_pic,
                     'members' => (int) $registration->jumlah_peserta,
                     'program' => 'Program Kelompok',
                     'status' => $status,
                     'status_label' => $this->buildParticipantRoleLabel($status),
+                    'password_changed_count' => $passwordChangedCount,
+                    'password_total' => $passwordTotal,
+                    'password_change_summary' => $passwordTotal > 0
+                        ? $passwordChangedCount . '/' . $passwordTotal . ' peserta sudah mengganti password'
+                        : 'Belum ada peserta aktif',
+                    'forgot_password_enabled' => $groupUsers->isNotEmpty()
+                        && $groupUsers->every(fn (User $user): bool => (bool) ($user->forgot_password_enabled ?? false)),
+                    'participant_credentials' => $groupUsers->map(function (User $user): array {
+                        return [
+                            'username' => (string) ($user->username ?? '-'),
+                            'current_password' => (string) ($user->current_password ?? ''),
+                            'password_changed' => (bool) ($user->password_changed ?? false),
+                            'password_status' => (bool) ($user->password_changed ?? false) ? 'Sudah diubah' : 'Belum diubah',
+                            'forgot_password_enabled' => (bool) ($user->forgot_password_enabled ?? false),
+                        ];
+                    })->toArray(),
+                    'participant_credentials_paginator' => $participantCredentialsPaginator,
                 ];
             })
             ->toArray();
@@ -2898,37 +3221,41 @@ class AuthController extends Controller
         })->toArray();
     }
 
+    private function resolveForgotPasswordWhatsappNumber(User $user): string
+    {
+        $isGroupParticipant = !empty($user->group_name);
+        $candidatePhone = $isGroupParticipant
+            ? (string) ($user->personal_phone ?? '')
+            : (string) ($user->phone ?? '');
+
+        return $this->normalizeWhatsappNumber($candidatePhone);
+    }
+
+    private function maskPhoneNumber(string $phone): string
+    {
+        $digits = preg_replace('/\D+/', '', $phone) ?? '';
+
+        if (strlen($digits) <= 6) {
+            return $digits;
+        }
+
+        return substr($digits, 0, 3) . str_repeat('*', max(0, strlen($digits) - 6)) . substr($digits, -3);
+    }
+
     /**
      * @return array<int, array<string, string|int>>
      */
     private function getManagerInstructors(): array
     {
-        return [
-            [
-                'id' => 'ig-01',
-                'name' => 'Anonymouse',
-                'username' => 'anonymouse321',
-                'password' => 'AK12xyz!',
-                'email' => 'anonymouse@gmail.com',
-                'phone' => '0877956624',
-                'address' => 'Lorem ipsum dolor sit amet consectetur.',
-                'education' => 'SMAN 1 Purwokerto',
-                'certificate' => 'sertifikat-anonymouse.pdf',
-                'status' => 'Aktif',
-            ],
-            [
-                'id' => 'ig-02',
-                'name' => 'Anonymouse B',
-                'username' => 'anonymouseb17',
-                'password' => 'DF45mno!',
-                'email' => 'anonymouseb@gmail.com',
-                'phone' => '082178889900',
-                'address' => 'Jl. Melati 2',
-                'education' => 'S1 Pendidikan Seni',
-                'certificate' => null,
-                'status' => 'Nonaktif',
-            ],
-        ];
+        if (!Schema::hasTable('users')) {
+            return [];
+        }
+
+        return User::where('role', 'pengajar')
+            ->orderBy('name')
+            ->get()
+            ->map(fn (User $user) => $this->mapManagerInstructor($user))
+            ->all();
     }
 
         private function getSessionRoleFromDbRole(string $role): string
@@ -2951,6 +3278,7 @@ class AuthController extends Controller
             'phone' => $user->phone ?? '',
             'address' => $user->address ?? '',
             'education' => $user->education ?? '',
+            'salary' => (int) ($user->salary ?? 0),
             'certificate' => $user->certificate,
             'status' => $user->status ?? 'Aktif',
         ];
@@ -2963,26 +3291,17 @@ class AuthController extends Controller
     {
         $passwordCache = $request->session()->get('manager_instructor_passwords', []);
 
+        if (!Schema::hasTable('users')) {
+            return [];
+        }
+
         $dbInstructors = User::where('role', 'pengajar')
             ->orderBy('name')
             ->get();
 
-        if ($dbInstructors->isNotEmpty()) {
-            return $dbInstructors
-                ->map(fn (User $user) => $this->mapManagerInstructor($user, $passwordCache))
-                ->all();
-        }
-
-        $sessionData = $request->session()->get('manager_instructors_data');
-
-        if (is_array($sessionData)) {
-            return $sessionData;
-        }
-
-        $defaults = $this->getManagerInstructors();
-        $request->session()->put('manager_instructors_data', $defaults);
-
-        return $defaults;
+        return $dbInstructors
+            ->map(fn (User $user) => $this->mapManagerInstructor($user, $passwordCache))
+            ->all();
     }
 
     /**
@@ -2996,65 +3315,74 @@ class AuthController extends Controller
      */
     private function getMonthlyReportData(int $month, int $year): array
     {
-        $individualParticipants = $this->getEnhancedIndividualParticipants();
-        $groupParticipants = $this->getEnhancedGroupParticipants();
-        $instructors = $this->getManagerInstructors();
-
-        // Filter by month/year
         $monthIndividual = [];
         $monthGroup = [];
         $registrationByDate = [];
+        $individualCost = 125000;
+        $groupCost = 100000;
 
-        foreach ($individualParticipants as $participant) {
-            $regDate = $this->parseDate($participant['registration_date'] ?? '');
-            if ($regDate['month'] === $month && $regDate['year'] === $year) {
-                $monthIndividual[] = $participant;
-                $dateKey = $regDate['day'];
-                $registrationByDate[$dateKey] = ($registrationByDate[$dateKey] ?? 0) + 1;
-            }
+        if (Schema::hasTable('registration_individuals')) {
+            $individualRegistrations = RegistrationIndividual::query()
+                ->whereMonth('created_at', $month)
+                ->whereYear('created_at', $year)
+                ->orderBy('created_at')
+                ->get();
+
+            $monthIndividual = $individualRegistrations->map(function (RegistrationIndividual $registration) use (&$registrationByDate, $individualCost): array {
+                $registrationDate = optional($registration->created_at)->format('Y-m-d') ?? '';
+                if ($registrationDate !== '') {
+                    $registrationByDate[$registrationDate] = ($registrationByDate[$registrationDate] ?? 0) + 1;
+                }
+
+                return [
+                    'id' => 'individual-' . $registration->id,
+                    'name' => (string) $registration->nama_lengkap,
+                    'program' => 'Program Individu',
+                    'registration_date' => $registrationDate,
+                    'status' => $this->formatReportStatus((string) ($registration->status ?? 'pending')),
+                    'cost' => $individualCost,
+                ];
+            })->all();
         }
 
-        foreach ($groupParticipants as $group) {
-            $regDate = $this->parseDate($group['registration_date'] ?? '');
-            if ($regDate['month'] === $month && $regDate['year'] === $year) {
-                $monthGroup[] = $group;
-                $dateKey = $regDate['day'];
-                $registrationByDate[$dateKey] = ($registrationByDate[$dateKey] ?? 0) + ($group['members'] ?? 0);
-            }
+        if (Schema::hasTable('registration_groups')) {
+            $groupRegistrations = RegistrationGroup::query()
+                ->whereMonth('created_at', $month)
+                ->whereYear('created_at', $year)
+                ->orderBy('created_at')
+                ->get();
+
+            $monthGroup = $groupRegistrations->map(function (RegistrationGroup $registration) use (&$registrationByDate, $groupCost): array {
+                $registrationDate = optional($registration->created_at)->format('Y-m-d') ?? '';
+                if ($registrationDate !== '') {
+                    $registrationByDate[$registrationDate] = ($registrationByDate[$registrationDate] ?? 0) + (int) $registration->jumlah_peserta;
+                }
+
+                return [
+                    'id' => 'group-' . $registration->id,
+                    'group_name' => (string) $registration->nama_lembaga,
+                    'members' => (int) $registration->jumlah_peserta,
+                    'program' => 'Program Kelompok',
+                    'status' => $this->formatReportStatus((string) ($registration->status ?? 'pending')),
+                    'registration_date' => $registrationDate,
+                    'cost' => $groupCost,
+                ];
+            })->all();
         }
 
-        // Calculate totals
         $totalIndividual = count($monthIndividual);
         $totalGroup = count($monthGroup);
         $totalGroupMembers = array_sum(array_column($monthGroup, 'members'));
         $totalParticipants = $totalIndividual + $totalGroupMembers;
-
-        // Calculate profit/cost
-        $individualCost = 125000; // IDR
-        $groupCost = 100000; // IDR per member
         $totalProfit = ($totalIndividual * $individualCost) + ($totalGroupMembers * $groupCost);
 
-        // Find peak registration date
-        $peakDate = 'N/A';
+        $peakDate = 'No data available';
         $peakCount = 0;
-        foreach ($registrationByDate as $day => $count) {
+        foreach ($registrationByDate as $date => $count) {
             if ($count > $peakCount) {
                 $peakCount = $count;
-                $peakDate = $day . ' ' . $this->getMonthName($month) . ' ' . $year;
+                $peakDate = Carbon::createFromFormat('Y-m-d', $date)->format('d M Y');
             }
-        }
-
-        // Calculate instructor salary (commission-based)
-        $instructorSalaries = [];
-        foreach ($instructors as $instructor) {
-            $instructorSalaries[] = [
-                'name' => $instructor['name'],
-                'status' => $instructor['status'],
-                'base_salary' => 2000000,
-                'classes_handled' => rand(2, 5),
-                'commission' => rand(500000, 2000000),
-                'total' => 2000000 + rand(500000, 2000000),
-            ];
         }
 
         return [
@@ -3071,10 +3399,36 @@ class AuthController extends Controller
             'group_income' => $totalGroupMembers * $groupCost,
             'total_profit' => $totalProfit,
             'peak_registration_date' => $peakDate,
-            'instructor_salaries' => $instructorSalaries,
+            'instructor_salaries' => $this->getReportInstructorSalaries(),
             'individual_participants' => $monthIndividual,
             'group_participants' => $monthGroup,
         ];
+    }
+
+    /**
+     * @return array<int, array<string, string|int>>
+     */
+    private function getReportInstructorSalaries(): array
+    {
+        if (!Schema::hasTable('users')) {
+            return [];
+        }
+
+        return User::query()
+            ->where('role', 'pengajar')
+            ->orderBy('name')
+            ->get()
+            ->map(function (User $user): array {
+                $status = $this->formatInstructorStatus((string) ($user->status ?? 'Aktif'));
+                $salary = (int) ($user->salary ?? 0);
+
+                return [
+                    'name' => $user->name,
+                    'status' => $status,
+                    'salary' => $salary,
+                ];
+            })
+            ->all();
     }
 
     /**
@@ -3092,6 +3446,17 @@ class AuthController extends Controller
                 'total_profit' => $data['total_profit'],
             ];
         }
+
+        $hasYearData = (int) array_sum(array_column($monthsData, 'total_registrations')) > 0;
+        if (!$hasYearData) {
+            return array_map(function (array $monthData): array {
+                $monthData['total_registrations'] = null;
+                $monthData['total_profit'] = null;
+
+                return $monthData;
+            }, $monthsData);
+        }
+
         return $monthsData;
     }
 
@@ -3151,6 +3516,7 @@ class AuthController extends Controller
         $totalRevenue = 0;
         $peakMonth = '-';
         $peakRevenue = 0;
+        $hasData = false;
 
         foreach ($this->getAllMonthsData($year) as $monthData) {
             $monthNumber = (int) ($monthData['month'] ?? 0);
@@ -3158,6 +3524,9 @@ class AuthController extends Controller
             $totalIndividual += (int) $monthlyBreakdown['total_individual_registrations'];
             $totalGroup += (int) $monthlyBreakdown['total_group_registrations'];
             $totalRevenue += (int) $monthlyBreakdown['total_profit'];
+            if ((int) ($monthData['total_registrations'] ?? 0) > 0) {
+                $hasData = true;
+            }
 
             if ((int) $monthData['total_profit'] > $peakRevenue) {
                 $peakRevenue = (int) $monthData['total_profit'];
@@ -3180,7 +3549,7 @@ class AuthController extends Controller
                 'Total Revenue' => $totalRevenue,
                 'Peak Registration Date' => $peakMonth,
             ],
-            'rows' => $monthlyRows,
+            'rows' => $hasData ? $monthlyRows : [],
         ];
     }
 
@@ -3223,6 +3592,70 @@ class AuthController extends Controller
                     $row['revenue'],
                 ]);
             }
+        }
+
+        rewind($stream);
+        $csv = stream_get_contents($stream) ?: '';
+        fclose($stream);
+
+        return "\xEF\xBB\xBF" . $csv;
+    }
+
+    /**
+     * @param array<int, array{member_no:int, username:string, password:string}> $credentials
+     */
+    private function buildGroupCredentialExportCsv(string $picName, array $credentials): string
+    {
+        $stream = fopen('php://temp', 'r+');
+        fputcsv($stream, ['PIC Name', 'Participant Username', 'Participant Password']);
+
+        foreach ($credentials as $credential) {
+            fputcsv($stream, [
+                $picName,
+                (string) ($credential['username'] ?? ''),
+                (string) ($credential['password'] ?? ''),
+            ]);
+        }
+
+        rewind($stream);
+        $csv = stream_get_contents($stream) ?: '';
+        fclose($stream);
+
+        return "\xEF\xBB\xBF" . $csv;
+    }
+
+    /**
+     * @param array<int, User> $groupUsers
+     */
+    private function buildGroupDataExportCsv(RegistrationGroup $registration, array $groupUsers): string
+    {
+        $picEmail = (string) ($registration->email_pic ?? '');
+
+        $stream = fopen('php://temp', 'r+');
+        fputcsv($stream, [
+            'Group Name',
+            'PIC Name',
+            'PIC Email',
+            'PIC Phone',
+            'Member Username',
+            'Current Password',
+            'Password Changed',
+            'Forgot Password Enabled',
+            'Member Status',
+        ]);
+
+        foreach ($groupUsers as $user) {
+            fputcsv($stream, [
+                (string) $registration->nama_lembaga,
+                (string) $registration->nama_pic,
+                $picEmail,
+                (string) $registration->no_handphone_pic,
+                (string) ($user->username ?? ''),
+                (string) ($user->current_password ?? ''),
+                (bool) ($user->password_changed ?? false) ? 'Yes' : 'No',
+                (bool) ($user->forgot_password_enabled ?? false) ? 'Yes' : 'No',
+                (string) ($user->status ?? 'active'),
+            ]);
         }
 
         rewind($stream);
@@ -3330,12 +3763,39 @@ class AuthController extends Controller
      */
     private function getAvailableYears(): array
     {
-        $years = [];
         $currentYear = now()->year;
-        for ($i = $currentYear; $i <= $currentYear + 2; $i++) {
-            $years[] = $i;
+        $startYear = $currentYear - 5;
+        $endYear = $currentYear + 5;
+        $years = range($startYear, $endYear);
+
+        $dbYears = collect();
+
+        if (Schema::hasTable('registration_individuals')) {
+            $dbYears = $dbYears->merge(
+                RegistrationIndividual::query()
+                    ->selectRaw('YEAR(created_at) as year_value')
+                    ->pluck('year_value')
+                    ->filter()
+                    ->map(fn ($value) => (int) $value)
+            );
         }
-        return $years;
+
+        if (Schema::hasTable('registration_groups')) {
+            $dbYears = $dbYears->merge(
+                RegistrationGroup::query()
+                    ->selectRaw('YEAR(created_at) as year_value')
+                    ->pluck('year_value')
+                    ->filter()
+                    ->map(fn ($value) => (int) $value)
+            );
+        }
+
+        return $dbYears
+            ->merge($years)
+            ->unique()
+            ->sort()
+            ->values()
+            ->all();
     }
 
     /**
@@ -3378,14 +3838,24 @@ class AuthController extends Controller
      */
     private function getEnhancedIndividualParticipants(): array
     {
-        return [
-            ['id' => 'pi-01', 'name' => 'Nadia Putri', 'program' => 'Teknik Canting Dasar', 'progress' => 88, 'status' => 'Aktif', 'registration_date' => '2026-03-15', 'cost' => 125000],
-            ['id' => 'pi-02', 'name' => 'Rafi Akbar', 'program' => 'Teknik Warna Dasar', 'progress' => 61, 'status' => 'Lulus', 'registration_date' => '2026-03-18', 'cost' => 125000],
-            ['id' => 'pi-03', 'name' => 'Salsa Wicaksono', 'program' => 'Komposisi Motif', 'progress' => 75, 'status' => 'Aktif', 'registration_date' => '2026-03-12', 'cost' => 125000],
-            ['id' => 'pi-04', 'name' => 'Tio Ramadhan', 'program' => 'Teknik Canting Dasar', 'progress' => 42, 'status' => 'Nonaktif', 'registration_date' => '2026-02-22', 'cost' => 125000],
-            ['id' => 'pi-05', 'name' => 'Siti Nurhaliza', 'program' => 'Teknik Warna Dasar', 'progress' => 95, 'status' => 'Lulus', 'registration_date' => '2026-01-10', 'cost' => 125000],
-            ['id' => 'pi-06', 'name' => 'Bambang Saputra', 'program' => 'Komposisi Motif', 'progress' => 80, 'status' => 'Aktif', 'registration_date' => '2026-03-25', 'cost' => 125000],
-        ];
+        if (!Schema::hasTable('registration_individuals')) {
+            return [];
+        }
+
+        return RegistrationIndividual::query()
+            ->orderByDesc('created_at')
+            ->get()
+            ->map(function (RegistrationIndividual $registration): array {
+                return [
+                    'id' => 'individual-' . $registration->id,
+                    'name' => (string) $registration->nama_lengkap,
+                    'program' => 'Program Individu',
+                    'status' => $this->formatReportStatus((string) ($registration->status ?? 'pending')),
+                    'registration_date' => optional($registration->created_at)->format('Y-m-d') ?? '',
+                    'cost' => 125000,
+                ];
+            })
+            ->all();
     }
 
     /**
@@ -3393,12 +3863,25 @@ class AuthController extends Controller
      */
     private function getEnhancedGroupParticipants(): array
     {
-        return [
-            ['id' => 'pg-01', 'group_name' => 'Batik Lestari', 'members' => 5, 'program' => 'Teknik Canting Dasar', 'status' => 'Aktif', 'registration_date' => '2026-03-20'],
-            ['id' => 'pg-02', 'group_name' => 'Motif Muda', 'members' => 4, 'program' => 'Teknik Warna Dasar', 'status' => 'Lulus', 'registration_date' => '2026-02-14'],
-            ['id' => 'pg-03', 'group_name' => 'Sanggar Nawasena', 'members' => 6, 'program' => 'Komposisi Motif', 'status' => 'Nonaktif', 'registration_date' => '2026-01-28'],
-            ['id' => 'pg-04', 'group_name' => 'Kuncup Batik', 'members' => 8, 'program' => 'Teknik Canting Dasar', 'status' => 'Aktif', 'registration_date' => '2026-03-10'],
-        ];
+        if (!Schema::hasTable('registration_groups')) {
+            return [];
+        }
+
+        return RegistrationGroup::query()
+            ->orderByDesc('created_at')
+            ->get()
+            ->map(function (RegistrationGroup $registration): array {
+                return [
+                    'id' => 'group-' . $registration->id,
+                    'group_name' => (string) $registration->nama_lembaga,
+                    'members' => (int) $registration->jumlah_peserta,
+                    'program' => 'Program Kelompok',
+                    'status' => $this->formatReportStatus((string) ($registration->status ?? 'pending')),
+                    'registration_date' => optional($registration->created_at)->format('Y-m-d') ?? '',
+                    'cost' => 100000,
+                ];
+            })
+            ->all();
     }
 
     /**
@@ -3408,6 +3891,7 @@ class AuthController extends Controller
     {
         return [
             'organization_name' => 'LPK Kama Praja Madiun',
+            'organization_address' => 'Kantor LPK Kama Praja Madiun',
             'support_email' => 'support@lmsbatik.test',
             'timezone' => 'Asia/Jakarta',
             'logo_filename' => 'komunitasbatik.png',
@@ -3563,6 +4047,18 @@ class AuthController extends Controller
             'revisi', 'revision', 'perlu revisi' => 'Perlu Revisi',
             'nonaktif', 'non-active', 'non active' => 'Nonaktif',
             default => ucfirst($status),
+        };
+    }
+
+    private function formatReportStatus(string $status): string
+    {
+        $normalized = strtolower(trim($status));
+
+        return match ($normalized) {
+            'pending', 'menunggu' => 'Pending',
+            'approved', 'disetujui' => 'Disetujui',
+            'rejected', 'ditolak' => 'Ditolak',
+            default => $status !== '' ? ucfirst($status) : '-',
         };
     }
 

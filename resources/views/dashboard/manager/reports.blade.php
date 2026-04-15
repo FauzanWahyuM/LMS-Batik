@@ -83,35 +83,23 @@
                 @csrf
                 <p class="text-sm font-medium text-slate-700">Laporan Bulan {{ $monthlyData['month_name'] }}
                     {{ $monthlyData['year'] }}</p>
-                <div class="flex gap-2">
-                    <input type="hidden" name="month" value="{{ $selectedMonth }}">
-                    <input type="hidden" name="year" value="{{ $selectedYear }}">
-                    <button type="submit" name="export_type" value="pdf"
-                        class="flex-1 rounded-lg bg-rose-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-rose-700">
-                        📄 PDF
-                    </button>
-                    <button type="submit" name="export_type" value="csv"
-                        class="flex-1 rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700">
-                        📊 CSV
-                    </button>
-                </div>
+                <input type="hidden" name="month" value="{{ $selectedMonth }}">
+                <input type="hidden" name="year" value="{{ $selectedYear }}">
+                <button type="submit" name="export_type" value="pdf"
+                    class="rounded-lg bg-rose-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-rose-700">
+                    Unduh Laporan Bulanan (PDF)
+                </button>
             </form>
 
             <form method="POST" action="{{ route('dashboard.manager.reports.export') }}" class="flex flex-col gap-2">
                 @csrf
                 <p class="text-sm font-medium text-slate-700">Laporan Tahunan {{ $monthlyData['year'] }}</p>
-                <div class="flex gap-2">
-                    <input type="hidden" name="month" value="all">
-                    <input type="hidden" name="year" value="{{ $selectedYear }}">
-                    <button type="submit" name="export_type" value="pdf"
-                        class="flex-1 rounded-lg bg-violet-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-violet-700">
-                        📄 PDF Tahun
-                    </button>
-                    <button type="submit" name="export_type" value="csv"
-                        class="flex-1 rounded-lg bg-sky-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-sky-700">
-                        📊 CSV Tahun
-                    </button>
-                </div>
+                <input type="hidden" name="month" value="all">
+                <input type="hidden" name="year" value="{{ $selectedYear }}">
+                <button type="submit" name="export_type" value="pdf"
+                    class="rounded-lg bg-violet-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-violet-700">
+                    Unduh Laporan Tahunan (PDF)
+                </button>
             </form>
         </div>
     </section>
@@ -127,10 +115,7 @@
                     <tr class="text-left">
                         <th class="px-3 py-3 font-semibold text-slate-600">Nama Pengajar</th>
                         <th class="px-3 py-3 font-semibold text-slate-600 text-right">Status</th>
-                        <th class="px-3 py-3 font-semibold text-slate-600 text-right">Gaji Pokok</th>
-                        <th class="px-3 py-3 font-semibold text-slate-600 text-right">Kelas</th>
-                        <th class="px-3 py-3 font-semibold text-slate-600 text-right">Komisi</th>
-                        <th class="px-3 py-3 font-semibold text-slate-600 text-right">Total</th>
+                        <th class="px-3 py-3 font-semibold text-slate-600 text-right">Gaji</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-200">
@@ -143,18 +128,13 @@
                                     {{ $salary['status'] }}
                                 </span>
                             </td>
-                            <td class="px-3 py-3 text-right font-medium text-slate-900">Rp
-                                {{ number_format($salary['base_salary'], 0, ',', '.') }}</td>
-                            <td class="px-3 py-3 text-right text-slate-600">{{ $salary['classes_handled'] }} kelas</td>
-                            <td class="px-3 py-3 text-right font-medium text-slate-900">Rp
-                                {{ number_format($salary['commission'], 0, ',', '.') }}</td>
                             <td class="px-3 py-3 text-right font-bold text-slate-900">Rp
-                                {{ number_format($salary['total'], 0, ',', '.') }}</td>
+                                {{ number_format($salary['salary'], 0, ',', '.') }}</td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="6" class="px-3 py-4 text-center text-sm text-slate-500">Tidak ada data
-                                pengajar</td>
+                            <td colspan="3" class="px-3 py-4 text-center text-sm text-slate-500">No data available.
+                            </td>
                         </tr>
                     @endforelse
                 </tbody>
@@ -165,7 +145,6 @@
     <!-- All Months Summary Table -->
     <section class="mb-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
         <h2 class="mb-4 text-lg font-bold text-slate-900">Ringkasan Tahunan {{ $selectedYear }}</h2>
-
         <div class="overflow-x-auto">
             <table class="w-full text-sm">
                 <thead class="border-b border-slate-200">
@@ -173,27 +152,22 @@
                         <th class="px-3 py-3 font-semibold text-slate-600">Bulan</th>
                         <th class="px-3 py-3 font-semibold text-slate-600 text-right">Total Pendaftar</th>
                         <th class="px-3 py-3 font-semibold text-slate-600 text-right">Pendapatan</th>
-                        <th class="px-3 py-3 font-semibold text-slate-600 text-center">Aksi</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-200">
                     @forelse ($allMonthsData as $monthData)
                         <tr class="hover:bg-slate-50">
                             <td class="px-3 py-3 font-medium text-slate-900">{{ $monthData['month_name'] }}</td>
-                            <td class="px-3 py-3 text-right text-slate-900">{{ $monthData['total_registrations'] }}
-                                peserta</td>
-                            <td class="px-3 py-3 text-right font-medium text-slate-900">Rp
-                                {{ number_format($monthData['total_profit'], 0, ',', '.') }}</td>
-                            <td class="px-3 py-3 text-center">
-                                <a href="{{ route('dashboard.manager.reports', ['month' => $monthData['month'], 'year' => $selectedYear]) }}"
-                                    class="inline-block rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50">
-                                    Lihat
-                                </a>
+                            <td class="px-3 py-3 text-right text-slate-900">
+                                {{ $monthData['total_registrations'] !== null ? $monthData['total_registrations'] . ' peserta' : '-' }}
+                            </td>
+                            <td class="px-3 py-3 text-right font-medium text-slate-900">
+                                {{ $monthData['total_profit'] !== null ? 'Rp ' . number_format($monthData['total_profit'], 0, ',', '.') : '-' }}
                             </td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="4" class="px-3 py-4 text-center text-sm text-slate-500">Tidak ada data bulanan
+                            <td colspan="3" class="px-3 py-4 text-center text-sm text-slate-500">No data available.
                             </td>
                         </tr>
                     @endforelse

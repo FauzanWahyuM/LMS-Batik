@@ -2,19 +2,8 @@
 
 @section('dashboard-content')
     <section class="mx-auto max-w-3xl rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
-        <form method="POST" action="{{ route('dashboard.manager.profile.update') }}" enctype="multipart/form-data"
-            class="space-y-4">
+        <form method="POST" action="{{ route('dashboard.manager.profile.update') }}" class="space-y-4">
             @csrf
-
-            <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                <p class="text-sm font-semibold text-slate-800">Foto Profil</p>
-                <div class="mt-3 flex flex-col items-center gap-3 sm:flex-row">
-                    <img src="{{ !empty($profile['photo']) ? route('public-file', ['path' => 'profiles/' . $profile['photo']]) : asset('img/komunitasbatik.png') }}"
-                        alt="Foto profil" class="h-20 w-20 rounded-full border border-slate-300 object-cover">
-                    <input type="file" name="photo" accept="image/*"
-                        class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs sm:text-sm">
-                </div>
-            </div>
 
             <div class="grid gap-4 sm:grid-cols-2">
                 <div class="sm:col-span-2">

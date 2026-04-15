@@ -117,44 +117,20 @@ class ParticipantModuleService
         $progress = $this->getModuleProgress($module, $user);
         $assignments = $this->getUserAssignments($module, $user);
         $taskInstructions = $this->getTaskInstructions($module);
-        $materialIds = $materials->pluck('id')->filter()->values()->all();
-        $materialSlugs = $materials->pluck('slug')->filter()->values()->all();
+        $completionState = $this->buildModuleCompletionState($module, $user, $materials);
 
-        // Get completed materials by ID (for database materials)
-        $completedMaterialIds = ParticipantProgress::where('user_id', $user->id)
-            ->where('module_id', $module->id)
-            ->where('status', 'completed')
-            ->whereNotNull('material_id')
-            ->when(! empty($materialIds), function ($query) use ($materialIds) {
-                $query->whereIn('material_id', $materialIds);
-            })
-            ->pluck('material_id')
-            ->all();
+        $materials = $materials->map(function ($material) use ($completionState) {
+            $materialState = $completionState['material_states'][$this->getMaterialProgressKey($material)] ?? [];
 
-        // Get completed materials by slug (for chapter-based materials)
-        $completedMaterialSlugs = ParticipantProgress::where('user_id', $user->id)
-            ->where('module_id', $module->id)
-            ->where('status', 'completed')
-            ->whereNull('material_id')
-            ->whereNotNull('material_slug')
-            ->when(! empty($materialSlugs), function ($query) use ($materialSlugs) {
-                $query->whereIn('material_slug', $materialSlugs);
-            })
-            ->pluck('material_slug')
-            ->all();
+            $material->is_read = (bool) ($materialState['is_read'] ?? false);
+            $material->is_video_watched = (bool) ($materialState['is_video_watched'] ?? false);
+            $material->has_video = (bool) ($materialState['has_video'] ?? false);
+            $material->is_assignment_submitted = (bool) ($materialState['is_assignment_submitted'] ?? false);
+            $material->parts_total = (int) ($materialState['parts_total'] ?? 0);
+            $material->parts_completed = (int) ($materialState['parts_completed'] ?? 0);
+            $material->completion_percentage = (int) ($materialState['completion_percentage'] ?? 0);
+            $material->is_completed = (bool) ($materialState['is_completed'] ?? false);
 
-        $completedCount = count(array_unique(array_merge($completedMaterialIds, $completedMaterialSlugs)));
-        $totalCount = $materials->count();
-        $overallProgress = $totalCount > 0 ? (int) round(($completedCount / $totalCount) * 100) : 0;
-
-        $materials = $materials->map(function ($material) use ($completedMaterialIds, $completedMaterialSlugs) {
-            if (isset($material->id)) {
-                // Database material
-                $material->is_completed = in_array($material->id, $completedMaterialIds, true);
-            } else {
-                // Chapter-based material
-                $material->is_completed = in_array($material->slug, $completedMaterialSlugs, true);
-            }
             return $material;
         });
 
@@ -164,9 +140,9 @@ class ParticipantModuleService
             'progress' => $progress,
             'assignments' => $assignments,
             'task_instructions' => $taskInstructions,
-            'completed_count' => $completedCount,
-            'total_count' => $totalCount,
-            'overall_progress' => $overallProgress,
+            'completed_count' => $completionState['completed_materials'],
+            'total_count' => $completionState['total_materials'],
+            'overall_progress' => $completionState['overall_percentage'],
         ];
     }
 
@@ -214,38 +190,12 @@ class ParticipantModuleService
     public function getProgressResponse(Module $module, User $user): array
     {
         $materials = $this->getMaterialsForModule($module);
-        $total = $materials->count();
-
-        $materialIds = $materials->pluck('id')->filter()->values()->all();
-        $materialSlugs = $materials->pluck('slug')->filter()->values()->all();
-
-        $completedById = ParticipantProgress::where('user_id', $user->id)
-            ->where('module_id', $module->id)
-            ->whereNotNull('material_id')
-            ->where('status', 'completed')
-            ->when(! empty($materialIds), function ($query) use ($materialIds) {
-                $query->whereIn('material_id', $materialIds);
-            })
-            ->count();
-
-        $completedBySlug = ParticipantProgress::where('user_id', $user->id)
-            ->where('module_id', $module->id)
-            ->whereNull('material_id')
-            ->whereNotNull('material_slug')
-            ->where('status', 'completed')
-            ->when(! empty($materialSlugs), function ($query) use ($materialSlugs) {
-                $query->whereIn('material_slug', $materialSlugs);
-            })
-            ->count();
-
-        $completed = $completedById + $completedBySlug;
-
-        $percentage = $total > 0 ? (int) round(($completed / $total) * 100) : 0;
+        $completionState = $this->buildModuleCompletionState($module, $user, $materials);
 
         return [
-            'completed' => $completed,
-            'total' => $total,
-            'percentage' => $percentage,
+            'completed' => $completionState['completed_materials'],
+            'total' => $completionState['total_materials'],
+            'percentage' => $completionState['overall_percentage'],
         ];
     }
 
@@ -295,35 +245,54 @@ class ParticipantModuleService
     public function calculateOverallProgress(Module $module, User $user): int
     {
         $materials = $this->getMaterialsForModule($module);
-        if ($materials->isEmpty()) {
-            return 0;
-        }
 
-        $materialIds = $materials->pluck('id')->filter()->values();
-        $materialSlugs = $materials->pluck('slug')->filter()->values();
+        return $this->buildModuleCompletionState($module, $user, $materials)['overall_percentage'];
+    }
 
-        $completedById = ParticipantProgress::where('user_id', $user->id)
-            ->where('module_id', $module->id)
-            ->whereNotNull('material_id')
-            ->when($materialIds->isNotEmpty(), function ($query) use ($materialIds) {
-                $query->whereIn('material_id', $materialIds);
-            })
-            ->where('status', 'completed')
-            ->count();
+    public function markMaterialAsRead(Module $module, $material, User $user): ParticipantProgress
+    {
+        $progress = $this->resolveOrCreateMaterialProgress($module, $material, $user);
+        $metadata = is_array($progress->metadata) ? $progress->metadata : [];
 
-        $completedBySlug = ParticipantProgress::where('user_id', $user->id)
-            ->where('module_id', $module->id)
-            ->whereNull('material_id')
-            ->whereNotNull('material_slug')
-            ->when($materialSlugs->isNotEmpty(), function ($query) use ($materialSlugs) {
-                $query->whereIn('material_slug', $materialSlugs);
-            })
-            ->where('status', 'completed')
-            ->count();
+        $metadata['material_read'] = true;
 
-        $completedMaterials = $completedById + $completedBySlug;
+        $progress->fill([
+            'status' => 'completed',
+            'progress_percentage' => 100,
+            'started_at' => $progress->started_at ?: now(),
+            'completed_at' => $progress->completed_at ?: now(),
+            'metadata' => $metadata,
+        ]);
 
-        return (int) (($completedMaterials / $materials->count()) * 100);
+        $progress->save();
+
+        return $progress;
+    }
+
+    public function markMaterialVideoAsWatched(Module $module, $material, User $user): ParticipantProgress
+    {
+        $progress = $this->resolveOrCreateMaterialProgress($module, $material, $user);
+        $metadata = is_array($progress->metadata) ? $progress->metadata : [];
+
+        $metadata['video_watched'] = true;
+
+        $progress->fill([
+            'status' => $progress->status === 'not_started' ? 'in_progress' : ($progress->status ?: 'in_progress'),
+            'started_at' => $progress->started_at ?: now(),
+            'metadata' => $metadata,
+        ]);
+
+        $progress->save();
+
+        return $progress;
+    }
+
+    public function getMaterialStateForUser(Module $module, $material, User $user): array
+    {
+        $materials = collect([$material]);
+        $completionState = $this->buildModuleCompletionState($module, $user, $materials);
+
+        return $completionState['material_states'][$this->getMaterialProgressKey($material)] ?? [];
     }
 
     /**
@@ -453,29 +422,14 @@ class ParticipantModuleService
     public function getModuleStatistics(Module $module, User $user): array
     {
         $materials = $this->getMaterialsForModule($module);
-        $completedMaterials = 0;
+        $completionState = $this->buildModuleCompletionState($module, $user, $materials);
+
+        $completedMaterials = $completionState['completed_materials'];
         $totalAssignments = 0;
         $gradedAssignments = 0;
 
         foreach ($materials as $material) {
-            $progressQuery = ParticipantProgress::where('user_id', $user->id)
-                ->where('module_id', $module->id)
-                ->where('status', 'completed');
-
-            if (isset($material->id)) {
-                $progressQuery->where('material_id', $material->id);
-            } else {
-                $progressQuery->whereNull('material_id')
-                    ->where('material_slug', $material->slug);
-            }
-
-            $progress = $progressQuery->first();
-
-            if ($progress) {
-                $completedMaterials++;
-            }
-
-            if ($material->type === 'assignment') {
+            if ($this->materialHasAssignmentPart($material)) {
                 $totalAssignments++;
                 $assignmentQuery = ParticipantAssignment::where('user_id', $user->id)
                     ->where('module_id', $module->id);
@@ -498,9 +452,181 @@ class ParticipantModuleService
         return [
             'total_materials' => $materials->count(),
             'completed_materials' => $completedMaterials,
-            'completion_percentage' => $materials->count() > 0 ? (int) (($completedMaterials / $materials->count()) * 100) : 0,
+            'completion_percentage' => $completionState['overall_percentage'],
             'total_assignments' => $totalAssignments,
             'graded_assignments' => $gradedAssignments,
         ];
+    }
+
+    private function buildModuleCompletionState(Module $module, User $user, $materials): array
+    {
+        $materials = collect($materials)->values();
+        $totalMaterials = $materials->count();
+
+        if ($totalMaterials === 0) {
+            return [
+                'completed_materials' => 0,
+                'total_materials' => 0,
+                'overall_percentage' => 0,
+                'material_states' => [],
+            ];
+        }
+
+        $materialIds = $materials->pluck('id')->filter()->values()->all();
+        $materialSlugs = $materials->pluck('slug')->filter()->values()->all();
+
+        $progressRows = ParticipantProgress::where('user_id', $user->id)
+            ->where('module_id', $module->id)
+            ->where(function ($query) use ($materialIds, $materialSlugs) {
+                if (! empty($materialIds)) {
+                    $query->whereIn('material_id', $materialIds);
+                }
+
+                if (! empty($materialSlugs)) {
+                    $query->orWhere(function ($slugQuery) use ($materialSlugs) {
+                        $slugQuery->whereNull('material_id')
+                            ->whereIn('material_slug', $materialSlugs);
+                    });
+                }
+            })
+            ->get();
+
+        $assignmentRows = ParticipantAssignment::where('user_id', $user->id)
+            ->where('module_id', $module->id)
+            ->where(function ($query) use ($materialIds, $materialSlugs) {
+                if (! empty($materialIds)) {
+                    $query->whereIn('material_id', $materialIds);
+                }
+
+                if (! empty($materialSlugs)) {
+                    $query->orWhere(function ($slugQuery) use ($materialSlugs) {
+                        $slugQuery->whereNull('material_id')
+                            ->whereIn('material_slug', $materialSlugs);
+                    });
+                }
+            })
+            ->get();
+
+        $progressByMaterial = [];
+        foreach ($progressRows as $progress) {
+            $key = $progress->material_id ? ('id:' . $progress->material_id) : ('slug:' . (string) $progress->material_slug);
+            $progressByMaterial[$key] = $progress;
+        }
+
+        $assignmentByMaterial = [];
+        foreach ($assignmentRows as $assignment) {
+            $key = $assignment->material_id ? ('id:' . $assignment->material_id) : ('slug:' . (string) $assignment->material_slug);
+            $assignmentByMaterial[$key] = $assignment;
+        }
+
+        $materialStates = [];
+        $totalPercent = 0;
+        $completedMaterials = 0;
+
+        foreach ($materials as $material) {
+            $key = $this->getMaterialProgressKey($material);
+            $progressRecord = $progressByMaterial[$key] ?? null;
+            $assignmentRecord = $assignmentByMaterial[$key] ?? null;
+
+            $progressMetadata = is_array($progressRecord?->metadata ?? null) ? $progressRecord->metadata : [];
+
+            $hasVideo = $this->materialHasVideoPart($material);
+            $hasAssignment = $this->materialHasAssignmentPart($material);
+            $isRead = ! empty($progressMetadata['material_read']) || $progressRecord?->status === 'completed';
+            $isVideoWatched = ! $hasVideo || ! empty($progressMetadata['video_watched']);
+            $isAssignmentSubmitted = ! $hasAssignment || ($assignmentRecord && ($assignmentRecord->submitted_at || $assignmentRecord->file_path));
+
+            $partsTotal = $hasVideo ? 3 : 2;
+            $partsCompleted = 0;
+            if ($isRead) {
+                $partsCompleted++;
+            }
+            if ($isVideoWatched && $hasVideo) {
+                $partsCompleted++;
+            }
+            if ($isAssignmentSubmitted) {
+                $partsCompleted++;
+            }
+
+            $completionPercentage = (int) round(($partsCompleted / $partsTotal) * 100);
+            $isCompleted = $partsCompleted >= $partsTotal;
+
+            if ($isCompleted) {
+                $completedMaterials++;
+            }
+
+            $totalPercent += $completionPercentage;
+
+            $materialStates[$key] = [
+                'is_read' => $isRead,
+                'is_video_watched' => $isVideoWatched,
+                'is_assignment_submitted' => $isAssignmentSubmitted,
+                'has_video' => $hasVideo,
+                'has_assignment' => $hasAssignment,
+                'parts_total' => $partsTotal,
+                'parts_completed' => $partsCompleted,
+                'completion_percentage' => $completionPercentage,
+                'is_completed' => $isCompleted,
+            ];
+        }
+
+        return [
+            'completed_materials' => $completedMaterials,
+            'total_materials' => $totalMaterials,
+            'overall_percentage' => (int) round($totalPercent / $totalMaterials),
+            'material_states' => $materialStates,
+        ];
+    }
+
+    private function getMaterialProgressKey($material): string
+    {
+        if (isset($material->id) && $material->id) {
+            return 'id:' . $material->id;
+        }
+
+        return 'slug:' . (string) ($material->slug ?? '');
+    }
+
+    private function materialHasVideoPart($material): bool
+    {
+        return trim((string) ($material->video_url ?? '')) !== '';
+    }
+
+    private function materialHasAssignmentPart($material): bool
+    {
+        if (($material->type ?? null) === 'assignment') {
+            return true;
+        }
+
+        if (isset($material->assignment) && trim((string) $material->assignment) !== '') {
+            return true;
+        }
+
+        $metadata = is_array($material->metadata ?? null) ? $material->metadata : [];
+
+        return trim((string) ($metadata['assignment'] ?? '')) !== '';
+    }
+
+    private function resolveOrCreateMaterialProgress(Module $module, $material, User $user): ParticipantProgress
+    {
+        $query = [
+            'user_id' => $user->id,
+            'module_id' => $module->id,
+        ];
+
+        if (isset($material->id) && $material->id) {
+            $query['material_id'] = $material->id;
+        } else {
+            $query['material_slug'] = (string) ($material->slug ?? '');
+        }
+
+        return ParticipantProgress::firstOrCreate(
+            $query,
+            [
+                'status' => 'in_progress',
+                'progress_percentage' => 0,
+                'started_at' => now(),
+            ]
+        );
     }
 }

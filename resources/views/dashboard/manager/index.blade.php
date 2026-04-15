@@ -156,24 +156,30 @@
 
     <!-- Quick Actions Section -->
     <section class="mt-6 sm:mt-8 grid gap-4 sm:gap-6 grid-cols-1 md:grid-cols-3">
-        <!-- Recent Activity -->
+        <!-- Alumni Achievements -->
         <article class="rounded-lg sm:rounded-xl border border-slate-200 bg-white p-4 sm:p-6 shadow-sm md:col-span-2">
             <div class="flex items-center justify-between gap-3 mb-4">
-                <h3 class="text-base sm:text-lg font-bold text-slate-900">Aktivitas Terkini</h3>
-                <a href="{{ route('dashboard.manager.reports') }}"
+                <h3 class="text-base sm:text-lg font-bold text-slate-900">Prestasi Alumni</h3>
+                <a href="{{ route('dashboard.manager.achievements') }}"
                     class="text-xs sm:text-sm font-semibold text-blue-600 hover:text-blue-700 transition">Lihat
-                    laporan →</a>
+                    semua →</a>
             </div>
             <div class="space-y-3">
-                @foreach ($activities as $activity)
+                @forelse ($alumniAchievements ?? [] as $achievement)
                     <div class="rounded-lg border border-slate-200 bg-slate-50 p-3 sm:p-4 hover:bg-slate-100 transition">
                         <div class="flex items-center justify-between gap-2 mb-1">
-                            <p class="text-xs sm:text-sm font-semibold text-slate-900">{{ $activity['title'] }}</p>
-                            <span class="text-xs text-slate-500 whitespace-nowrap">{{ $activity['time'] }}</span>
+                            <p class="text-xs sm:text-sm font-semibold text-slate-900">{{ $achievement['title'] }}</p>
+                            <span class="text-xs text-slate-500 whitespace-nowrap">{{ $achievement['year'] }}</span>
                         </div>
-                        <p class="text-xs sm:text-sm text-slate-600">{{ $activity['description'] }}</p>
+                        <p class="text-xs sm:text-sm text-slate-600">
+                            {{ $achievement['winner'] }} • {{ $achievement['event'] }} • {{ $achievement['rank'] }}
+                        </p>
                     </div>
-                @endforeach
+                @empty
+                    <div class="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-600">
+                        Belum ada data prestasi alumni.
+                    </div>
+                @endforelse
             </div>
         </article>
 
@@ -185,7 +191,8 @@
                     class="block rounded-lg border border-slate-200 p-3 text-xs sm:text-sm font-semibold text-slate-700 transition hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700">
                     <div class="flex items-center gap-2">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                         </svg>
                         <span>Peserta Individu</span>
                     </div>
@@ -194,7 +201,8 @@
                     class="block rounded-lg border border-slate-200 p-3 text-xs sm:text-sm font-semibold text-slate-700 transition hover:bg-purple-50 hover:border-purple-300 hover:text-purple-700">
                     <div class="flex items-center gap-2">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M17 20h5v-2a3 3 0 00-5.856-1.487M15 10a3 3 0 11-6 0 3 3 0 016 0zM12 14a7 7 0 00-7 7" />
                         </svg>
                         <span>Peserta Grub</span>
                     </div>
@@ -203,9 +211,20 @@
                     class="block rounded-lg border border-slate-200 p-3 text-xs sm:text-sm font-semibold text-slate-700 transition hover:bg-green-50 hover:border-green-300 hover:text-green-700">
                     <div class="flex items-center gap-2">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 14l9-5-9-5-9 5 9 5zm0 0l6.16-3.422A12.083 12.083 0 0112 20.055a12.083 12.083 0 01-6.16-9.477L12 14z" />
                         </svg>
                         <span>Kelola Pengajar</span>
+                    </div>
+                </a>
+                <a href="{{ route('dashboard.manager.programs') }}"
+                    class="block rounded-lg border border-slate-200 p-3 text-xs sm:text-sm font-semibold text-slate-700 transition hover:bg-teal-50 hover:border-teal-300 hover:text-teal-700">
+                    <div class="flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5s3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18s-3.332.477-4.5 1.253" />
+                        </svg>
+                        <span>Kelola Program</span>
                     </div>
                 </a>
                 <a href="{{ route('dashboard.manager.settings') }}"
@@ -213,7 +232,9 @@
                     <div class="flex items-center gap-2">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M5 11l7-7 7 7M5 19l7-7 7 7" />
+                                d="M10.325 4.317a1.724 1.724 0 013.35 0 1.724 1.724 0 002.573 1.066 1.724 1.724 0 012.347 2.347 1.724 1.724 0 001.065 2.572 1.724 1.724 0 010 3.35 1.724 1.724 0 00-1.065 2.573 1.724 1.724 0 01-2.347 2.347 1.724 1.724 0 00-2.573 1.065 1.724 1.724 0 01-3.35 0 1.724 1.724 0 00-2.572-1.065 1.724 1.724 0 01-2.347-2.347 1.724 1.724 0 00-1.066-2.573 1.724 1.724 0 010-3.35 1.724 1.724 0 001.066-2.572 1.724 1.724 0 012.347-2.347 1.724 1.724 0 002.572-1.066z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                         </svg>
                         <span>Pengaturan</span>
                     </div>

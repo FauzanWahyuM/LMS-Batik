@@ -136,9 +136,14 @@ class ParticipantModuleController extends Controller
     }
 
     /**
-     * Mark material as completed (API endpoint)
+     * Mark material as read (API endpoint)
      */
     public function markMaterialCompleted(Request $request, string $moduleSlug, string $materialSlug): JsonResponse|RedirectResponse
+    {
+        return $this->markMaterialRead($request, $moduleSlug, $materialSlug);
+    }
+
+    public function markMaterialRead(Request $request, string $moduleSlug, string $materialSlug): JsonResponse|RedirectResponse
     {
         $user = $this->resolveParticipantUser($request);
         $module = $this->moduleService->findModuleBySlug($moduleSlug);
@@ -147,77 +152,78 @@ class ParticipantModuleController extends Controller
             abort(404);
         }
 
-        // First try to find material in database
-        $material = $module->materials->firstWhere('slug', $materialSlug);
-
-        // If not found in database, check if it's a chapter-based material
-        if (! $material) {
-            $materials = $this->moduleService->getMaterialsForModule($module);
-            $material = $materials->firstWhere('slug', $materialSlug);
-        }
+        $material = $this->resolveMaterial($module, $materialSlug);
 
         if (! $material) {
             abort(404);
         }
 
-        // For database materials, use material_id; for chapters, use null and track by slug
-        $progressQuery = [
-            'user_id' => $user->id,
-            'module_id' => $module->id,
-        ];
-
-        if (isset($material->id)) {
-            $progressQuery['material_id'] = $material->id;
-        } else {
-            // For chapters, we need to track by a unique identifier
-            // Since chapters don't have IDs, we'll use a combination of module_id, user_id, and a hash of the slug
-            $progressQuery['material_slug'] = $materialSlug;
-        }
-
-        $progress = \App\Models\ParticipantProgress::firstOrNew($progressQuery);
-
-        $toggledCompleted = false;
-
-        if ($progress->exists && $progress->status === 'completed') {
-            $progress->fill([
-                'status' => 'in_progress',
-                'progress_percentage' => 0,
-                'completed_at' => null,
-            ]);
-            $progress->save();
-            $toggledCompleted = false;
-        } else {
-            $progress->fill([
-                'status' => 'completed',
-                'progress_percentage' => 100,
-                'completed_at' => now(),
-                'started_at' => $progress->started_at ?: now(),
-            ]);
-            $progress->save();
-            $toggledCompleted = true;
-        }
+        $this->moduleService->markMaterialAsRead($module, $material, $user);
 
         if (! $request->expectsJson()) {
             return redirect()->route('dashboard.participant.modules.detail', [
                     'module' => $moduleSlug,
                     'tab' => 'materi',
                     'material' => $materialSlug,
-                ])->with('status', $toggledCompleted ? 'Bab berhasil ditandai selesai.' : 'Status bab diubah menjadi belum selesai.');
+                ])->with('status', 'Materi berhasil ditandai sudah dibaca.');
         }
 
+        return $this->buildProgressResponse($module, $material, $user);
+    }
+
+    public function markMaterialWatched(Request $request, string $moduleSlug, string $materialSlug): JsonResponse|RedirectResponse
+    {
+        $user = $this->resolveParticipantUser($request);
+        $module = $this->moduleService->findModuleBySlug($moduleSlug);
+
+        if (! $module) {
+            abort(404);
+        }
+
+        $material = $this->resolveMaterial($module, $materialSlug);
+
+        if (! $material) {
+            abort(404);
+        }
+
+        $this->moduleService->markMaterialVideoAsWatched($module, $material, $user);
+
+        if (! $request->expectsJson()) {
+            return redirect()->route('dashboard.participant.modules.detail', [
+                    'module' => $moduleSlug,
+                    'tab' => 'video',
+                    'material' => $materialSlug,
+                ])->with('status', 'Video berhasil ditandai sudah ditonton.');
+        }
+
+        return $this->buildProgressResponse($module, $material, $user);
+    }
+
+    private function buildProgressResponse($module, $material, User $user): JsonResponse
+    {
         $overallProgress = $this->moduleService->calculateOverallProgress($module, $user);
         $statistics = $this->moduleService->getModuleStatistics($module, $user);
+        $materialState = $this->moduleService->getMaterialStateForUser($module, $material, $user);
 
         return response()->json([
             'success' => true,
-            'completed' => $toggledCompleted,
+            'material' => $materialState,
             'progress' => [
-                'status' => $progress->status,
-                'percentage' => $progress->progress_percentage,
                 'overall' => $overallProgress,
             ],
             'statistics' => $statistics,
         ]);
+    }
+
+    private function resolveMaterial($module, string $materialSlug)
+    {
+        $material = $module->materials->firstWhere('slug', $materialSlug);
+
+        if ($material) {
+            return $material;
+        }
+
+        return $this->moduleService->getMaterialsForModule($module)->firstWhere('slug', $materialSlug);
     }
 
     /**

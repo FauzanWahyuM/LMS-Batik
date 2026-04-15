@@ -24,12 +24,16 @@ class User extends Authenticatable
         'password',
         'role',
         'phone',
+        'personal_phone',
         'address',
         'education',
+        'salary',
         'certificate',
         'motivation',
         'group_name',
         'status',
+        'forgot_password_enabled',
+        'current_password',
         'password_changed',
     ];
 
@@ -53,6 +57,8 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'salary' => 'integer',
+            'forgot_password_enabled' => 'boolean',
         ];
     }
 

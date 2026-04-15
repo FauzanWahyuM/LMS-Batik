@@ -121,7 +121,7 @@
     <div class="report-title">{{ $reportData['title'] ?? 'Laporan' }}</div>
 
     <table class="summary">
-        @foreach ($reportData['summary'] ?? [] as $label => $value)
+        @forelse ($reportData['summary'] ?? [] as $label => $value)
             <tr>
                 <td class="label">{{ $label }}</td>
                 <td>
@@ -132,7 +132,12 @@
                     @endif
                 </td>
             </tr>
-        @endforeach
+        @empty
+            <tr>
+                <td class="label">Informasi</td>
+                <td>No data available.</td>
+            </tr>
+        @endforelse
     </table>
 
     <table class="data">

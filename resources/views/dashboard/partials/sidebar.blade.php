@@ -145,7 +145,7 @@
             class="mb-4 block rounded-xl bg-slate-100 p-3 transition hover:bg-slate-200/80 focus:outline-none focus:ring-2 focus:ring-slate-400/60">
             <p class="text-xs text-slate-500">Login sebagai</p>
             <p class="mt-1 text-sm font-semibold text-slate-800">{{ $user['name'] ?? 'User' }}</p>
-            <p class="text-xs text-slate-500">{{ $user['email'] ?? '-' }}</p>
+            <p class="text-xs text-slate-500">{{ $user['sidebar_email'] ?? ($user['email'] ?? '-') }}</p>
             <span
                 class="mt-2 inline-block rounded-full px-2.5 py-1 text-xs font-semibold {{ $dashboard['roleBadgeClasses'] }}">{{ $user['sidebar_role_label'] ?? ucfirst($user['role'] ?? 'participant') }}</span>
         </a>

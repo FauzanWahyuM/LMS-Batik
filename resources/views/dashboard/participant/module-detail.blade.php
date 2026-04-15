@@ -109,11 +109,11 @@
                     <div class="flex flex-wrap items-center justify-between gap-3" id="selected-material-header"
                         data-material-slug="{{ $selectedMaterial->slug }}">
                         <h3 class="text-lg font-bold text-slate-800">{{ $selectedMaterial->title }}</h3>
-                        <button type="button" id="mark-complete-btn"
-                            data-complete-url="{{ route('dashboard.participant.modules.material.complete', ['module' => $moduleSlug, 'material' => $selectedMaterial->slug]) }}"
-                            data-completed="{{ !empty($selectedMaterial->is_completed) ? '1' : '0' }}"
+                        <button type="button" id="mark-read-btn"
+                            data-read-url="{{ route('dashboard.participant.modules.material.read', ['module' => $moduleSlug, 'material' => $selectedMaterial->slug]) }}"
+                            data-read="{{ !empty($selectedMaterial->is_read) ? '1' : '0' }}"
                             class="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-emerald-700">
-                            {{ !empty($selectedMaterial->is_completed) ? 'Bab Selesai' : 'Tandai Sebagai Selesai' }}
+                            {{ !empty($selectedMaterial->is_read) ? 'Bab Selesai' : 'Bab Belum Selesai' }}
                         </button>
                     </div>
                     <div class="mt-3 text-sm leading-relaxed text-slate-700">
@@ -200,6 +200,15 @@
                                     class="font-semibold underline">{{ $videoUrl }}</a>
                             </div>
                         @endif
+
+                        <div class="mt-4">
+                            <button type="button" id="mark-watched-btn"
+                                data-watch-url="{{ route('dashboard.participant.modules.material.watch', ['module' => $moduleSlug, 'material' => $selectedMaterial->slug]) }}"
+                                data-watched="{{ !empty($selectedMaterial->is_video_watched) ? '1' : '0' }}"
+                                class="rounded-lg bg-blue-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-blue-700">
+                                {{ !empty($selectedMaterial->is_video_watched) ? 'Watched Completed' : 'Mark as Watched' }}
+                            </button>
+                        </div>
                     @else
                         <p>Video belum tersedia</p>
                     @endif
@@ -362,7 +371,8 @@
     </section>
 
     <script>
-        const markCompleteBtn = document.getElementById('mark-complete-btn');
+        const markReadBtn = document.getElementById('mark-read-btn');
+        const markWatchedBtn = document.getElementById('mark-watched-btn');
         const progressBar = document.getElementById('module-progress-bar');
         const progressText = document.getElementById('module-progress-text');
         const progressCount = document.getElementById('module-progress-count');
@@ -422,31 +432,12 @@
                     }
                 }
             }
-
-            if (markCompleteBtn) {
-                markCompleteBtn.textContent = isCompleted ? 'Bab Selesai' : 'Tandai Sebagai Selesai';
-                markCompleteBtn.dataset.completed = isCompleted ? '1' : '0';
-            }
-
-            const selectedProgress = document.getElementById('selected-material-progress');
-            const selectedProgressText = document.getElementById('selected-material-progress-text');
-            if (selectedProgress) {
-                selectedProgress.style.width = isCompleted ? '100%' : '0%';
-            }
-            if (selectedProgressText) {
-                selectedProgressText.textContent = isCompleted ? '100% selesai' : '0% selesai';
-            }
         }
 
-        markCompleteBtn?.addEventListener('click', async function() {
-            const url = this.dataset.completeUrl;
+        async function submitProgressAction(url) {
             if (!url) {
                 return;
             }
-
-            this.disabled = true;
-            this.textContent = 'Menyimpan...';
-            let completedState = this.dataset.completed === '1';
 
             try {
                 const response = await fetch(url, {
@@ -466,13 +457,20 @@
                 }
 
                 const data = await response.json();
-                if (data?.completed !== undefined) {
-                    completedState = Boolean(data.completed);
-                } else {
-                    // fallback kalau backend ga kirim
-                    completedState = !completedState;
+
+                if (markReadBtn && data?.material?.is_read !== undefined) {
+                    const isRead = Boolean(data.material.is_read);
+                    markReadBtn.dataset.read = isRead ? '1' : '0';
+                    markReadBtn.textContent = isRead ? 'Read Completed' : 'Mark as Read';
                 }
-                updateSelectedMaterialStatus(completedState);
+
+                if (markWatchedBtn && data?.material?.is_video_watched !== undefined) {
+                    const isWatched = Boolean(data.material.is_video_watched);
+                    markWatchedBtn.dataset.watched = isWatched ? '1' : '0';
+                    markWatchedBtn.textContent = isWatched ? 'Watched Completed' : 'Mark as Watched';
+                }
+
+                updateSelectedMaterialStatus(Boolean(data?.material?.is_completed));
 
                 if (data?.progress?.overall !== undefined) {
                     updateProgressSummary(
@@ -485,12 +483,34 @@
                 }
             } catch (error) {
                 alert('Tidak dapat mengubah status bab. Silakan coba lagi.');
-            } finally {
-                if (markCompleteBtn) {
-                    markCompleteBtn.disabled = false;
-                    markCompleteBtn.textContent = completedState ? 'Bab Selesai' : 'Tandai Sebagai Selesai';
-                    markCompleteBtn.dataset.completed = completedState ? '1' : '0';
-                }
+            }
+        }
+
+        markReadBtn?.addEventListener('click', async function() {
+            const url = this.dataset.readUrl;
+            this.disabled = true;
+            const originalText = this.textContent;
+            this.textContent = 'Saving...';
+
+            await submitProgressAction(url);
+
+            this.disabled = false;
+            if (this.dataset.read !== '1') {
+                this.textContent = originalText;
+            }
+        });
+
+        markWatchedBtn?.addEventListener('click', async function() {
+            const url = this.dataset.watchUrl;
+            this.disabled = true;
+            const originalText = this.textContent;
+            this.textContent = 'Saving...';
+
+            await submitProgressAction(url);
+
+            this.disabled = false;
+            if (this.dataset.watched !== '1') {
+                this.textContent = originalText;
             }
         });
 

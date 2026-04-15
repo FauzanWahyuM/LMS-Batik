@@ -90,6 +90,12 @@
                         placeholder="Masukkan pendidikan terakhir">
                 </div>
                 <div>
+                    <label class="mb-1 block text-xs font-semibold text-slate-700">Gaji (Rp)</label>
+                    <input name="salary" type="number" min="0" step="1" required
+                        class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                        placeholder="Masukkan nominal gaji">
+                </div>
+                <div>
                     <label class="mb-1 block text-xs font-semibold text-slate-700">Upload Sertifikat (opsional)</label>
                     <input name="certificate" type="file" accept=".pdf,.jpg,.jpeg,.png"
                         class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs sm:text-sm">
@@ -105,7 +111,7 @@
         </div>
 
         <div class="mt-5 space-y-4 max-w-7xl mx-auto">
-            @foreach ($instructors as $instructor)
+            @forelse ($instructors as $instructor)
                 <article class="rounded-xl border border-slate-200 bg-slate-50 p-4">
                     <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                         <div>
@@ -162,6 +168,11 @@
                                         <th class="bg-slate-50 px-3 py-2 font-semibold text-slate-600">Pendidikan Terakhir
                                         </th>
                                         <td class="px-3 py-2 text-slate-800">{{ $instructor['education'] }}</td>
+                                    </tr>
+                                    <tr>
+                                        <th class="bg-slate-50 px-3 py-2 font-semibold text-slate-600">Gaji</th>
+                                        <td class="px-3 py-2 text-slate-800">Rp
+                                            {{ number_format((int) ($instructor['salary'] ?? 0), 0, ',', '.') }}</td>
                                     </tr>
                                     <tr>
                                         <th class="bg-slate-50 px-3 py-2 font-semibold text-slate-600">Sertifikat</th>
@@ -233,6 +244,12 @@
                                 <input type="text" name="education" value="{{ $instructor['education'] }}"
                                     class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" required>
                             </div>
+                            <div>
+                                <label class="mb-1 block text-xs font-semibold text-slate-600">Gaji (Rp)</label>
+                                <input type="number" min="0" step="1" name="salary"
+                                    value="{{ (int) ($instructor['salary'] ?? 0) }}"
+                                    class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" required>
+                            </div>
                             <div class="sm:col-span-2">
                                 <label class="mb-1 block text-xs font-semibold text-slate-600">Alamat</label>
                                 <textarea name="address" rows="3" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" required>{{ $instructor['address'] }}</textarea>
@@ -262,7 +279,11 @@
                         </form>
                     </div>
                 </article>
-            @endforeach
+            @empty
+                <div class="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
+                    Belum ada data pengajar.
+                </div>
+            @endforelse
         </div>
     </section>
 
@@ -354,7 +375,7 @@
                 class="inline-block transform overflow-hidden rounded-2xl bg-white px-4 pt-5 pb-4 text-left align-bottom shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg sm:p-6 sm:align-middle">
                 <div class="sm:flex sm:items-start">
                     <div
-                        class="mx-auto flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-red-100 sm:mx-0 sm:h-10 sm:w-10">
+                        class="mx-auto flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-red-100 sm:mx-0 sm:h-10 sm:w-10">
                         <svg class="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                 d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
