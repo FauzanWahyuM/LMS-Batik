@@ -440,7 +440,7 @@
 
                     const nextIndex = Number(list.dataset.nextImageIndex || '0');
                     const chapterIndex = button.closest('[data-chapter-index]')?.dataset.chapterIndex ||
-                    '0';
+                        '0';
                     list.insertAdjacentHTML('beforeend', createImageBlockHtml(chapterIndex, nextIndex));
                     list.dataset.nextImageIndex = String(nextIndex + 1);
 

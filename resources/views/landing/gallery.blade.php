@@ -96,7 +96,7 @@
                     <a href="{{ $gallery->previousPageUrl() ?? '#' }}"
                         class="inline-flex items-center rounded-full border border-gray-300 px-5 py-2 text-sm font-semibold text-gray-700 transition {{ $gallery->onFirstPage() ? 'pointer-events-none opacity-50' : 'hover:border-amber-500 hover:text-amber-700' }}"
                         aria-disabled="{{ $gallery->onFirstPage() ? 'true' : 'false' }}">
-                        Sebelumnya
+                        Prev
                     </a>
                     <p class="text-sm text-gray-600">
                         Halaman {{ $gallery->currentPage() }} dari {{ $gallery->lastPage() }}
@@ -236,7 +236,7 @@
                     <a href="{{ $achievements->previousPageUrl() ?? '#' }}"
                         class="inline-flex items-center rounded-full border border-gray-300 px-5 py-2 text-sm font-semibold text-gray-700 transition {{ $achievements->onFirstPage() ? 'pointer-events-none opacity-50' : 'hover:border-amber-500 hover:text-amber-700' }}"
                         aria-disabled="{{ $achievements->onFirstPage() ? 'true' : 'false' }}">
-                        Sebelumnya
+                        Prev
                     </a>
                     <p class="text-sm text-gray-600">
                         Halaman {{ $achievements->currentPage() }} dari {{ $achievements->lastPage() }}

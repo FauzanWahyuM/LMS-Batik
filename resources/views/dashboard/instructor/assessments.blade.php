@@ -18,7 +18,7 @@
                         <div class="flex-1">
                             <p class="text-sm font-semibold text-slate-900">{{ $submission->user->name ?? 'Peserta' }}</p>
                             <p class="mt-1.5 text-xs text-slate-600">
-                                <span class="font-medium">Modul:</span> {{ $submission->module->title ?? 'N/A' }}
+                                <span class="font-medium">Modul:</span> {{ $submission->module->title ?? 'Tidak tersedia' }}
                             </p>
                             <p class="mt-0.5 text-xs text-slate-600">
                                 <span class="font-medium">Waktu:</span>

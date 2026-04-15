@@ -98,7 +98,7 @@
                             </p>
                             <p class="text-xs text-slate-500">{{ $program->description }}</p>
                             <div class="text-xs text-slate-500 mb-1">
-                                <p class="font-semibold">Benefits:</p>
+                                <p class="font-semibold">Manfaat:</p>
                                 <ul class="ml-4 space-y-1">
                                     @foreach ((array) $program->benefits as $benefit)
                                         <li>★ {{ $benefit }}</li>

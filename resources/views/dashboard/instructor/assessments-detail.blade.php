@@ -19,7 +19,7 @@
             <div class="border-b border-slate-200 px-6 py-5">
                 <p class="text-sm font-semibold text-slate-900">{{ $submission->user->name ?? 'Peserta' }}</p>
                 <p class="mt-2 text-xs text-slate-600">
-                    <span class="font-medium">Modul:</span> {{ $submission->module->title ?? 'N/A' }}
+                    <span class="font-medium">Modul:</span> {{ $submission->module->title ?? 'Tidak tersedia' }}
                 </p>
             </div>
 
@@ -72,9 +72,9 @@
                     <!-- Feedback Section -->
                     <div>
                         <label for="feedback" class="block text-sm font-semibold text-slate-900">
-                            Beri Feedback
+                            Beri Umpan Balik
                         </label>
-                        <textarea id="feedback" name="feedback" rows="6" placeholder="Masukkan feedback untuk peserta..."
+                        <textarea id="feedback" name="feedback" rows="6" placeholder="Masukkan umpan balik untuk peserta..."
                             class="mt-2 w-full rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm text-slate-700 placeholder-slate-400 transition focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100 resize-none">{{ old('feedback', $submission->feedback ?? '') }}</textarea>
                         @error('feedback')
                             <p class="mt-2 text-sm text-red-600">{{ $message }}</p>

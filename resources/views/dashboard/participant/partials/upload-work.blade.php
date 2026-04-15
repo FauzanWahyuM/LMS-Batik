@@ -120,7 +120,7 @@
                     clip-rule="evenodd"></path>
             </svg>
             <div class="text-xs text-blue-800">
-                <p class="font-semibold mb-1">Tips Unggah Karya:</p>
+                <p class="font-semibold mb-1">Tips Upload Karya:</p>
                 <ul class="space-y-1 list-disc list-inside">
                     <li>Gunakan gambar berkualitas tinggi</li>
                     <li>Deskripsikan karya Anda dengan detail</li>

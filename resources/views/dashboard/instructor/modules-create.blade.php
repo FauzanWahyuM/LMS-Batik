@@ -114,7 +114,7 @@
             </form>
 
             <p class="mt-6 text-xs text-slate-500 border-t border-slate-200 pt-6">
-                💡 Setelah membuat modul, Anda dapat menambahkan bab dan materi pembelajaran melalui halaman edit modul.
+                💡 Setelah membuat modul, Anda dapat menambahkan bab dan materi pembelajaran melalui halaman edit module.
             </p>
         </section>
     </div>

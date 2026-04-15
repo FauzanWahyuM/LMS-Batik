@@ -114,7 +114,8 @@
                                     <td class="px-6 py-4 text-slate-600">{{ (($groupPage ?? 1) - 1) * 5 + $index + 1 }}
                                     </td>
                                     <td class="px-6 py-4 font-medium text-slate-900">{{ $participant['name'] }}</td>
-                                    <td class="px-6 py-4 text-slate-600">{{ $participant['group'] ?? 'N/A' }}</td>
+                                    <td class="px-6 py-4 text-slate-600">{{ $participant['group'] ?? 'Tidak tersedia' }}
+                                    </td>
                                 </tr>
                             @empty
                                 <tr>

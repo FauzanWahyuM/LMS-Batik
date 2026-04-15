@@ -76,7 +76,7 @@
                             </a>
                             <a href="{{ route('dashboard.instructor.modules.edit', ['module' => $module['id']]) }}"
                                 class="flex-1 rounded-lg bg-slate-100 px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-200"
-                                title="Edit modul">
+                                title="Edit module">
                                 Edit
                             </a>
                             <button type="button" data-delete-module="{{ $module['id'] }}"

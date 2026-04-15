@@ -64,7 +64,7 @@
                     <!-- Logo Upload & Settings -->
                     <div class="sm:col-span-1 flex flex-col gap-3">
                         <div>
-                            <label class="mb-1 block text-xs font-semibold text-slate-600">Unggah Logo Baru</label>
+                            <label class="mb-1 block text-xs font-semibold text-slate-600">Upload Logo Baru</label>
                             <input type="file" name="logo" accept="image/jpeg,image/png,image/jpg,image/webp"
                                 class="w-full rounded-lg border border-slate-300 px-2 py-2 text-xs text-slate-700 file:mr-2 file:rounded-lg file:border-0 file:bg-slate-200 file:px-2 file:py-1 file:text-xs file:font-semibold file:text-slate-700 sm:px-3 sm:py-2 sm:text-sm sm:file:mr-3 sm:file:px-3 sm:file:py-1.5">
                             <p class="mt-1 text-xs text-slate-500">Maks: 2 MB (JPG, PNG, WebP)</p>
@@ -254,7 +254,7 @@
                         <!-- Close Edit Button -->
                         <button type="button" id="close-contact-edit"
                             class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-100 sm:w-auto sm:py-1.5">
-                            Tutup Edit
+                            Close Edit
                         </button>
                     </div>
                 </div>

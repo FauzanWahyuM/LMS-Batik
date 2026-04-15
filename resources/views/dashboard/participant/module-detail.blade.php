@@ -110,7 +110,7 @@
                         data-material-slug="{{ $selectedMaterial->slug }}">
                         <h3 class="text-lg font-bold text-slate-800">{{ $selectedMaterial->title }}</h3>
                         <button type="button" id="mark-read-btn"
-                            data-read-url="{{ route('dashboard.participant.modules.material.read', ['module' => $moduleSlug, 'material' => $selectedMaterial->slug]) }}"
+                            data-read-url="{{ route('api.v1.participant.modules.materials.read', ['moduleSlug' => $moduleSlug, 'materialSlug' => $selectedMaterial->slug]) }}"
                             data-read="{{ !empty($selectedMaterial->is_read) ? '1' : '0' }}"
                             class="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-emerald-700">
                             {{ !empty($selectedMaterial->is_read) ? 'Bab Selesai' : 'Bab Belum Selesai' }}
@@ -147,7 +147,7 @@
                                                 </p>
                                             @endif
                                             <p class="mt-2 text-center text-[11px] uppercase tracking-wide text-slate-400">
-                                                Approx. display: {{ $image['width'] }}%
+                                                Tampilan: {{ $image['width'] }}%
                                             </p>
                                         </div>
                                     </article>
@@ -203,10 +203,10 @@
 
                         <div class="mt-4">
                             <button type="button" id="mark-watched-btn"
-                                data-watch-url="{{ route('dashboard.participant.modules.material.watch', ['module' => $moduleSlug, 'material' => $selectedMaterial->slug]) }}"
+                                data-watch-url="{{ route('api.v1.participant.modules.materials.watch', ['moduleSlug' => $moduleSlug, 'materialSlug' => $selectedMaterial->slug]) }}"
                                 data-watched="{{ !empty($selectedMaterial->is_video_watched) ? '1' : '0' }}"
                                 class="rounded-lg bg-blue-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-blue-700">
-                                {{ !empty($selectedMaterial->is_video_watched) ? 'Watched Completed' : 'Mark as Watched' }}
+                                {{ !empty($selectedMaterial->is_video_watched) ? 'Video Selesai Ditonton' : 'Tandai Sudah Ditonton' }}
                             </button>
                         </div>
                     @else
@@ -321,16 +321,16 @@
                                     <div class="mt-3">
                                         <p class="mb-1 text-lg font-bold text-slate-800">Nilai Tugas</p>
                                         <p class="text-sm text-slate-600">{{ $assignment->score }}/100</p>
-                                        <p class="mb-1 text-lg font-bold text-slate-800">Feedback Pengajar</p>
+                                        <p class="mb-1 text-lg font-bold text-slate-800">Umpan Balik Pengajar</p>
                                         <p class="text-sm text-slate-600">
-                                            {{ $assignment->feedback ?: 'Tidak ada feedback' }}</p>
+                                            {{ $assignment->feedback ?: 'Tidak ada umpan balik' }}</p>
                                     </div>
                                 @else
                                     <div class="mt-3">
                                         <p class="mb-1 text-lg font-bold text-slate-800">Nilai Tugas</p>
                                         <p class="text-sm text-slate-600">Belum dinilai</p>
-                                        <p class="mb-1 text-lg font-bold text-slate-800">Feedback Pengajar</p>
-                                        <p class="text-sm text-slate-600">Belum ada feedback</p>
+                                        <p class="mb-1 text-lg font-bold text-slate-800">Umpan Balik Pengajar</p>
+                                        <p class="text-sm text-slate-600">Belum ada umpan balik</p>
                                     </div>
                                 @endif
                             </div>
@@ -377,9 +377,10 @@
         const progressText = document.getElementById('module-progress-text');
         const progressCount = document.getElementById('module-progress-count');
         const selectedMaterialHeader = document.getElementById('selected-material-header');
+        const csrfToken = '{{ csrf_token() }}';
 
         async function refreshProgress() {
-            const url = "{{ route('dashboard.participant.modules.progress', ['module' => $moduleSlug]) }}";
+            const url = "{{ route('api.v1.participant.modules.progress', ['moduleSlug' => $moduleSlug]) }}";
             const response = await fetch(url, {
                 headers: {
                     'Accept': 'application/json',
@@ -393,9 +394,10 @@
             }
 
             const data = await response.json();
-            const percentage = data?.overall_progress ?? data?.progress ?? 0;
-            const completed = data?.statistics?.completed_materials ?? 0;
-            const total = data?.statistics?.total_materials ?? 0;
+            const payload = data?.data ?? {};
+            const percentage = payload?.overall_progress ?? payload?.progress ?? 0;
+            const completed = payload?.statistics?.completed_materials ?? 0;
+            const total = payload?.statistics?.total_materials ?? 0;
 
             updateProgressSummary(percentage, completed, total);
         }
@@ -441,14 +443,15 @@
 
             try {
                 const response = await fetch(url, {
-                    method: 'POST',
+                    method: 'PUT',
                     headers: {
                         'Accept': 'application/json',
                         'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRF-TOKEN': csrfToken,
                     },
                     credentials: 'same-origin',
                     body: new URLSearchParams({
-                        _token: '{{ csrf_token() }}',
+                        _token: csrfToken,
                     }),
                 });
 
@@ -457,26 +460,27 @@
                 }
 
                 const data = await response.json();
+                const payload = data?.data ?? {};
 
-                if (markReadBtn && data?.material?.is_read !== undefined) {
-                    const isRead = Boolean(data.material.is_read);
+                if (markReadBtn && payload?.material?.is_read !== undefined) {
+                    const isRead = Boolean(payload.material.is_read);
                     markReadBtn.dataset.read = isRead ? '1' : '0';
-                    markReadBtn.textContent = isRead ? 'Read Completed' : 'Mark as Read';
+                    markReadBtn.textContent = isRead ? 'Bab Selesai' : 'Bab Belum Selesai';
                 }
 
-                if (markWatchedBtn && data?.material?.is_video_watched !== undefined) {
-                    const isWatched = Boolean(data.material.is_video_watched);
+                if (markWatchedBtn && payload?.material?.is_video_watched !== undefined) {
+                    const isWatched = Boolean(payload.material.is_video_watched);
                     markWatchedBtn.dataset.watched = isWatched ? '1' : '0';
-                    markWatchedBtn.textContent = isWatched ? 'Watched Completed' : 'Mark as Watched';
+                    markWatchedBtn.textContent = isWatched ? 'Video Selesai Ditonton' : 'Tandai Sudah Ditonton';
                 }
 
-                updateSelectedMaterialStatus(Boolean(data?.material?.is_completed));
+                updateSelectedMaterialStatus(Boolean(payload?.material?.is_completed));
 
-                if (data?.progress?.overall !== undefined) {
+                if (payload?.progress?.overall !== undefined) {
                     updateProgressSummary(
-                        data.progress.overall,
-                        data?.statistics?.completed_materials ?? 0,
-                        data?.statistics?.total_materials ?? 0,
+                        payload.progress.overall,
+                        payload?.statistics?.completed_materials ?? 0,
+                        payload?.statistics?.total_materials ?? 0,
                     );
                 } else {
                     await refreshProgress();
@@ -489,7 +493,7 @@
         markReadBtn?.addEventListener('click', async function() {
             const url = this.dataset.readUrl;
             this.disabled = true;
-            this.textContent = 'Saving...';
+            this.textContent = 'Menyimpan...';
 
             await submitProgressAction(url);
 
@@ -499,7 +503,7 @@
         markWatchedBtn?.addEventListener('click', async function() {
             const url = this.dataset.watchUrl;
             this.disabled = true;
-            this.textContent = 'Saving...';
+            this.textContent = 'Menyimpan...';
 
             await submitProgressAction(url);
 

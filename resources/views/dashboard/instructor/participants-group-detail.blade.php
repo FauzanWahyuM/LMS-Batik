@@ -34,7 +34,8 @@
                                 <tr class="{{ $index % 2 === 0 ? 'bg-white' : 'bg-slate-50' }} hover:bg-blue-50 transition">
                                     <td class="px-6 py-4 text-slate-600">{{ $index + 1 }}</td>
                                     <td class="px-6 py-4 font-medium text-slate-900">{{ $participant['name'] }}</td>
-                                    <td class="px-6 py-4 text-slate-600">{{ $participant['group'] ?? 'N/A' }}</td>
+                                    <td class="px-6 py-4 text-slate-600">{{ $participant['group'] ?? 'Tidak tersedia' }}
+                                    </td>
                                 </tr>
                             @empty
                                 <tr>

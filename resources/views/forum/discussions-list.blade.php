@@ -151,7 +151,7 @@
                                     @csrf
                                     <button type="submit"
                                         class="text-xs font-semibold {{ $discussion->is_pinned ? 'text-amber-700' : 'text-slate-600' }} hover:text-amber-700">
-                                        {{ $discussion->is_pinned ? 'Unpin' : 'Pin' }}
+                                        {{ $discussion->is_pinned ? 'Lepas Pin' : 'Pin' }}
                                     </button>
                                 </form>
 

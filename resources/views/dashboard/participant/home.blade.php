@@ -42,7 +42,7 @@
                     <div class="mt-3 h-2 w-full rounded-full bg-slate-200">
                         <div class="h-2 rounded-full bg-blue-600" style="width: {{ $module['progress'] }}%"></div>
                     </div>
-                    <p class="mt-1 text-right text-xs text-slate-500">{{ $module['progress'] }}% completed</p>
+                    <p class="mt-1 text-right text-xs text-slate-500">{{ $module['progress'] }}% selesai</p>
 
                     <div class="mt-4 flex justify-end">
                         <a href="{{ $module['url'] }}"
@@ -104,7 +104,7 @@
         @else
             <div class="mt-6 rounded-xl border border-slate-200 bg-slate-50 p-6 text-center">
                 <p class="text-sm font-semibold text-slate-800">Belum ada karya yang diunggah.</p>
-                <p class="mt-1 text-xs text-slate-500">Silakan unggah karya pertama Anda melalui menu galeri.</p>
+                <p class="mt-1 text-xs text-slate-500">Silakan upload karya pertama Anda melalui menu galeri.</p>
             </div>
         @endif
     </section>
