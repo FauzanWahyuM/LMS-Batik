@@ -489,29 +489,21 @@
         markReadBtn?.addEventListener('click', async function() {
             const url = this.dataset.readUrl;
             this.disabled = true;
-            const originalText = this.textContent;
             this.textContent = 'Saving...';
 
             await submitProgressAction(url);
 
             this.disabled = false;
-            if (this.dataset.read !== '1') {
-                this.textContent = originalText;
-            }
         });
 
         markWatchedBtn?.addEventListener('click', async function() {
             const url = this.dataset.watchUrl;
             this.disabled = true;
-            const originalText = this.textContent;
             this.textContent = 'Saving...';
 
             await submitProgressAction(url);
 
             this.disabled = false;
-            if (this.dataset.watched !== '1') {
-                this.textContent = originalText;
-            }
         });
 
         refreshProgress();

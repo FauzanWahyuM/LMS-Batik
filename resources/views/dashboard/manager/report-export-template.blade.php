@@ -17,6 +17,7 @@
             border-bottom: 2px solid #1e3a8a;
             padding-bottom: 10px;
             margin-bottom: 16px;
+            text-align: center;
         }
 
         .header-table {
@@ -26,6 +27,7 @@
 
         .header-table td {
             vertical-align: top;
+            text-align: center;
         }
 
         .logo {
@@ -45,6 +47,7 @@
             color: #4b5563;
             font-size: 11px;
             line-height: 1.5;
+            text-align: center;
         }
 
         .report-title {
@@ -64,6 +67,7 @@
         .summary td {
             border: 1px solid #d1d5db;
             padding: 7px 8px;
+            text-align: center;
         }
 
         .summary .label {
@@ -81,7 +85,7 @@
         table.data td {
             border: 1px solid #d1d5db;
             padding: 7px 8px;
-            text-align: left;
+            text-align: center;
         }
 
         table.data th {
@@ -111,8 +115,8 @@
                 <td>
                     <div class="org-name">{{ $reportData['branding']['organization_name'] ?? 'LPK Kama Praja Madiun' }}
                     </div>
-                    <div class="muted">Alamat: {{ $reportData['branding']['address'] ?? '-' }}</div>
-                    <div class="muted">No. Telepon: {{ $reportData['branding']['phone'] ?? '-' }}</div>
+                    <div class="muted">Alamat: Jl.Candi Boko No.9, Patihan, Manguhardjo, Kota Madiun</div>
+                    <div class="muted">No. Telepon: +62 851-2425-5339</div>
                 </td>
             </tr>
         </table>
@@ -135,7 +139,7 @@
         @empty
             <tr>
                 <td class="label">Informasi</td>
-                <td>No data available.</td>
+                <td>Tidak ada data tersedia.</td>
             </tr>
         @endforelse
     </table>
@@ -158,7 +162,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="3" class="empty">No data available.</td>
+                        <td colspan="3" class="empty">Tidak ada data tersedia.</td>
                     </tr>
                 @endforelse
             </tbody>
@@ -187,7 +191,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="7" class="empty">No data available.</td>
+                        <td colspan="7" class="empty">Tidak ada data tersedia.</td>
                     </tr>
                 @endforelse
             </tbody>

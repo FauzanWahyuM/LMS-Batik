@@ -2252,12 +2252,12 @@ class AuthController extends Controller
         $dbUser->email = $validated['email'];
         $dbUser->password = Hash::make($validated['password']);
         $dbUser->phone = $validated['phone'];
-        
+
         // Only update personal_phone for group participants
         if ($participantType === 'group') {
             $dbUser->personal_phone = trim((string) ($validated['personal_phone'] ?? ''));
         }
-        
+
         $dbUser->address = $validated['address'];
         $dbUser->motivation = $participantType === 'individual' ? ($validated['motivation'] ?? null) : null;
         $dbUser->password_changed = true; // Mark as changed
@@ -3384,7 +3384,7 @@ class AuthController extends Controller
         $totalParticipants = $totalIndividual + $totalGroupMembers;
         $totalProfit = ($totalIndividual * $individualCost) + ($totalGroupMembers * $groupCost);
 
-        $peakDate = 'No data available';
+        $peakDate = 'Tidak ada data tersedia';
         $peakCount = 0;
         foreach ($registrationByDate as $date => $count) {
             if ($count > $peakCount) {
@@ -3477,7 +3477,7 @@ class AuthController extends Controller
 
         $individualRows = array_map(function (array $participant) use ($monthlyData): array {
             return [
-                'type' => 'Individual',
+                'type' => 'Individu',
                 'name' => (string) ($participant['name'] ?? '-'),
                 'program' => (string) ($participant['program'] ?? '-'),
                 'date' => (string) ($participant['registration_date'] ?? '-'),
@@ -3490,7 +3490,7 @@ class AuthController extends Controller
         $groupRows = array_map(function (array $group) use ($monthlyData): array {
             $members = (int) ($group['members'] ?? 0);
             return [
-                'type' => 'Group',
+                'type' => 'Kelompok',
                 'name' => (string) ($group['group_name'] ?? '-'),
                 'program' => (string) ($group['program'] ?? '-'),
                 'date' => (string) ($group['registration_date'] ?? '-'),
@@ -3504,10 +3504,10 @@ class AuthController extends Controller
             'mode' => 'monthly',
             'title' => 'Laporan Bulan ' . $monthlyData['month_name'] . ' ' . $monthlyData['year'],
             'summary' => [
-                'Individual Registrations' => $monthlyData['total_individual_registrations'],
-                'Group Registrations' => $monthlyData['total_group_registrations'],
-                'Total Revenue' => (int) $monthlyData['total_profit'],
-                'Peak Registration Date' => $monthlyData['peak_registration_date'],
+                'Pendaftaran Individu' => $monthlyData['total_individual_registrations'],
+                'Pendaftaran Kelompok' => $monthlyData['total_group_registrations'],
+                'Total Pendapatan' => (int) $monthlyData['total_profit'],
+                'Tanggal Pendaftaran Tertinggi' => $monthlyData['peak_registration_date'],
             ],
             'rows' => array_merge($individualRows, $groupRows),
         ];
@@ -3552,10 +3552,10 @@ class AuthController extends Controller
             'mode' => 'annual',
             'title' => 'Laporan Tahunan ' . $year,
             'summary' => [
-                'Individual Registrations' => $totalIndividual,
-                'Group Registrations' => $totalGroup,
-                'Total Revenue' => $totalRevenue,
-                'Peak Registration Date' => $peakMonth,
+                'Pendaftaran Individu' => $totalIndividual,
+                'Pendaftaran Kelompok' => $totalGroup,
+                'Total Pendapatan' => $totalRevenue,
+                'Tanggal Pendaftaran Tertinggi' => $peakMonth,
             ],
             'rows' => $hasData ? $monthlyRows : [],
         ];
@@ -3697,7 +3697,7 @@ class AuthController extends Controller
         $lines[] = 'Data';
 
         if (empty($reportData['rows'])) {
-            $lines[] = 'No data available.';
+            $lines[] = 'Tidak ada data tersedia.';
         } elseif (($reportData['mode'] ?? '') === 'annual') {
             foreach ($reportData['rows'] as $row) {
                 $lines[] = ($row['month'] ?? '-') . ' | Pendaftaran: ' . number_format((int) ($row['registrations'] ?? 0), 0, ',', '.')

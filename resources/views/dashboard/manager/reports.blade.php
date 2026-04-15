@@ -13,7 +13,7 @@
                     class="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs sm:text-sm text-slate-900 hover:border-slate-400 focus:border-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900/10">
                     @for ($m = 1; $m <= 12; $m++)
                         <option value="{{ $m }}" {{ $selectedMonth == $m ? 'selected' : '' }}>
-                            {{ $monthNames[$m] ?? 'Invalid' }}
+                            {{ $monthNames[$m] ?? 'Tidak valid' }}
                         </option>
                     @endfor
                 </select>
@@ -32,7 +32,7 @@
 
             <button type="submit"
                 class="w-full sm:w-auto rounded-lg bg-slate-900 px-6 py-2 text-xs sm:text-sm font-semibold text-white transition hover:bg-slate-700">
-                Filter
+                Saring
             </button>
         </form>
     </section>
@@ -41,7 +41,7 @@
     <section class="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <!-- Individual Registrations -->
         <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            <p class="text-xs uppercase tracking-wide text-slate-500">Individual Registrations</p>
+            <p class="text-xs uppercase tracking-wide text-slate-500">Pendaftaran Individu</p>
             <p class="mt-2 text-3xl font-bold text-slate-900">{{ $monthlyData['total_individual_registrations'] }}</p>
             <p class="mt-1 text-xs text-slate-600">
                 Rp
@@ -51,7 +51,7 @@
 
         <!-- Group Registrations -->
         <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            <p class="text-xs uppercase tracking-wide text-slate-500">Group Registrations</p>
+            <p class="text-xs uppercase tracking-wide text-slate-500">Pendaftaran Kelompok</p>
             <p class="mt-2 text-3xl font-bold text-slate-900">{{ $monthlyData['total_group_registrations'] }}</p>
             <p class="mt-1 text-xs text-slate-600">
                 {{ $monthlyData['total_group_members'] }} peserta
@@ -60,7 +60,7 @@
 
         <!-- Total Profit -->
         <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            <p class="text-xs uppercase tracking-wide text-slate-500">Total Revenue</p>
+            <p class="text-xs uppercase tracking-wide text-slate-500">Total Pendapatan</p>
             <p class="mt-2 text-2xl font-bold text-emerald-600">Rp
                 {{ number_format($monthlyData['total_profit'], 0, ',', '.') }}</p>
             <p class="mt-1 text-xs text-slate-600">{{ $monthlyData['total_participants'] }} peserta total</p>
@@ -68,7 +68,7 @@
 
         <!-- Peak Registration Date -->
         <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            <p class="text-xs uppercase tracking-wide text-slate-500">Peak Registration Date</p>
+            <p class="text-xs uppercase tracking-wide text-slate-500">Tanggal Pendaftaran Tertinggi</p>
             <p class="mt-2 text-lg font-bold text-slate-900">{{ $monthlyData['peak_registration_date'] }}</p>
             <p class="mt-1 text-xs text-slate-600">Hari dengan pendaftaran tertinggi</p>
         </article>
@@ -133,7 +133,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="3" class="px-3 py-4 text-center text-sm text-slate-500">No data available.
+                            <td colspan="3" class="px-3 py-4 text-center text-sm text-slate-500">Tidak ada data tersedia.
                             </td>
                         </tr>
                     @endforelse
@@ -167,7 +167,8 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="3" class="px-3 py-4 text-center text-sm text-slate-500">No data available.
+                            <td colspan="3" class="px-3 py-4 text-center text-sm text-slate-500">Tidak ada data
+                                tersedia.
                             </td>
                         </tr>
                     @endforelse

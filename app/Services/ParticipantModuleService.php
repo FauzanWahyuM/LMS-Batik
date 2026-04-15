@@ -254,15 +254,41 @@ class ParticipantModuleService
         $progress = $this->resolveOrCreateMaterialProgress($module, $material, $user);
         $metadata = is_array($progress->metadata) ? $progress->metadata : [];
 
-        $metadata['material_read'] = true;
+        // Toggle logic: jika sudah ditandai sebagai dibaca, batalkan
+        if (!empty($metadata['material_read'])) {
+            unset($metadata['material_read']);
 
-        $progress->fill([
-            'status' => 'completed',
-            'progress_percentage' => 100,
-            'started_at' => $progress->started_at ?: now(),
-            'completed_at' => $progress->completed_at ?: now(),
-            'metadata' => $metadata,
-        ]);
+            // Tentukan status baru berdasarkan kondisi lainnya
+            $hasVideo = $this->materialHasVideoPart($material);
+            $isVideoWatched = $hasVideo && !empty($metadata['video_watched']);
+
+            if ($isVideoWatched) {
+                // Ada bagian lain (video) yang selesai, tetap in_progress
+                $newStatus = 'in_progress';
+            } else {
+                // Tidak ada bagian lain, reset ke not_started
+                $newStatus = 'not_started';
+            }
+
+            $progress->fill([
+                'status' => $newStatus,
+                'progress_percentage' => 0,
+                'started_at' => null,
+                'completed_at' => null,
+                'metadata' => $metadata,
+            ]);
+        } else {
+            // Tandai sebagai sudah dibaca
+            $metadata['material_read'] = true;
+
+            $progress->fill([
+                'status' => 'completed',
+                'progress_percentage' => 100,
+                'started_at' => $progress->started_at ?: now(),
+                'completed_at' => $progress->completed_at ?: now(),
+                'metadata' => $metadata,
+            ]);
+        }
 
         $progress->save();
 
@@ -274,13 +300,35 @@ class ParticipantModuleService
         $progress = $this->resolveOrCreateMaterialProgress($module, $material, $user);
         $metadata = is_array($progress->metadata) ? $progress->metadata : [];
 
-        $metadata['video_watched'] = true;
+        // Toggle logic: jika sudah ditandai sebagai ditonton, batalkan
+        if (!empty($metadata['video_watched'])) {
+            unset($metadata['video_watched']);
 
-        $progress->fill([
-            'status' => $progress->status === 'not_started' ? 'in_progress' : ($progress->status ?: 'in_progress'),
-            'started_at' => $progress->started_at ?: now(),
-            'metadata' => $metadata,
-        ]);
+            // Tentukan status baru berdasarkan kondisi lainnya
+            $isRead = !empty($metadata['material_read']);
+
+            if ($isRead) {
+                // Ada bagian lain (materi dibaca) yang selesai, tetap in_progress
+                $newStatus = 'in_progress';
+            } else {
+                // Tidak ada bagian lain, reset ke not_started
+                $newStatus = 'not_started';
+            }
+
+            $progress->fill([
+                'status' => $newStatus,
+                'metadata' => $metadata,
+            ]);
+        } else {
+            // Tandai sebagai sudah ditonton
+            $metadata['video_watched'] = true;
+
+            $progress->fill([
+                'status' => $progress->status === 'not_started' ? 'in_progress' : ($progress->status ?: 'in_progress'),
+                'started_at' => $progress->started_at ?: now(),
+                'metadata' => $metadata,
+            ]);
+        }
 
         $progress->save();
 
@@ -536,7 +584,15 @@ class ParticipantModuleService
             $isVideoWatched = ! $hasVideo || ! empty($progressMetadata['video_watched']);
             $isAssignmentSubmitted = ! $hasAssignment || ($assignmentRecord && ($assignmentRecord->submitted_at || $assignmentRecord->file_path));
 
-            $partsTotal = $hasVideo ? 3 : 2;
+            // Calculate parts dynamically based on what exists for this material
+            $partsTotal = 1; // Reading is always required
+            if ($hasVideo) {
+                $partsTotal++;
+            }
+            if ($hasAssignment) {
+                $partsTotal++;
+            }
+
             $partsCompleted = 0;
             if ($isRead) {
                 $partsCompleted++;
@@ -544,7 +600,7 @@ class ParticipantModuleService
             if ($isVideoWatched && $hasVideo) {
                 $partsCompleted++;
             }
-            if ($isAssignmentSubmitted) {
+            if ($isAssignmentSubmitted && $hasAssignment) {
                 $partsCompleted++;
             }
 
