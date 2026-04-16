@@ -20,6 +20,7 @@ use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Str;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
@@ -31,12 +32,10 @@ class AuthController extends Controller
 {
     private const WA_VALIDATION_SENDER_NUMBER = '081332650772';
     private const FORGOT_PASSWORD_CODE_TTL_MINUTES = 10;
-
-    /**
-     * Hardcoded users for temporary authentication simulation.
-     *
-      * @var array<string, array{name: string, email: string, password: string, role: string}>
-     */
+    private const HARDCODED_ADMIN_USERNAME = 'admin';
+    private const HARDCODED_ADMIN_PASSWORD = 'Admin@2026!';
+    private const HARDCODED_ADMIN_NAME = 'Administrator';
+    private const HARDCODED_ADMIN_EMAIL = 'admin@lmsbatik.local';
 
     /**
      * @return array<string, string>
@@ -44,12 +43,13 @@ class AuthController extends Controller
     private function getManagerProfileData(Request $request): array
     {
         $authUser = $request->session()->get('auth_user', []);
+        $isHardcodedAdmin = (bool) ($authUser['is_hardcoded_admin'] ?? false);
         $defaults = [
             'photo' => '',
-            'full_name' => (string) ($authUser['name'] ?? 'Demo Manager'),
-            'username' => (string) ($authUser['username'] ?? 'manager01'),
-            'password' => 'manager123',
-            'email' => (string) ($authUser['email'] ?? 'manager@lmsbatik.test'),
+            'full_name' => (string) ($authUser['name'] ?? ($isHardcodedAdmin ? self::HARDCODED_ADMIN_NAME : '')),
+            'username' => (string) ($authUser['username'] ?? ($isHardcodedAdmin ? self::HARDCODED_ADMIN_USERNAME : '')),
+            'password' => $isHardcodedAdmin ? self::HARDCODED_ADMIN_PASSWORD : '',
+            'email' => (string) ($authUser['email'] ?? ($isHardcodedAdmin ? self::HARDCODED_ADMIN_EMAIL : '')),
             'phone' => '081234567890',
             'address' => 'Kantor LPK Kama Praja Madiun',
             'role_label' => 'Admin',
@@ -70,12 +70,13 @@ class AuthController extends Controller
     private function getInstructorProfileData(Request $request): array
     {
         $authUser = $request->session()->get('auth_user', []);
+        $authenticatedUserId = (int) ($authUser['id'] ?? Auth::id() ?? 0);
         $defaults = [
             'photo' => '',
-            'full_name' => (string) ($authUser['name'] ?? 'Demo Instructor'),
-            'username' => (string) ($authUser['username'] ?? 'instructor01'),
-            'password' => 'instructor123',
-            'email' => (string) ($authUser['email'] ?? 'instructor@lmsbatik.test'),
+            'full_name' => (string) ($authUser['name'] ?? ''),
+            'username' => (string) ($authUser['username'] ?? ''),
+            'password' => '',
+            'email' => (string) ($authUser['email'] ?? ''),
             'phone' => '081298765432',
             'address' => 'Jl. Batik Madiun No. 21',
             'role_label' => 'Pengajar',
@@ -85,24 +86,33 @@ class AuthController extends Controller
         $profile = is_array($sessionData) ? array_merge($defaults, $sessionData) : $defaults;
 
         $dbUser = null;
-        if (!empty($authUser['email']) || !empty($authUser['username'])) {
-            $query = User::query();
-            if (!empty($authUser['email'])) {
-                $query->where('email', $authUser['email']);
+        if ($authenticatedUserId > 0) {
+            $dbUser = User::query()
+                ->where('id', $authenticatedUserId)
+                ->whereIn('role', ['pengajar', 'instructor'])
+                ->first();
+        } elseif (!empty($authUser['username'])) {
+            $dbUser = User::query()
+                ->where('username', (string) $authUser['username'])
+                ->whereIn('role', ['pengajar', 'instructor'])
+                ->first();
+        } elseif (!empty($authUser['email'])) {
+            $emailMatches = User::query()
+                ->where('email', (string) $authUser['email'])
+                ->whereIn('role', ['pengajar', 'instructor'])
+                ->get();
+
+            if ($emailMatches->count() === 1) {
+                $dbUser = $emailMatches->first();
             }
-            if (!empty($authUser['username'])) {
-                $query->orWhere('username', $authUser['username']);
-            }
-            $dbUser = $query->where('role', 'pengajar')->first();
         }
 
         if ($dbUser) {
-            $storedPassword = (string) ($profile['password'] ?? '');
+            $storedPassword = '';
             if (Schema::hasColumn('users', 'current_password')) {
-                $storedPassword = (string) ($dbUser->current_password ?? $storedPassword);
-            }
-            if ($storedPassword === '') {
-                $storedPassword = $defaults['password'];
+                $storedPassword = (string) ($dbUser->current_password ?? '');
+            } elseif (!empty($profile['password'])) {
+                $storedPassword = (string) $profile['password'];
             }
 
             return array_merge($profile, [
@@ -126,13 +136,14 @@ class AuthController extends Controller
     private function getParticipantProfileData(Request $request): array
     {
         $authUser = $request->session()->get('auth_user', []);
+        $authenticatedUserId = (int) ($authUser['id'] ?? Auth::id() ?? 0);
         $defaults = [
             'photo' => '',
             'participant_type' => 'individual',
-            'full_name' => (string) ($authUser['name'] ?? 'Demo Participant'),
-            'username' => (string) ($authUser['username'] ?? 'participant01'),
-            'password' => 'participant123',
-            'email' => (string) ($authUser['email'] ?? 'participant@lmsbatik.test'),
+            'full_name' => (string) ($authUser['name'] ?? 'Peserta'),
+            'username' => (string) ($authUser['username'] ?? ''),
+            'password' => '',
+            'email' => (string) ($authUser['email'] ?? ''),
             'phone' => '081300112233',
             'personal_phone' => '',
             'address' => 'Jl. Karya Batik No. 8',
@@ -149,27 +160,35 @@ class AuthController extends Controller
 
         $dbUser = null;
 
-        if (!empty($authUser['email']) || !empty($authUser['username'])) {
-            $query = User::query();
-            if (!empty($authUser['email'])) {
-                $query->where('email', $authUser['email']);
+        if ($authenticatedUserId > 0) {
+            $dbUser = User::query()
+                ->where('id', $authenticatedUserId)
+                ->whereIn('role', ['peserta', 'participant'])
+                ->first();
+        } elseif (!empty($authUser['username'])) {
+            $dbUser = User::query()
+                ->where('username', (string) $authUser['username'])
+                ->whereIn('role', ['peserta', 'participant'])
+                ->first();
+        } elseif (!empty($authUser['email'])) {
+            $emailMatches = User::query()
+                ->where('email', (string) $authUser['email'])
+                ->whereIn('role', ['peserta', 'participant'])
+                ->get();
+
+            if ($emailMatches->count() === 1) {
+                $dbUser = $emailMatches->first();
             }
-            if (!empty($authUser['username'])) {
-                $query->orWhere('username', $authUser['username']);
-            }
-            $dbUser = $query->where('role', 'peserta')->first();
         }
 
         if ($dbUser) {
             $participantType = !empty($dbUser->group_name) ? 'group' : 'individual';
-            $storedPassword = (string) ($profile['password'] ?? '');
+            $storedPassword = '';
 
             if (Schema::hasColumn('users', 'current_password')) {
-                $storedPassword = (string) ($dbUser->current_password ?? $storedPassword);
-            }
-
-            if ($storedPassword === '') {
-                $storedPassword = $defaults['password'];
+                $storedPassword = (string) ($dbUser->current_password ?? '');
+            } elseif (!empty($profile['password'])) {
+                $storedPassword = (string) $profile['password'];
             }
 
             $groupName = $participantType === 'group' ? (string) $dbUser->group_name : '';
@@ -211,27 +230,6 @@ class AuthController extends Controller
         return $profile;
     }
 
-    private array $users = [
-        'participant01' => [
-            'name' => 'Demo Participant',
-            'email' => 'participant@lmsbatik.test',
-            'password' => 'participant123',
-            'role' => 'participant',
-        ],
-        'instructor01' => [
-            'name' => 'Demo Instructor',
-            'email' => 'instructor@lmsbatik.test',
-            'password' => 'instructor123',
-            'role' => 'instructor',
-        ],
-        'manager01' => [
-            'name' => 'Demo Manager',
-            'email' => 'manager@lmsbatik.test',
-            'password' => 'manager123',
-            'role' => 'manager',
-        ],
-    ];
-
     public function showLogin(Request $request): View|RedirectResponse
     {
         if ($request->session()->has('auth_user')) {
@@ -250,18 +248,42 @@ class AuthController extends Controller
 
         $username = strtolower(trim($credentials['username']));
 
+        if (
+            $username === self::HARDCODED_ADMIN_USERNAME
+            && hash_equals(self::HARDCODED_ADMIN_PASSWORD, (string) $credentials['password'])
+        ) {
+            $request->session()->put('auth_user', [
+                'id' => null,
+                'name' => self::HARDCODED_ADMIN_NAME,
+                'username' => self::HARDCODED_ADMIN_USERNAME,
+                'email' => self::HARDCODED_ADMIN_EMAIL,
+                'role' => 'manager',
+                'is_hardcoded_admin' => true,
+            ]);
+
+            $request->session()->regenerate();
+
+            return redirect()->route('dashboard.index');
+        }
+
         $dbUser = User::where('username', $username)
             ->orWhere('email', $username)
             ->first();
 
         if ($dbUser && Hash::check($credentials['password'], $dbUser->password)) {
+            if (Schema::hasColumn('users', 'current_password')) {
+                $dbUser->current_password = (string) $credentials['password'];
+                $dbUser->save();
+            }
+
             // Use Laravel Auth for database users
-            auth()->login($dbUser);
+            Auth::login($dbUser);
 
             $sessionRole = $this->getSessionRoleFromDbRole($dbUser->role);
             $normalizedStatus = $this->normalizeParticipantStatus((string) ($dbUser->status ?? 'active'));
 
             $request->session()->put('auth_user', [
+                'id' => $dbUser->id,
                 'name' => $dbUser->name,
                 'username' => $dbUser->username ?: $dbUser->email,
                 'email' => $dbUser->email,
@@ -281,25 +303,9 @@ class AuthController extends Controller
             return redirect()->route('dashboard.index');
         }
 
-        $user = $this->users[$username] ?? null;
-
-        if ((! $user) || ($user['password'] !== $credentials['password'])) {
-            return back()
-                ->withErrors(['username' => 'Username atau password tidak valid.'])
-                ->withInput($request->except('password'));
-        }
-
-        $request->session()->put('auth_user', [
-            'name' => $user['name'],
-            'username' => $username,
-            'email' => $user['email'],
-            'role' => $user['role'],
-            'is_demo_user' => true,
-        ]);
-
-        $request->session()->regenerate();
-
-        return redirect()->route('dashboard.index');
+        return back()
+            ->withErrors(['username' => 'Username atau password tidak valid.'])
+            ->withInput($request->except('password'));
     }
 
     public function requestForgotPasswordCode(Request $request): RedirectResponse
@@ -503,12 +509,6 @@ class AuthController extends Controller
             return redirect()
                 ->route('dashboard.manager.participants.individual')
                 ->withErrors(['credential' => 'Data peserta untuk validasi tidak ditemukan atau sudah divalidasi.']);
-        }
-
-        if (User::where('email', $registration->email)->exists()) {
-            return redirect()
-                ->route('dashboard.manager.participants.individual')
-                ->withErrors(['credential' => 'Email peserta sudah digunakan pada akun lain.']);
         }
 
         $baseUsername = strtolower(Str::slug($registration->nama_lengkap, '')) ?: 'peserta';
@@ -949,7 +949,7 @@ class AuthController extends Controller
             'name' => ['required', 'string', 'min:3', 'max:120'],
             'username' => ['nullable', 'string', 'min:4', 'max:30', Rule::unique('users', 'username')],
             'password' => ['nullable', 'string', 'min:6', 'max:50'],
-            'email' => ['required', 'email', Rule::unique('users', 'email')],
+            'email' => ['required', 'email'],
             'phone' => ['required', 'string', 'min:8', 'max:20'],
             'address' => ['required', 'string', 'min:5', 'max:255'],
             'education' => ['required', 'string', 'min:2', 'max:100'],
@@ -1616,7 +1616,7 @@ class AuthController extends Controller
             'contact_youtube' => ['nullable', 'url'],
         ]);
 
-        // Store in session for demo purposes
+        // Store in session settings state
         $currentSettings = $request->session()->get('manager_settings', []);
 
         // Handle logo upload if provided
@@ -1770,11 +1770,17 @@ class AuthController extends Controller
 
         $request->session()->put('profile_instructor_data', $profile);
 
-        $dbUser = User::where('role', 'pengajar')
-            ->when(!empty($validated['email']), function ($query) use ($validated) {
-                $query->where('email', $validated['email']);
-            })
-            ->first();
+        $authUser = $request->session()->get('auth_user', []);
+        $authenticatedUserId = (int) ($authUser['id'] ?? Auth::id() ?? 0);
+        $dbUserQuery = User::query()->whereIn('role', ['pengajar', 'instructor']);
+
+        if ($authenticatedUserId > 0) {
+            $dbUserQuery->where('id', $authenticatedUserId);
+        } elseif (!empty($authUser['username'])) {
+            $dbUserQuery->where('username', (string) $authUser['username']);
+        }
+
+        $dbUser = $dbUserQuery->first();
 
         if ($dbUser) {
             $dbUser->name = $validated['full_name'];
@@ -1791,10 +1797,12 @@ class AuthController extends Controller
             $dbUser->save();
         }
 
-        $authUser = $request->session()->get('auth_user', []);
         $authUser['name'] = $validated['full_name'];
         $authUser['username'] = $validated['username'];
         $authUser['email'] = $validated['email'];
+        if ($dbUser) {
+            $authUser['id'] = $dbUser->id;
+        }
         $request->session()->put('auth_user', $authUser);
 
         return redirect()
@@ -2216,7 +2224,16 @@ class AuthController extends Controller
         ];
 
         $authUser = $request->session()->get('auth_user', []);
-        $dbUser = User::where('email', $authUser['email'])->first();
+        $authenticatedUserId = (int) ($authUser['id'] ?? Auth::id() ?? 0);
+        $participantQuery = User::query()->whereIn('role', ['peserta', 'participant']);
+
+        if ($authenticatedUserId > 0) {
+            $participantQuery->where('id', $authenticatedUserId);
+        } else {
+            $participantQuery->where('username', (string) ($authUser['username'] ?? ''));
+        }
+
+        $dbUser = $participantQuery->first();
 
         if (!$dbUser) {
             return back()->withErrors(['general' => 'User tidak ditemukan.'])->withInput();
@@ -2274,6 +2291,7 @@ class AuthController extends Controller
         $authUser['name'] = $validated['full_name'];
         $authUser['username'] = $validated['username'];
         $authUser['email'] = $validated['email'];
+        $authUser['id'] = $dbUser->id;
         $request->session()->put('auth_user', $authUser);
 
         return redirect()
@@ -4548,23 +4566,21 @@ class AuthController extends Controller
         $authUser = $request->session()->get('auth_user');
 
         if ($authUser && $authUser['role'] === 'participant') {
-            if (!empty($authUser['is_demo_user']) && $authUser['is_demo_user'] === true) {
-                auth()->logout();
-                $request->session()->forget('auth_user');
-                $request->session()->invalidate();
-                $request->session()->regenerateToken();
-
-                return redirect()->route('login')->with('status', 'Anda berhasil logout.');
+            $participantQuery = User::query()->where('role', 'peserta');
+            if (!empty($authUser['id'])) {
+                $participantQuery->where('id', (int) $authUser['id']);
+            } else {
+                $participantQuery->where('username', (string) ($authUser['username'] ?? ''));
             }
 
-            $dbUser = User::where('email', $authUser['email'])->first();
+            $dbUser = $participantQuery->first();
             if ($dbUser && !$dbUser->password_changed) {
                 return redirect()->route('dashboard.participant.profile')
                     ->with('force_password_change', true);
             }
         }
 
-        auth()->logout();
+        Auth::logout();
         $request->session()->forget('auth_user');
         $request->session()->invalidate();
         $request->session()->regenerateToken();

@@ -157,26 +157,6 @@
                     </div>
                 </form>
 
-                <div class="mt-10 rounded-lg bg-slate-50 border border-slate-100 p-4 text-xs text-slate-500">
-                    <p class="font-semibold text-slate-700 mb-2">Informasi Akun Demo</p>
-                    <div class="space-y-1.5">
-                        <div class="flex justify-between items-center border-b border-slate-200/60 pb-1.5">
-                            <span>Peserta (Murid)</span>
-                            <span class="font-medium text-slate-700">participant01 <span
-                                    class="text-slate-400 font-normal">/</span> participant123</span>
-                        </div>
-                        <div class="flex justify-between items-center border-b border-slate-200/60 pb-1.5">
-                            <span>Pengajar</span>
-                            <span class="font-medium text-slate-700">instructor01 <span
-                                    class="text-slate-400 font-normal">/</span> instructor123</span>
-                        </div>
-                        <div class="flex justify-between items-center">
-                            <span>Pengelola</span>
-                            <span class="font-medium text-slate-700">manager01 <span
-                                    class="text-slate-400 font-normal">/</span> manager123</span>
-                        </div>
-                    </div>
-                </div>
             </section>
 
             <section id="forgot-password-section"

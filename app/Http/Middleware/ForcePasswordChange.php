@@ -18,11 +18,15 @@ class ForcePasswordChange
         $authUser = $request->session()->get('auth_user');
 
         if ($authUser && $authUser['role'] === 'participant') {
-            if (!empty($authUser['is_demo_user']) && $authUser['is_demo_user'] === true) {
-                return $next($request);
+            $participantQuery = \App\Models\User::query()->where('role', 'peserta');
+
+            if (!empty($authUser['id'])) {
+                $participantQuery->where('id', (int) $authUser['id']);
+            } else {
+                $participantQuery->where('username', (string) ($authUser['username'] ?? ''));
             }
 
-            $dbUser = \App\Models\User::where('email', $authUser['email'])->first();
+            $dbUser = $participantQuery->first();
 
             if ($dbUser && !$dbUser->password_changed) {
                 $currentRoute = $request->route()->getName();

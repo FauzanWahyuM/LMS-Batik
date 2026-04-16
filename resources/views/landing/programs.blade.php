@@ -27,50 +27,110 @@
                 <h2 class="text-3xl md:text-4xl font-bold text-blue-950 mb-4" style="font-family: 'Georgia', serif;">
                     Daftar Program
                 </h2>
-                <p class="text-gray-600 max-w-2xl mx-auto">Dapatkan informasi lengkap tentang program-program yang tersedia di LPK Kama Praja Madiun.</p>
+                <p class="text-gray-600 max-w-2xl mx-auto">Dapatkan informasi lengkap tentang program-program yang tersedia
+                    di LPK Kama Praja Madiun.</p>
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-                @forelse (($programs ?? collect()) as $program)
-                    <article class="bg-blue-950 rounded-xl shadow-xl p-8 text-white flex flex-col">
-                        <h3 class="text-2xl font-bold mb-4" style="font-family: 'Georgia', serif;">{{ $program->name }}</h3>
+            @php
+                $programItems = collect($programs->items());
+                $isSingleProgram = $programItems->count() === 1;
+            @endphp
 
-                        <div class="space-y-2 text-sm text-gray-200 mb-4">
-                            <p><span class="font-semibold text-white">Durasi:</span>
-                                {{ number_format((float) $program->duration_hours, 1, ',', '.') }} jam</p>
-                            <p><span class="font-semibold text-white">Biaya:</span> Rp
-                                {{ number_format((float) $program->fee_amount, 0, ',', '.') }} / {{ $program->fee_unit }}
-                            </p>
-                        </div>
+            @if ($programItems->isNotEmpty())
+                @if ($isSingleProgram)
+                    <div class="flex justify-center">
+                        @foreach ($programItems as $program)
+                            <article class="w-full max-w-2xl bg-blue-950 rounded-xl shadow-xl p-8 text-white flex flex-col">
+                                <h3 class="text-2xl font-bold mb-4" style="font-family: 'Georgia', serif;">
+                                    {{ $program->name }}</h3>
 
-                        <p class="text-sm md:text-base leading-relaxed text-gray-100 mb-4">{{ $program->description }}</p>
+                                <div class="space-y-2 text-sm text-gray-200 mb-4">
+                                    <p><span class="font-semibold text-white">Durasi:</span>
+                                        {{ number_format((float) $program->duration_hours, 1, ',', '.') }} jam</p>
+                                    <p><span class="font-semibold text-white">Biaya:</span> Rp
+                                        {{ number_format((float) $program->fee_amount, 0, ',', '.') }} /
+                                        {{ $program->fee_unit }}
+                                    </p>
+                                </div>
 
-                        <div class="rounded-lg border border-blue-800 bg-blue-900/40 p-4 text-sm text-gray-100 mb-6">
-                            <p class="font-semibold text-white mb-2">Benefit Program</p>
-                            <ul class="space-y-1">
-                                @foreach ((array) $program->benefits as $benefit)
-                                    <li class="flex items-start gap-2">
-                                        <span class="text-amber-400 shrink-0">★</span>
-                                        <span>{{ $benefit }}</span>
-                                    </li>
-                                @endforeach
-                            </ul>
-                        </div>
+                                <p class="text-sm md:text-base leading-relaxed text-gray-100 mb-4">
+                                    {{ $program->description }}</p>
 
-                        <div class="mt-auto">
-                            <a href="{{ route('landing.registration') }}"
-                                class="inline-block w-full sm:w-auto bg-amber-600 text-white px-8 py-3 rounded-full font-semibold hover:bg-amber-700 transition shadow-lg">
-                                Daftar Sekarang
-                            </a>
-                        </div>
-                    </article>
-                @empty
-                    <div
-                        class="md:col-span-2 rounded-xl border border-dashed border-slate-300 bg-slate-50 p-8 text-center text-slate-600">
-                        Program belum tersedia.
+                                <div
+                                    class="rounded-lg border border-blue-800 bg-blue-900/40 p-4 text-sm text-gray-100 mb-6">
+                                    <p class="font-semibold text-white mb-2">Benefit Program</p>
+                                    <ul class="space-y-1">
+                                        @foreach ((array) $program->benefits as $benefit)
+                                            <li class="flex items-start gap-2">
+                                                <span class="text-amber-400 shrink-0">★</span>
+                                                <span>{{ $benefit }}</span>
+                                            </li>
+                                        @endforeach
+                                    </ul>
+                                </div>
+
+                                <div class="mt-auto">
+                                    <a href="{{ route('landing.registration') }}"
+                                        class="inline-block w-full sm:w-auto bg-amber-600 text-white px-8 py-3 rounded-full font-semibold hover:bg-amber-700 transition shadow-lg">
+                                        Daftar Sekarang
+                                    </a>
+                                </div>
+                            </article>
+                        @endforeach
                     </div>
-                @endforelse
-            </div>
+                @else
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                        @foreach ($programItems as $program)
+                            <article class="bg-blue-950 rounded-xl shadow-xl p-8 text-white flex flex-col">
+                                <h3 class="text-2xl font-bold mb-4" style="font-family: 'Georgia', serif;">
+                                    {{ $program->name }}</h3>
+
+                                <div class="space-y-2 text-sm text-gray-200 mb-4">
+                                    <p><span class="font-semibold text-white">Durasi:</span>
+                                        {{ number_format((float) $program->duration_hours, 1, ',', '.') }} jam</p>
+                                    <p><span class="font-semibold text-white">Biaya:</span> Rp
+                                        {{ number_format((float) $program->fee_amount, 0, ',', '.') }} /
+                                        {{ $program->fee_unit }}
+                                    </p>
+                                </div>
+
+                                <p class="text-sm md:text-base leading-relaxed text-gray-100 mb-4">
+                                    {{ $program->description }}</p>
+
+                                <div
+                                    class="rounded-lg border border-blue-800 bg-blue-900/40 p-4 text-sm text-gray-100 mb-6">
+                                    <p class="font-semibold text-white mb-2">Benefit Program</p>
+                                    <ul class="space-y-1">
+                                        @foreach ((array) $program->benefits as $benefit)
+                                            <li class="flex items-start gap-2">
+                                                <span class="text-amber-400 shrink-0">★</span>
+                                                <span>{{ $benefit }}</span>
+                                            </li>
+                                        @endforeach
+                                    </ul>
+                                </div>
+
+                                <div class="mt-auto">
+                                    <a href="{{ route('landing.registration') }}"
+                                        class="inline-block w-full sm:w-auto bg-amber-600 text-white px-8 py-3 rounded-full font-semibold hover:bg-amber-700 transition shadow-lg">
+                                        Daftar Sekarang
+                                    </a>
+                                </div>
+                            </article>
+                        @endforeach
+                    </div>
+                @endif
+
+                @if ($programs->hasPages())
+                    <div class="mt-10">
+                        {{ $programs->links() }}
+                    </div>
+                @endif
+            @else
+                <div class="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-8 text-center text-slate-600">
+                    Program belum tersedia.
+                </div>
+            @endif
         </div>
     </section>
 
@@ -104,7 +164,8 @@
                         </svg>
                     </div>
                     <h3 class="text-lg font-bold text-gray-900 mb-2">Pendaftaran Fleksibel</h3>
-                    <p class="text-gray-600 text-sm">Dapat mendaftar secara individu ataupun kelompok dimana saja dan kapan saja</p>
+                    <p class="text-gray-600 text-sm">Dapat mendaftar secara individu ataupun kelompok dimana saja dan kapan
+                        saja</p>
                 </div>
 
                 <div class="bg-gray-50 border border-gray-100 p-6 rounded-xl shadow-sm hover:shadow-md transition">

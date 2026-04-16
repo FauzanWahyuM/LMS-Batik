@@ -117,10 +117,19 @@ class LandingController extends Controller
 
     public function programs()
     {
+        $programs = Schema::hasTable('programs')
+            ? Program::query()
+                ->where('is_active', true)
+                ->latest()
+                ->paginate(3)
+                ->withQueryString()
+            : new LengthAwarePaginator([], 0, 3, 1, [
+                'path' => request()->url(),
+                'query' => request()->query(),
+            ]);
+
         return view('landing.programs', [
-            'programs' => Schema::hasTable('programs')
-                ? Program::query()->where('is_active', true)->latest()->get()
-                : collect(),
+            'programs' => $programs,
         ]);
     }
 

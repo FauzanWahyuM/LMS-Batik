@@ -2,7 +2,7 @@
 
 @section('dashboard-content')
     <section class="mx-auto max-w-3xl rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6 relative">
-        
+
         <form method="POST" action="{{ route('dashboard.participant.profile.update') }}" class="space-y-4">
             @csrf
 
@@ -41,7 +41,7 @@
                 <div>
                     <label class="mb-1 block text-xs font-semibold text-slate-600">Password</label>
                     <div class="relative">
-                        <input id="participant-profile-password" type="text" name="password"
+                        <input id="participant-profile-password" type="password" name="password"
                             value="{{ old('password', $profile['password'] ?? '') }}" required
                             class="w-full rounded-lg border border-slate-300 px-3 py-2 pr-10 text-sm">
 
@@ -73,7 +73,7 @@
                 <div class="sm:col-span-2">
                     <label class="mb-1 block text-xs font-semibold text-slate-600">Konfirmasi Password</label>
                     <div class="relative">
-                        <input id="participant-profile-password-confirmation" type="text" name="password_confirmation"
+                        <input id="participant-profile-password-confirmation" type="password" name="password_confirmation"
                             value="{{ old('password_confirmation', $profile['password'] ?? '') }}" required
                             class="w-full rounded-lg border border-slate-300 px-3 py-2 pr-10 text-sm">
 
@@ -93,8 +93,7 @@
                             </svg>
 
                             <!-- ICON OPEN -->
-                            <svg data-icon="open" class="h-5 w-5" fill="none" stroke="currentColor"
-                                viewBox="0 0 24 24">
+                            <svg data-icon="open" class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                     d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -176,8 +175,7 @@
     </section>
 
     <!-- Modal for password change notification -->
-    @php $isDemoUser = session('auth_user.is_demo_user') ?? false; @endphp
-    @if (session('force_password_change') && !$isDemoUser)
+    @if (session('force_password_change'))
         <div id="password-change-modal"
             class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
             <div class="mx-4 w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
@@ -213,8 +211,8 @@
                     const closedIcon = button.querySelector('[data-icon="closed"]');
                     const openIcon = button.querySelector('[data-icon="open"]');
                     if (closedIcon && openIcon) {
-                        closedIcon.classList.toggle('hidden', target.type !== 'password');
-                        openIcon.classList.toggle('hidden', target.type === 'password');
+                        closedIcon.classList.toggle('hidden', target.type === 'password');
+                        openIcon.classList.toggle('hidden', target.type !== 'password');
                     }
                 });
             });
