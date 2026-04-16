@@ -4,10 +4,13 @@ namespace App\Http\Controllers;
 
 use App\Models\Achievement;
 use App\Models\Artwork;
+use App\Models\Facility;
 use App\Models\Module;
+use App\Models\Partner;
 use App\Models\Program;
 use App\Models\RegistrationIndividual;
 use App\Models\RegistrationGroup;
+use App\Models\Testimonial;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
@@ -19,6 +22,14 @@ class LandingController extends Controller
     {
         $latestArtworks = Schema::hasTable('artworks')
             ? Artwork::latest()->take(6)->get()
+            : collect();
+
+        $testimonials = Schema::hasTable('testimonials')
+            ? Testimonial::query()
+                ->where('is_active', true)
+                ->orderBy('sort_order')
+                ->latest()
+                ->get()
             : collect();
 
         $programs = Schema::hasTable('programs')
@@ -42,12 +53,32 @@ class LandingController extends Controller
             'latestArtworks' => $latestArtworks,
             'featuredAchievements' => $featuredAchievements,
             'programs' => $programs,
+            'testimonials' => $testimonials,
         ]);
     }
 
     public function about()
     {
-        return view('landing.about');
+        $facilities = Schema::hasTable('facilities')
+            ? Facility::query()
+                ->where('is_active', true)
+                ->orderBy('sort_order')
+                ->latest()
+                ->get()
+            : collect();
+
+        $partners = Schema::hasTable('partners')
+            ? Partner::query()
+                ->where('is_active', true)
+                ->orderBy('sort_order')
+                ->latest()
+                ->get()
+            : collect();
+
+        return view('landing.about', [
+            'facilities' => $facilities,
+            'partners' => $partners,
+        ]);
     }
 
     public function registration()

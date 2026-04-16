@@ -191,45 +191,32 @@
                 <div class="bg-blue-950 rounded-xl shadow-xl px-6 md:px-10 py-8 md:py-10 text-white">
                     <div class="overflow-hidden">
                         <div id="testimonial-slider" class="flex transition-transform duration-500 ease-in-out">
-
-                            <div class="min-w-full">
-                                <div class="text-center space-y-4">
-                                    <p class="text-sm md:text-lg italic leading-relaxed px-2">
-                                        "Pengalaman belajar yang luar biasa! Instrukturnya sangat sabar dan materi yang
-                                        diajarkan sangat lengkap. Sekarang saya sudah bisa membuat batik sendiri."
-                                    </p>
-                                    <div>
-                                        <p class="font-semibold text-base text-amber-300">Rina Wijaya</p>
-                                        <p class="text-xs md:text-sm text-gray-300">Peserta Program Batik Dasar</p>
+                            @forelse (($testimonials ?? collect()) as $testimonial)
+                                <div class="min-w-full">
+                                    <div class="text-center space-y-4">
+                                        <p class="text-sm md:text-lg italic leading-relaxed px-2">
+                                            "{{ $testimonial->quote }}"
+                                        </p>
+                                        <div>
+                                            <p class="font-semibold text-base text-amber-300">{{ $testimonial->name }}</p>
+                                            <p class="text-xs md:text-sm text-gray-300">
+                                                {{ $testimonial->role_label ?: 'Peserta LPK Kama Praja' }}</p>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-
-                            <div class="min-w-full">
-                                <div class="text-center space-y-4">
-                                    <p class="text-sm md:text-lg italic leading-relaxed px-2">
-                                        "Platform yang sangat membantu untuk belajar batik. Jadwal kelasnya fleksibel dan
-                                        bisa disesuaikan dengan waktu saya."
-                                    </p>
-                                    <div>
-                                        <p class="font-semibold text-base text-amber-300">Ahmad Fauzi</p>
-                                        <p class="text-xs md:text-sm text-gray-300">Peserta Program Batik Lanjutan</p>
+                            @empty
+                                <div class="min-w-full">
+                                    <div class="text-center space-y-4">
+                                        <p class="text-sm md:text-lg italic leading-relaxed px-2">
+                                            "Belum ada testimoni yang ditampilkan saat ini."
+                                        </p>
+                                        <div>
+                                            <p class="font-semibold text-base text-amber-300">LPK Kama Praja Madiun</p>
+                                            <p class="text-xs md:text-sm text-gray-300">Tim Pengelola</p>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-
-                            <div class="min-w-full">
-                                <div class="text-center space-y-4">
-                                    <p class="text-sm md:text-lg italic leading-relaxed px-2">
-                                        "Saya sangat puas dengan program desain motif batik. Sekarang saya bisa membuat
-                                        desain sendiri."
-                                    </p>
-                                    <div>
-                                        <p class="font-semibold text-base text-amber-300">Siti Nurhaliza</p>
-                                        <p class="text-xs md:text-sm text-gray-300">Peserta Program Desain Batik</p>
-                                    </div>
-                                </div>
-                            </div>
+                            @endforelse
 
                         </div>
                     </div>
@@ -328,7 +315,7 @@
                 function startAutoSlide() {
                     autoSlideInterval = setInterval(() => {
                         goToSlide(current + 1);
-                    }, 5000);
+                    }, 30000);
                 }
 
                 function resetAutoSlide() {

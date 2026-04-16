@@ -70,57 +70,29 @@
             <div class="relative max-w-5xl mx-auto">
                 <div class="overflow-hidden">
                     <div class="flex transition-transform duration-500 ease-in-out" id="facilities-slider">
-
-                        <div class="min-w-full md:min-w-[33.333%] px-4">
-                            <div
-                                class="bg-gradient-to-br from-blue-950 to-blue-900 rounded-xl shadow-lg overflow-hidden h-full flex flex-col">
-                                <img src="../../img/kainputih.jpg" alt="Kain Batik Polos" class="w-full h-48 object-cover">
-                                <div class="p-6 text-center grow flex items-center justify-center">
-                                    <h3 class="text-xl font-semibold text-white">Kain Batik Polos</h3>
+                        @forelse (($facilities ?? collect()) as $facility)
+                            <div class="min-w-full md:min-w-[33.333%] px-4">
+                                <div
+                                    class="rounded-xl shadow-lg overflow-hidden h-full flex flex-col bg-white border border-slate-200">
+                                    @if (!empty($facility->image_path))
+                                        <img src="{{ route('public-file', ['path' => $facility->image_path]) }}"
+                                            alt="{{ $facility->name }}" class="w-full h-48 object-cover">
+                                    @else
+                                        <div class="w-full h-48 bg-slate-200"></div>
+                                    @endif
+                                    <div class="bg-blue-950 px-4 py-3 text-center">
+                                        <h3 class="text-base font-semibold text-white">{{ $facility->name }}</h3>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-
-                        <div class="min-w-full md:min-w-[33.333%] px-4">
-                            <div
-                                class="bg-gradient-to-br from-blue-950 to-blue-900 rounded-xl shadow-lg overflow-hidden h-full flex flex-col">
-                                <img src="../../img/canting.jpg" alt="Canting Batik" class="w-full h-48 object-cover">
-                                <div class="p-6 text-center grow flex items-center justify-center">
-                                    <h3 class="text-xl font-semibold text-white">Canting Batik</h3>
+                        @empty
+                            <div class="min-w-full px-4">
+                                <div
+                                    class="bg-slate-100 rounded-xl border border-dashed border-slate-300 p-8 text-center text-slate-600">
+                                    Data fasilitas belum tersedia.
                                 </div>
                             </div>
-                        </div>
-
-                        <div class="min-w-full md:min-w-[33.333%] px-4">
-                            <div
-                                class="bg-gradient-to-br from-blue-950 to-blue-900 rounded-xl shadow-lg overflow-hidden h-full flex flex-col">
-                                <img src="../../img/pewarnabatik.jpg" alt="Pewarna Batik" class="w-full h-48 object-cover">
-                                <div class="p-6 text-center grow flex items-center justify-center">
-                                    <h3 class="text-xl font-semibold text-white">Pewarna Batik</h3>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="min-w-full md:min-w-[33.333%] px-4">
-                            <div
-                                class="bg-gradient-to-br from-blue-950 to-blue-900 rounded-xl shadow-lg overflow-hidden h-full flex flex-col">
-                                <img src="../../img/malambatik.jpg" alt="Malam (Lilin Batik)"
-                                    class="w-full h-48 object-cover">
-                                <div class="p-6 text-center grow flex items-center justify-center">
-                                    <h3 class="text-xl font-semibold text-white">Malam (Lilin Batik)</h3>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="min-w-full md:min-w-[33.333%] px-4">
-                            <div
-                                class="bg-gradient-to-br from-blue-950 to-blue-900 rounded-xl shadow-lg overflow-hidden h-full flex flex-col">
-                                <img src="../../img/wajankompor.jpg" alt="Wajan & Kompor" class="w-full h-48 object-cover">
-                                <div class="p-6 text-center grow flex items-center justify-center">
-                                    <h3 class="text-xl font-semibold text-white">Wajan & Kompor Kecil</h3>
-                                </div>
-                            </div>
-                        </div>
+                        @endforelse
 
                     </div>
                 </div>
@@ -153,39 +125,29 @@
             <div class="relative max-w-4xl mx-auto">
                 <div class="overflow-hidden rounded-xl">
                     <div id="partners-slider" class="flex transition-transform duration-500 ease-in-out">
-
-                        <div class="min-w-full px-4">
-                            <div class="bg-blue-950 rounded-xl shadow-lg py-12 px-6 flex flex-col items-center">
-                                <div
-                                    class="w-32 h-32 bg-white rounded-full flex items-center justify-center mb-6 overflow-hidden">
-                                    <img src="../../img/pemkotmadiun.png" alt="Pemerintah Kota Madiun"
-                                        class="w-20 h-20 object-contain">
+                        @forelse (($partners ?? collect()) as $partner)
+                            <div class="min-w-full px-4">
+                                <div class="bg-blue-950 rounded-xl shadow-lg py-12 px-6 flex flex-col items-center">
+                                    <div
+                                        class="w-32 h-32 bg-white rounded-full flex items-center justify-center mb-6 overflow-hidden">
+                                        @if (!empty($partner->logo_path))
+                                            <img src="{{ route('public-file', ['path' => $partner->logo_path]) }}"
+                                                alt="{{ $partner->name }}" class="w-20 h-20 object-contain">
+                                        @else
+                                            <span class="text-xs text-slate-500 px-2 text-center">Logo belum diunggah</span>
+                                        @endif
+                                    </div>
+                                    <p class="text-white text-lg font-semibold text-center">{{ $partner->name }}</p>
                                 </div>
-                                <p class="text-white text-lg font-semibold text-center">Pemerintah Kota Madiun</p>
                             </div>
-                        </div>
-
-                        <div class="min-w-full px-4">
-                            <div class="bg-blue-950 rounded-xl shadow-lg py-12 px-6 flex flex-col items-center">
+                        @empty
+                            <div class="min-w-full px-4">
                                 <div
-                                    class="w-32 h-32 bg-white rounded-full flex items-center justify-center mb-6 overflow-hidden">
-                                    <img src="../../img/dinasindustri.jpg" alt="Dinas Perindustrian"
-                                        class="w-20 h-20 object-contain">
+                                    class="bg-slate-100 rounded-xl border border-dashed border-slate-300 p-8 text-center text-slate-600">
+                                    Data mitra belum tersedia.
                                 </div>
-                                <p class="text-white text-lg font-semibold text-center">Dinas Perindustrian</p>
                             </div>
-                        </div>
-
-                        <div class="min-w-full px-4">
-                            <div class="bg-blue-950 rounded-xl shadow-lg py-12 px-6 flex flex-col items-center">
-                                <div
-                                    class="w-32 h-32 bg-white rounded-full flex items-center justify-center mb-6 overflow-hidden">
-                                    <img src="../../img/komunitasbatik.png" alt="Komunitas Batik Nusantara"
-                                        class="w-20 h-20 object-contain">
-                                </div>
-                                <p class="text-white text-lg font-semibold text-center">Komunitas Batik Nusantara</p>
-                            </div>
-                        </div>
+                        @endforelse
 
                     </div>
                 </div>
@@ -301,7 +263,7 @@
                 // 4. Auto Loop tiap 5 detik
                 setInterval(() => {
                     goToSlide(current + 1);
-                }, 5000);
+                }, 30000);
             }
 
             // Inisialisasi:

@@ -320,7 +320,7 @@
                 }
 
                 function startAutoSlide() {
-                    autoSlideInterval = setInterval(() => goToSlide(currentSlide + 1), 4000);
+                    autoSlideInterval = setInterval(() => goToSlide(currentSlide + 1), 30000);
                 }
 
                 function resetAutoSlide() {

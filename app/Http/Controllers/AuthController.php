@@ -5,12 +5,15 @@ namespace App\Http\Controllers;
 use Barryvdh\DomPDF\Facade\Pdf;
 use App\Models\Achievement;
 use App\Models\Artwork;
+use App\Models\Facility;
 use App\Models\Module;
+use App\Models\Partner;
 use App\Models\ParticipantAssignment;
 use App\Models\ParticipantProgress;
 use App\Models\Program;
 use App\Models\RegistrationGroup;
 use App\Models\RegistrationIndividual;
+use App\Models\Testimonial;
 use App\Models\User;
 use App\Services\ForumDiscussionService;
 use App\Services\ParticipantModuleService;
@@ -1576,6 +1579,367 @@ class AuthController extends Controller
             ->with('status', 'Prestasi berhasil dihapus.');
     }
 
+    public function managerTestimonials(Request $request): View|RedirectResponse
+    {
+        $guard = $this->ensureManagerRole($request);
+
+        if ($guard) {
+            return $guard;
+        }
+
+        $search = trim((string) $request->query('search', ''));
+        $query = Schema::hasTable('testimonials') ? Testimonial::query()->orderBy('sort_order')->latest() : null;
+
+        if ($query && $search !== '') {
+            $query->where(function ($builder) use ($search) {
+                $builder->where('name', 'like', '%' . $search . '%')
+                    ->orWhere('role_label', 'like', '%' . $search . '%')
+                    ->orWhere('quote', 'like', '%' . $search . '%');
+            });
+        }
+
+        return view('dashboard.manager.testimonials', [
+            'user' => $request->session()->get('auth_user'),
+            'dashboard' => $this->getManagerDashboardConfig('testimonials'),
+            'testimonials' => $query ? $query->get() : collect(),
+            'search' => $search,
+        ]);
+    }
+
+    public function managerTestimonialsStore(Request $request): RedirectResponse
+    {
+        $guard = $this->ensureManagerRole($request);
+
+        if ($guard) {
+            return $guard;
+        }
+
+        if (!Schema::hasTable('testimonials')) {
+            return redirect()->route('dashboard.manager.testimonials')
+                ->withErrors(['testimonials' => 'Tabel testimoni belum tersedia. Jalankan migrasi terlebih dahulu.']);
+        }
+
+        $payload = $request->validate([
+            'name' => ['required', 'string', 'min:3', 'max:120'],
+            'role_label' => ['nullable', 'string', 'max:150'],
+            'quote' => ['required', 'string', 'min:10', 'max:1500'],
+            'sort_order' => ['nullable', 'integer', 'min:0', 'max:9999'],
+            'is_active' => ['nullable', 'boolean'],
+        ]);
+
+        Testimonial::create([
+            'name' => $payload['name'],
+            'role_label' => $payload['role_label'] ?? null,
+            'quote' => $payload['quote'],
+            'sort_order' => (int) ($payload['sort_order'] ?? 0),
+            'is_active' => (bool) ($payload['is_active'] ?? false),
+        ]);
+
+        return redirect()->route('dashboard.manager.testimonials')
+            ->with('status', 'Testimoni berhasil ditambahkan.');
+    }
+
+    public function managerTestimonialsEdit(Request $request, string $testimonial): RedirectResponse
+    {
+        $guard = $this->ensureManagerRole($request);
+
+        if ($guard) {
+            return $guard;
+        }
+
+        if (!Schema::hasTable('testimonials')) {
+            return redirect()->route('dashboard.manager.testimonials')
+                ->withErrors(['testimonials' => 'Tabel testimoni belum tersedia. Jalankan migrasi terlebih dahulu.']);
+        }
+
+        $payload = $request->validate([
+            'name' => ['required', 'string', 'min:3', 'max:120'],
+            'role_label' => ['nullable', 'string', 'max:150'],
+            'quote' => ['required', 'string', 'min:10', 'max:1500'],
+            'sort_order' => ['nullable', 'integer', 'min:0', 'max:9999'],
+            'is_active' => ['nullable', 'boolean'],
+        ]);
+
+        $target = Testimonial::find($testimonial);
+        if (!$target) {
+            return redirect()->route('dashboard.manager.testimonials')
+                ->withErrors(['testimonials' => 'Data testimoni tidak ditemukan.']);
+        }
+
+        $target->update([
+            'name' => $payload['name'],
+            'role_label' => $payload['role_label'] ?? null,
+            'quote' => $payload['quote'],
+            'sort_order' => (int) ($payload['sort_order'] ?? 0),
+            'is_active' => (bool) ($payload['is_active'] ?? false),
+        ]);
+
+        return redirect()->route('dashboard.manager.testimonials')
+            ->with('status', 'Testimoni berhasil diperbarui.');
+    }
+
+    public function managerTestimonialsDelete(Request $request, string $testimonial): RedirectResponse
+    {
+        $guard = $this->ensureManagerRole($request);
+
+        if ($guard) {
+            return $guard;
+        }
+
+        if (Schema::hasTable('testimonials')) {
+            Testimonial::where('id', $testimonial)->delete();
+        }
+
+        return redirect()->route('dashboard.manager.testimonials')
+            ->with('status', 'Testimoni berhasil dihapus.');
+    }
+
+    public function managerFacilities(Request $request): View|RedirectResponse
+    {
+        $guard = $this->ensureManagerRole($request);
+
+        if ($guard) {
+            return $guard;
+        }
+
+        $search = trim((string) $request->query('search', ''));
+        $query = Schema::hasTable('facilities') ? Facility::query()->orderBy('sort_order')->latest() : null;
+
+        if ($query && $search !== '') {
+            $query->where('name', 'like', '%' . $search . '%');
+        }
+
+        return view('dashboard.manager.facilities', [
+            'user' => $request->session()->get('auth_user'),
+            'dashboard' => $this->getManagerDashboardConfig('facilities'),
+            'facilities' => $query ? $query->get() : collect(),
+            'search' => $search,
+        ]);
+    }
+
+    public function managerFacilitiesStore(Request $request): RedirectResponse
+    {
+        $guard = $this->ensureManagerRole($request);
+
+        if ($guard) {
+            return $guard;
+        }
+
+        if (!Schema::hasTable('facilities')) {
+            return redirect()->route('dashboard.manager.facilities')
+                ->withErrors(['facilities' => 'Tabel fasilitas belum tersedia. Jalankan migrasi terlebih dahulu.']);
+        }
+
+        $payload = $request->validate([
+            'name' => ['required', 'string', 'min:3', 'max:120'],
+            'image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:4096'],
+            'sort_order' => ['nullable', 'integer', 'min:0', 'max:9999'],
+            'is_active' => ['nullable', 'boolean'],
+        ]);
+
+        $imagePath = null;
+        if ($request->hasFile('image')) {
+            $imagePath = $request->file('image')->store('landing/facilities', 'public');
+        }
+
+        Facility::create([
+            'name' => $payload['name'],
+            'image_path' => $imagePath,
+            'sort_order' => (int) ($payload['sort_order'] ?? 0),
+            'is_active' => (bool) ($payload['is_active'] ?? false),
+        ]);
+
+        return redirect()->route('dashboard.manager.facilities')
+            ->with('status', 'Fasilitas berhasil ditambahkan.');
+    }
+
+    public function managerFacilitiesEdit(Request $request, string $facility): RedirectResponse
+    {
+        $guard = $this->ensureManagerRole($request);
+
+        if ($guard) {
+            return $guard;
+        }
+
+        if (!Schema::hasTable('facilities')) {
+            return redirect()->route('dashboard.manager.facilities')
+                ->withErrors(['facilities' => 'Tabel fasilitas belum tersedia. Jalankan migrasi terlebih dahulu.']);
+        }
+
+        $payload = $request->validate([
+            'name' => ['required', 'string', 'min:3', 'max:120'],
+            'image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:4096'],
+            'sort_order' => ['nullable', 'integer', 'min:0', 'max:9999'],
+            'is_active' => ['nullable', 'boolean'],
+        ]);
+
+        $target = Facility::find($facility);
+        if (!$target) {
+            return redirect()->route('dashboard.manager.facilities')
+                ->withErrors(['facilities' => 'Data fasilitas tidak ditemukan.']);
+        }
+
+        if ($request->hasFile('image')) {
+            if (!empty($target->image_path) && Storage::disk('public')->exists($target->image_path)) {
+                Storage::disk('public')->delete($target->image_path);
+            }
+
+            $target->image_path = $request->file('image')->store('landing/facilities', 'public');
+        }
+
+        $target->name = $payload['name'];
+        $target->sort_order = (int) ($payload['sort_order'] ?? 0);
+        $target->is_active = (bool) ($payload['is_active'] ?? false);
+        $target->save();
+
+        return redirect()->route('dashboard.manager.facilities')
+            ->with('status', 'Fasilitas berhasil diperbarui.');
+    }
+
+    public function managerFacilitiesDelete(Request $request, string $facility): RedirectResponse
+    {
+        $guard = $this->ensureManagerRole($request);
+
+        if ($guard) {
+            return $guard;
+        }
+
+        $target = Schema::hasTable('facilities') ? Facility::find($facility) : null;
+
+        if ($target) {
+            if (!empty($target->image_path) && Storage::disk('public')->exists($target->image_path)) {
+                Storage::disk('public')->delete($target->image_path);
+            }
+            $target->delete();
+        }
+
+        return redirect()->route('dashboard.manager.facilities')
+            ->with('status', 'Fasilitas berhasil dihapus.');
+    }
+
+    public function managerPartners(Request $request): View|RedirectResponse
+    {
+        $guard = $this->ensureManagerRole($request);
+
+        if ($guard) {
+            return $guard;
+        }
+
+        $search = trim((string) $request->query('search', ''));
+        $query = Schema::hasTable('partners') ? Partner::query()->orderBy('sort_order')->latest() : null;
+
+        if ($query && $search !== '') {
+            $query->where('name', 'like', '%' . $search . '%');
+        }
+
+        return view('dashboard.manager.partners', [
+            'user' => $request->session()->get('auth_user'),
+            'dashboard' => $this->getManagerDashboardConfig('partners'),
+            'partners' => $query ? $query->get() : collect(),
+            'search' => $search,
+        ]);
+    }
+
+    public function managerPartnersStore(Request $request): RedirectResponse
+    {
+        $guard = $this->ensureManagerRole($request);
+
+        if ($guard) {
+            return $guard;
+        }
+
+        if (!Schema::hasTable('partners')) {
+            return redirect()->route('dashboard.manager.partners')
+                ->withErrors(['partners' => 'Tabel mitra belum tersedia. Jalankan migrasi terlebih dahulu.']);
+        }
+
+        $payload = $request->validate([
+            'name' => ['required', 'string', 'min:3', 'max:150'],
+            'logo' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:4096'],
+            'sort_order' => ['nullable', 'integer', 'min:0', 'max:9999'],
+            'is_active' => ['nullable', 'boolean'],
+        ]);
+
+        $logoPath = null;
+        if ($request->hasFile('logo')) {
+            $logoPath = $request->file('logo')->store('landing/partners', 'public');
+        }
+
+        Partner::create([
+            'name' => $payload['name'],
+            'logo_path' => $logoPath,
+            'sort_order' => (int) ($payload['sort_order'] ?? 0),
+            'is_active' => (bool) ($payload['is_active'] ?? false),
+        ]);
+
+        return redirect()->route('dashboard.manager.partners')
+            ->with('status', 'Mitra berhasil ditambahkan.');
+    }
+
+    public function managerPartnersEdit(Request $request, string $partner): RedirectResponse
+    {
+        $guard = $this->ensureManagerRole($request);
+
+        if ($guard) {
+            return $guard;
+        }
+
+        if (!Schema::hasTable('partners')) {
+            return redirect()->route('dashboard.manager.partners')
+                ->withErrors(['partners' => 'Tabel mitra belum tersedia. Jalankan migrasi terlebih dahulu.']);
+        }
+
+        $payload = $request->validate([
+            'name' => ['required', 'string', 'min:3', 'max:150'],
+            'logo' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:4096'],
+            'sort_order' => ['nullable', 'integer', 'min:0', 'max:9999'],
+            'is_active' => ['nullable', 'boolean'],
+        ]);
+
+        $target = Partner::find($partner);
+        if (!$target) {
+            return redirect()->route('dashboard.manager.partners')
+                ->withErrors(['partners' => 'Data mitra tidak ditemukan.']);
+        }
+
+        if ($request->hasFile('logo')) {
+            if (!empty($target->logo_path) && Storage::disk('public')->exists($target->logo_path)) {
+                Storage::disk('public')->delete($target->logo_path);
+            }
+
+            $target->logo_path = $request->file('logo')->store('landing/partners', 'public');
+        }
+
+        $target->name = $payload['name'];
+        $target->sort_order = (int) ($payload['sort_order'] ?? 0);
+        $target->is_active = (bool) ($payload['is_active'] ?? false);
+        $target->save();
+
+        return redirect()->route('dashboard.manager.partners')
+            ->with('status', 'Mitra berhasil diperbarui.');
+    }
+
+    public function managerPartnersDelete(Request $request, string $partner): RedirectResponse
+    {
+        $guard = $this->ensureManagerRole($request);
+
+        if ($guard) {
+            return $guard;
+        }
+
+        $target = Schema::hasTable('partners') ? Partner::find($partner) : null;
+
+        if ($target) {
+            if (!empty($target->logo_path) && Storage::disk('public')->exists($target->logo_path)) {
+                Storage::disk('public')->delete($target->logo_path);
+            }
+            $target->delete();
+        }
+
+        return redirect()->route('dashboard.manager.partners')
+            ->with('status', 'Mitra berhasil dihapus.');
+    }
+
     public function managerSettings(Request $request): View|RedirectResponse
     {
         $guard = $this->ensureManagerRole($request);
@@ -2653,6 +3017,18 @@ class AuthController extends Controller
                 'title' => 'Kelola Prestasi',
                 'subtitle' => 'Atur data prestasi alumni yang ditampilkan di landing page.',
             ],
+            'testimonials' => [
+                'title' => 'Kelola Testimoni',
+                'subtitle' => 'Kelola daftar testimoni peserta untuk ditampilkan di halaman beranda.',
+            ],
+            'facilities' => [
+                'title' => 'Kelola Fasilitas',
+                'subtitle' => 'Kelola fasilitas pada halaman Tentang Kami secara dinamis.',
+            ],
+            'partners' => [
+                'title' => 'Kelola Mitra',
+                'subtitle' => 'Kelola daftar mitra kerja sama pada halaman Tentang Kami.',
+            ],
             'settings' => [
                 'title' => 'Pengaturan',
                 'subtitle' => 'Konfigurasi preferensi dasar sistem dan kontak operasional.',
@@ -2714,6 +3090,24 @@ class AuthController extends Controller
                     'icon' => 'achievements',
                     'url' => route('dashboard.manager.achievements'),
                     'active' => $activePage === 'achievements',
+                ],
+                [
+                    'label' => 'Kelola Testimoni',
+                    'icon' => 'testimonials',
+                    'url' => route('dashboard.manager.testimonials'),
+                    'active' => $activePage === 'testimonials',
+                ],
+                [
+                    'label' => 'Kelola Fasilitas',
+                    'icon' => 'facilities',
+                    'url' => route('dashboard.manager.facilities'),
+                    'active' => $activePage === 'facilities',
+                ],
+                [
+                    'label' => 'Kelola Mitra',
+                    'icon' => 'partners',
+                    'url' => route('dashboard.manager.partners'),
+                    'active' => $activePage === 'partners',
                 ],
                 [
                     'label' => 'Pengaturan',

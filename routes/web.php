@@ -72,6 +72,18 @@ Route::middleware('simple.auth')->group(function (): void {
 		Route::post('/kelola-prestasi/create', [AuthController::class, 'managerAchievementsStore'])->name('achievements.store');
 		Route::post('/kelola-prestasi/{achievement}/edit', [AuthController::class, 'managerAchievementsEdit'])->name('achievements.edit');
 		Route::post('/kelola-prestasi/{achievement}/delete', [AuthController::class, 'managerAchievementsDelete'])->name('achievements.delete');
+		Route::get('/kelola-testimoni', [AuthController::class, 'managerTestimonials'])->name('testimonials');
+		Route::post('/kelola-testimoni/create', [AuthController::class, 'managerTestimonialsStore'])->name('testimonials.store');
+		Route::post('/kelola-testimoni/{testimonial}/edit', [AuthController::class, 'managerTestimonialsEdit'])->name('testimonials.edit');
+		Route::post('/kelola-testimoni/{testimonial}/delete', [AuthController::class, 'managerTestimonialsDelete'])->name('testimonials.delete');
+		Route::get('/kelola-fasilitas', [AuthController::class, 'managerFacilities'])->name('facilities');
+		Route::post('/kelola-fasilitas/create', [AuthController::class, 'managerFacilitiesStore'])->name('facilities.store');
+		Route::post('/kelola-fasilitas/{facility}/edit', [AuthController::class, 'managerFacilitiesEdit'])->name('facilities.edit');
+		Route::post('/kelola-fasilitas/{facility}/delete', [AuthController::class, 'managerFacilitiesDelete'])->name('facilities.delete');
+		Route::get('/kelola-mitra', [AuthController::class, 'managerPartners'])->name('partners');
+		Route::post('/kelola-mitra/create', [AuthController::class, 'managerPartnersStore'])->name('partners.store');
+		Route::post('/kelola-mitra/{partner}/edit', [AuthController::class, 'managerPartnersEdit'])->name('partners.edit');
+		Route::post('/kelola-mitra/{partner}/delete', [AuthController::class, 'managerPartnersDelete'])->name('partners.delete');
 		Route::get('/pengaturan', [AuthController::class, 'managerSettings'])->name('settings');
 		Route::post('/pengaturan/update', [AuthController::class, 'managerSettingsUpdate'])->name('settings.update');
 	});

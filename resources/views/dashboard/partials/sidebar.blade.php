@@ -72,6 +72,27 @@
                             </svg>
                         @break
 
+                        @case('testimonials')
+                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M8 10h8m-8 4h5m-9 7l3.5-3H18a2 2 0 002-2V7a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2h1.5L4 21z" />
+                            </svg>
+                        @break
+
+                        @case('facilities')
+                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M3 21h18M5 21V7l7-4 7 4v14M9 21v-6h6v6M9 10h.01M15 10h.01" />
+                            </svg>
+                        @break
+
+                        @case('partners')
+                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M12 8c1.657-2.667 4-4 6-4a3 3 0 013 3c0 2-1.333 4.343-4 6 2.667 1.657 4 4 4 6a3 3 0 01-3 3c-2 0-4.343-1.333-6-4-1.657 2.667-4 4-6 4a3 3 0 01-3-3c0-2 1.333-4.343 4-6-2.667-1.657-4-4-4-6a3 3 0 013-3c2 0 4.343 1.333 6 4z" />
+                            </svg>
+                        @break
+
                         @case('settings')
                             <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
