@@ -1437,13 +1437,9 @@ class AuthController extends Controller
             $mimeType = 'text/csv; charset=UTF-8';
         } else {
             $filename = $baseFilename . '.pdf';
-            try {
                 $content = Pdf::loadView('dashboard.manager.report-export-template', compact('reportData'))
                     ->setPaper('a4', 'portrait')
                     ->output();
-            } catch (\Throwable $error) {
-                $content = $this->buildFallbackReportPdf($reportData);
-            }
             $mimeType = 'application/pdf';
         }
 

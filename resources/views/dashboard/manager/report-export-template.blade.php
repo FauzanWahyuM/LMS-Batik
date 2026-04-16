@@ -109,7 +109,7 @@
             <tr>
                 <td style="width: 70px;">
                     @if (!empty($reportData['branding']['logo_data_uri']))
-                        <img src="{{ $reportData['branding']['logo_data_uri'] }}" alt="Logo" class="logo">
+                        <img src="{{ public_path('img/Logo.png') }}" alt="Logo" class="logo">
                     @endif
                 </td>
                 <td>
