@@ -44,7 +44,7 @@ class Module extends Model
 
     public function discussions(): HasMany
     {
-        return $this->hasMany(ForumDiscussion::class, 'module_id', 'slug')->orderByDesc('created_at');
+        return $this->hasMany(Discussion::class, 'module_id')->orderByDesc('created_at');
     }
 
     public function getProgressForUser(User $user): ?ParticipantProgress

@@ -100,77 +100,94 @@
             @php
                 $programCollection = $programs ?? collect();
                 $programCount = $programCollection->count();
+                $isSingleProgram = $programCount === 1;
+                $isTwoPrograms = $programCount === 2;
             @endphp
 
-            @if ($programCount === 1)
-                <div class="max-w-2xl mx-auto">
-                    @foreach ($programCollection as $program)
-                        <article
-                            class="rounded-2xl border border-slate-200 bg-blue-950 shadow-lg p-8 transition hover:-translate-y-1 hover:shadow-xl">
-                            <h3 class="text-2xl font-bold text-white mb-3" style="font-family: 'Georgia', serif;">
-                                {{ $program->name }}
-                            </h3>
-                            <p class="text-sm text-slate-300 leading-relaxed mb-6">
-                                {{ \Illuminate\Support\Str::limit($program->description, 180) }}
-                            </p>
-                            <a href="{{ route('landing.programs') }}"
-                                class="inline-flex items-center rounded-full bg-amber-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-amber-700">
-                                Lihat Program
-                            </a>
-                        </article>
-                    @endforeach
-                </div>
-            @elseif ($programCount > 1)
-                <div class="relative max-w-6xl mx-auto">
-                    <div class="overflow-hidden">
-                        <div id="program-slider" class="flex transition-transform duration-500 ease-in-out">
-                            @foreach ($programCollection as $program)
-                                <div class="min-w-full md:min-w-[50%] lg:min-w-[33.333%] shrink-0 px-3">
-                                    <article
-                                        class="h-full rounded-2xl border border-slate-200 bg-white shadow-lg p-8 transition hover:-translate-y-1 hover:shadow-xl">
-                                        <div
-                                            class="inline-flex items-center rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-800 mb-4">
-                                            Program
-                                        </div>
-                                        <h3 class="text-2xl font-bold text-slate-900 mb-3"
-                                            style="font-family: 'Georgia', serif;">
-                                            {{ $program->name }}
-                                        </h3>
-                                        <p class="text-sm text-slate-600 leading-relaxed mb-6">
-                                            {{ \Illuminate\Support\Str::limit($program->description, 180) }}
-                                        </p>
-                                        <a href="{{ route('landing.programs') }}"
-                                            class="inline-flex items-center rounded-full bg-amber-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-amber-700">
-                                            Lihat Program
-                                        </a>
-                                    </article>
+            @if ($programCount > 0)
+                @if ($isSingleProgram)
+                    <div class="flex justify-center">
+                        @foreach ($programCollection as $program)
+                            <article class="w-full max-w-2xl bg-blue-950 rounded-xl shadow-xl p-8 text-white flex flex-col">
+                                <h3 class="text-2xl font-bold mb-4" style="font-family: 'Georgia', serif;">
+                                    {{ $program->name }}</h3>
+
+                                <p class="text-sm md:text-base leading-relaxed text-gray-100 mb-6">
+                                    {{ $program->description }}</p>
+
+                                <div class="mt-auto">
+                                    <a href="{{ route('landing.programs') }}"
+                                        class="inline-block w-full sm:w-auto bg-amber-600 text-white px-8 py-3 rounded-full font-semibold hover:bg-amber-700 transition shadow-lg">
+                                        Lihat Program
+                                    </a>
                                 </div>
-                            @endforeach
-                        </div>
+                            </article>
+                        @endforeach
+                    </div>
+                @else
+                    <div
+                        id="program-grid"
+                        class="{{ $isTwoPrograms ? 'grid grid-cols-1 md:grid-cols-2 gap-8 max-w-5xl mx-auto' : 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8' }}">
+                        @foreach ($programCollection as $program)
+                            @php
+                                $positionClass = '';
+
+                                if ($programCount > 2) {
+                                    $remainder = $programCount % 3;
+
+                                    if ($remainder === 1 && $loop->last) {
+                                        $positionClass = 'lg:col-start-2';
+                                    }
+
+                                    if ($remainder === 2 && $loop->iteration === $programCount - 1) {
+                                        $positionClass = 'lg:col-start-1';
+                                    }
+
+                                    if ($remainder === 2 && $loop->last) {
+                                        $positionClass = 'lg:col-start-3';
+                                    }
+                                }
+                            @endphp
+
+                            <article data-program-card data-page="{{ (int) ceil($loop->iteration / 3) }}"
+                                class="bg-blue-950 rounded-xl shadow-xl p-8 text-white flex flex-col {{ $positionClass }}">
+                                <h3 class="text-2xl font-bold mb-4" style="font-family: 'Georgia', serif;">
+                                    {{ $program->name }}</h3>
+
+                                <p class="text-sm md:text-base leading-relaxed text-gray-100 mb-6">
+                                    {{ $program->description }}</p>
+
+                                <div class="mt-auto">
+                                    <a href="{{ route('landing.programs') }}"
+                                        class="inline-block w-full sm:w-auto bg-amber-600 text-white px-8 py-3 rounded-full font-semibold hover:bg-amber-700 transition shadow-lg">
+                                        Lihat Program
+                                    </a>
+                                </div>
+                            </article>
+                        @endforeach
                     </div>
 
-                    <button id="prev-program"
-                        class="hidden md:flex absolute -left-5 top-1/2 -translate-y-1/2 bg-white text-blue-950 hover:bg-amber-500 hover:text-white border border-gray-200 p-3 rounded-full shadow-lg transition z-10">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7">
-                            </path>
-                        </svg>
-                    </button>
-                    <button id="next-program"
-                        class="hidden md:flex absolute -right-5 top-1/2 -translate-y-1/2 bg-white text-blue-950 hover:bg-amber-500 hover:text-white border border-gray-200 p-3 rounded-full shadow-lg transition z-10">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
-                        </svg>
-                    </button>
+                    @if ($programCount > 3)
+                        <div id="program-pagination" class="mt-10 flex flex-wrap items-center justify-center gap-2">
+                            <button type="button" id="program-prev-page"
+                                class="px-4 py-2 rounded-full border border-blue-900 text-blue-900 hover:bg-blue-900 hover:text-white transition disabled:opacity-40 disabled:cursor-not-allowed">
+                                Sebelumnya
+                            </button>
 
-                    <div id="program-dots" class="flex justify-center mt-6 space-x-2"></div>
-                </div>
+                            <div id="program-page-buttons" class="flex flex-wrap items-center justify-center gap-2"></div>
+
+                            <button type="button" id="program-next-page"
+                                class="px-4 py-2 rounded-full border border-blue-900 text-blue-900 hover:bg-blue-900 hover:text-white transition disabled:opacity-40 disabled:cursor-not-allowed">
+                                Berikutnya
+                            </button>
+                        </div>
+                    @endif
+                @endif
             @else
                 <div class="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-8 text-center text-slate-600">
                     Program belum tersedia.
                 </div>
             @endif
-            <div class="sr-only" id="program-slider-meta" data-total-programs="{{ $programCount }}"></div>
         </div>
         </div>
     </section>
@@ -348,60 +365,80 @@
             // Inisialisasi Slider Testimoni (tampil 1 per slide baik di HP maupun Laptop)
             createSlider("testimonial-slider", "testimonial-dots", "prev-testimonial", "next-testimonial", 1);
 
-            const programSlider = document.getElementById('program-slider');
-            const programDots = document.getElementById('program-dots');
-            const prevProgramBtn = document.getElementById('prev-program');
-            const nextProgramBtn = document.getElementById('next-program');
+            function initProgramPagination() {
+                const grid = document.getElementById("program-grid");
+                const pagination = document.getElementById("program-pagination");
 
-            if (programSlider && programDots) {
-                let currentProgram = 0;
-                const slides = programSlider.children;
-                const totalPrograms = slides.length;
+                if (!grid || !pagination) return;
 
-                if (totalPrograms > 1) {
-                    programDots.innerHTML = '';
+                const cards = Array.from(grid.querySelectorAll("[data-program-card]"));
+                if (cards.length <= 3) return;
 
-                    for (let index = 0; index < totalPrograms; index++) {
-                        const dot = document.createElement('button');
-                        dot.className = index === 0 ?
-                            'h-3 w-8 rounded-full bg-amber-500 transition-all duration-300' :
-                            'h-3 w-3 rounded-full bg-gray-300 transition-all duration-300 hover:bg-gray-400';
-                        dot.setAttribute('aria-label', `Buka program ${index + 1}`);
-                        dot.addEventListener('click', () => goToProgram(index));
-                        programDots.appendChild(dot);
-                    }
+                const pageButtonsContainer = document.getElementById("program-page-buttons");
+                const prevButton = document.getElementById("program-prev-page");
+                const nextButton = document.getElementById("program-next-page");
 
-                    const dots = programDots.children;
+                if (!pageButtonsContainer || !prevButton || !nextButton) return;
 
-                    function goToProgram(index) {
-                        if (index < 0) {
-                            currentProgram = totalPrograms - 1;
-                        } else if (index >= totalPrograms) {
-                            currentProgram = 0;
-                        } else {
-                            currentProgram = index;
-                        }
+                const totalPages = Math.ceil(cards.length / 3);
+                let currentPage = 1;
 
-                        programSlider.style.transform = `translateX(-${currentProgram * 100}%)`;
+                function renderPageButtons() {
+                    pageButtonsContainer.innerHTML = "";
 
-                        Array.from(dots).forEach((dot, dotIndex) => {
-                            dot.className = dotIndex === currentProgram ?
-                                'h-3 w-8 rounded-full bg-amber-500 transition-all duration-300' :
-                                'h-3 w-3 rounded-full bg-gray-300 transition-all duration-300 hover:bg-gray-400';
+                    for (let page = 1; page <= totalPages; page++) {
+                        const button = document.createElement("button");
+                        button.type = "button";
+                        button.textContent = page;
+                        button.className =
+                            "program-page-btn px-3 py-2 rounded-full border border-blue-900 text-blue-900 hover:bg-blue-900 hover:text-white transition";
+
+                        button.addEventListener("click", () => {
+                            currentPage = page;
+                            updateProgramPage();
                         });
-                    }
 
-                    if (prevProgramBtn) {
-                        prevProgramBtn.addEventListener('click', () => goToProgram(currentProgram - 1));
+                        pageButtonsContainer.appendChild(button);
                     }
-
-                    if (nextProgramBtn) {
-                        nextProgramBtn.addEventListener('click', () => goToProgram(currentProgram + 1));
-                    }
-
-                    window.addEventListener('resize', () => goToProgram(currentProgram));
                 }
+
+                function updateProgramPage() {
+                    cards.forEach((card) => {
+                        const page = Number(card.getAttribute("data-page"));
+                        card.classList.toggle("hidden", page !== currentPage);
+                    });
+
+                    const pageButtons = pageButtonsContainer.querySelectorAll(".program-page-btn");
+                    pageButtons.forEach((button, index) => {
+                        const isActive = index + 1 === currentPage;
+                        button.className = isActive ?
+                            "program-page-btn px-3 py-2 rounded-full border border-amber-600 bg-amber-600 text-white transition" :
+                            "program-page-btn px-3 py-2 rounded-full border border-blue-900 text-blue-900 hover:bg-blue-900 hover:text-white transition";
+                    });
+
+                    prevButton.disabled = currentPage === 1;
+                    nextButton.disabled = currentPage === totalPages;
+                }
+
+                prevButton.addEventListener("click", () => {
+                    if (currentPage > 1) {
+                        currentPage -= 1;
+                        updateProgramPage();
+                    }
+                });
+
+                nextButton.addEventListener("click", () => {
+                    if (currentPage < totalPages) {
+                        currentPage += 1;
+                        updateProgramPage();
+                    }
+                });
+
+                renderPageButtons();
+                updateProgramPage();
             }
+
+            initProgramPagination();
 
         });
     </script>

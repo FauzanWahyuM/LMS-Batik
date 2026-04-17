@@ -8,6 +8,7 @@
             'discussions' => $discussions ?? collect(),
             'user' => $user ?? [],
             'modules' => $modules ?? collect(),
+            'forumThemes' => $forumThemes ?? [],
             'selectedModuleSlug' => $selectedModuleSlug ?? '',
             'showModuleFilter' => true,
         ])

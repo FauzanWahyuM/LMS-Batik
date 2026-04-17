@@ -2391,6 +2391,7 @@ class AuthController extends Controller
             'user' => $request->session()->get('auth_user'),
             'discussions' => $discussionsQuery,
             'modules' => $service->getForumModules(),
+            'forumThemes' => $service->getForumThemes(),
             'selectedModuleSlug' => $selectedModuleSlug,
             'dashboard' => $this->getInstructorDashboardConfig('forum'),
         ]);
@@ -2775,6 +2776,7 @@ class AuthController extends Controller
         return $this->renderParticipantPage($request, 'forum', [
             'discussions' => $discussionsQuery,
             'modules' => $service->getForumModules(),
+            'forumThemes' => $service->getForumThemes(),
             'selectedModuleSlug' => $selectedModuleSlug,
         ]);
     }
@@ -3734,8 +3736,11 @@ class AuthController extends Controller
         $monthIndividual = [];
         $monthGroup = [];
         $registrationByDate = [];
-        $individualCost = 125000;
-        $groupCost = 100000;
+        $programRates = $this->getReportProgramRates();
+        $individualCost = (int) $programRates['individual_cost'];
+        $groupCost = (int) $programRates['group_cost'];
+        $individualProgramName = (string) $programRates['individual_program_name'];
+        $groupProgramName = (string) $programRates['group_program_name'];
 
         if (Schema::hasTable('registration_individuals')) {
             $individualRegistrations = RegistrationIndividual::query()
@@ -3744,7 +3749,7 @@ class AuthController extends Controller
                 ->orderBy('created_at')
                 ->get();
 
-            $monthIndividual = $individualRegistrations->map(function (RegistrationIndividual $registration) use (&$registrationByDate, $individualCost): array {
+            $monthIndividual = $individualRegistrations->map(function (RegistrationIndividual $registration) use (&$registrationByDate, $individualCost, $individualProgramName): array {
                 $registrationDate = optional($registration->created_at)->format('Y-m-d') ?? '';
                 if ($registrationDate !== '') {
                     $registrationByDate[$registrationDate] = ($registrationByDate[$registrationDate] ?? 0) + 1;
@@ -3753,7 +3758,7 @@ class AuthController extends Controller
                 return [
                     'id' => 'individual-' . $registration->id,
                     'name' => (string) $registration->nama_lengkap,
-                    'program' => 'Program Individu',
+                    'program' => $individualProgramName,
                     'registration_date' => $registrationDate,
                     'status' => $this->formatReportStatus((string) ($registration->status ?? 'pending')),
                     'cost' => $individualCost,
@@ -3768,7 +3773,7 @@ class AuthController extends Controller
                 ->orderBy('created_at')
                 ->get();
 
-            $monthGroup = $groupRegistrations->map(function (RegistrationGroup $registration) use (&$registrationByDate, $groupCost): array {
+            $monthGroup = $groupRegistrations->map(function (RegistrationGroup $registration) use (&$registrationByDate, $groupCost, $groupProgramName): array {
                 $registrationDate = optional($registration->created_at)->format('Y-m-d') ?? '';
                 if ($registrationDate !== '') {
                     $registrationByDate[$registrationDate] = ($registrationByDate[$registrationDate] ?? 0) + (int) $registration->jumlah_peserta;
@@ -3778,7 +3783,7 @@ class AuthController extends Controller
                     'id' => 'group-' . $registration->id,
                     'group_name' => (string) $registration->nama_lembaga,
                     'members' => (int) $registration->jumlah_peserta,
-                    'program' => 'Program Kelompok',
+                    'program' => $groupProgramName,
                     'status' => $this->formatReportStatus((string) ($registration->status ?? 'pending')),
                     'registration_date' => $registrationDate,
                     'cost' => $groupCost,
@@ -3790,7 +3795,10 @@ class AuthController extends Controller
         $totalGroup = count($monthGroup);
         $totalGroupMembers = array_sum(array_column($monthGroup, 'members'));
         $totalParticipants = $totalIndividual + $totalGroupMembers;
-        $totalProfit = ($totalIndividual * $individualCost) + ($totalGroupMembers * $groupCost);
+        $totalProfit = ($totalIndividual * $individualCost) + ($totalGroup * $groupCost);
+        $instructorSalaries = $this->getReportInstructorSalaries();
+        $totalExpenditure = array_sum(array_column($instructorSalaries, 'salary'));
+        $totalOverall = $totalProfit - $totalExpenditure;
 
         $peakDate = 'Tidak ada data tersedia';
         $peakCount = 0;
@@ -3812,12 +3820,72 @@ class AuthController extends Controller
             'individual_cost' => $individualCost,
             'group_cost' => $groupCost,
             'total_cost' => $totalIndividual * $individualCost,
-            'group_income' => $totalGroupMembers * $groupCost,
+            'group_income' => $totalGroup * $groupCost,
             'total_profit' => $totalProfit,
+            'total_expenditure' => $totalExpenditure,
+            'total_overall' => $totalOverall,
             'peak_registration_date' => $peakDate,
-            'instructor_salaries' => $this->getReportInstructorSalaries(),
+            'instructor_salaries' => $instructorSalaries,
             'individual_participants' => $monthIndividual,
             'group_participants' => $monthGroup,
+        ];
+    }
+
+    /**
+     * Resolve report program rates from database with safe fallbacks.
+     *
+     * @return array<string, int|string>
+     */
+    private function getReportProgramRates(): array
+    {
+        $fallback = [
+            'individual_cost' => 125000,
+            'group_cost' => 100000,
+            'individual_program_name' => 'Program Individu',
+            'group_program_name' => 'Program Kelompok',
+        ];
+
+        if (!Schema::hasTable('programs')) {
+            return $fallback;
+        }
+
+        $programs = Program::query()
+            ->where('is_active', true)
+            ->orderBy('id')
+            ->get();
+
+        if ($programs->isEmpty()) {
+            $programs = Program::query()
+                ->orderBy('id')
+                ->get();
+        }
+
+        if ($programs->isEmpty()) {
+            return $fallback;
+        }
+
+        $individualProgram = $programs->first(function (Program $program): bool {
+            return str_contains(Str::lower((string) $program->name), 'individu');
+        }) ?: $programs->first(function (Program $program): bool {
+            return str_contains(Str::lower((string) $program->fee_unit), 'peserta');
+        });
+
+        $groupProgram = $programs->first(function (Program $program): bool {
+            $name = Str::lower((string) $program->name);
+            return str_contains($name, 'kelompok') || str_contains($name, 'group');
+        }) ?: $programs->first(function (Program $program): bool {
+            $unit = Str::lower((string) $program->fee_unit);
+            return str_contains($unit, 'lembaga') || str_contains($unit, 'kelompok') || str_contains($unit, 'grup');
+        });
+
+        $individualCost = $individualProgram ? (int) round((float) $individualProgram->fee_amount) : (int) $fallback['individual_cost'];
+        $groupCost = $groupProgram ? (int) round((float) $groupProgram->fee_amount) : (int) $fallback['group_cost'];
+
+        return [
+            'individual_cost' => $individualCost,
+            'group_cost' => $groupCost,
+            'individual_program_name' => $individualProgram ? (string) $individualProgram->name : (string) $fallback['individual_program_name'],
+            'group_program_name' => $groupProgram ? (string) $groupProgram->name : (string) $fallback['group_program_name'],
         ];
     }
 
@@ -3835,12 +3903,15 @@ class AuthController extends Controller
             ->orderBy('name')
             ->get()
             ->map(function (User $user): array {
-                $status = $this->formatInstructorStatus((string) ($user->status ?? 'Aktif'));
+                $isActive = in_array(strtolower(trim((string) ($user->status ?? 'Aktif'))), ['aktif', 'active'], true);
                 $salary = (int) ($user->salary ?? 0);
+                $date = optional($user->created_at)->format('d M Y') ?? '-';
 
                 return [
+                    'type' => 'Pengajar',
                     'name' => $user->name,
-                    'status' => $status,
+                    'date' => $date,
+                    'status' => $isActive ? 'Aktif' : 'Tidak Aktif',
                     'salary' => $salary,
                 ];
             })
@@ -3904,7 +3975,7 @@ class AuthController extends Controller
                 'date' => (string) ($group['registration_date'] ?? '-'),
                 'members' => (string) $members,
                 'status' => (string) ($group['status'] ?? '-'),
-                'revenue' => $members * (int) $monthlyData['group_cost'],
+                'revenue' => (int) ($group['cost'] ?? $monthlyData['group_cost']),
             ];
         }, $monthlyData['group_participants']);
 
@@ -3915,9 +3986,12 @@ class AuthController extends Controller
                 'Pendaftaran Individu' => $monthlyData['total_individual_registrations'],
                 'Pendaftaran Kelompok' => $monthlyData['total_group_registrations'],
                 'Total Pendapatan' => (int) $monthlyData['total_profit'],
+                'Total Pengeluaran' => (int) $monthlyData['total_expenditure'],
+                'Total Keseluruhan' => (int) $monthlyData['total_overall'],
                 'Tanggal Pendaftaran Tertinggi' => $monthlyData['peak_registration_date'],
             ],
             'rows' => array_merge($individualRows, $groupRows),
+            'salary_rows' => $monthlyData['instructor_salaries'],
         ];
     }
 
@@ -3930,6 +4004,8 @@ class AuthController extends Controller
         $totalIndividual = 0;
         $totalGroup = 0;
         $totalRevenue = 0;
+        $totalExpenditure = 0;
+        $totalOverall = 0;
         $peakMonth = '-';
         $peakRevenue = 0;
         $hasData = false;
@@ -3940,6 +4016,8 @@ class AuthController extends Controller
             $totalIndividual += (int) $monthlyBreakdown['total_individual_registrations'];
             $totalGroup += (int) $monthlyBreakdown['total_group_registrations'];
             $totalRevenue += (int) $monthlyBreakdown['total_profit'];
+            $totalExpenditure += (int) $monthlyBreakdown['total_expenditure'];
+            $totalOverall += (int) $monthlyBreakdown['total_overall'];
             if ((int) ($monthData['total_registrations'] ?? 0) > 0) {
                 $hasData = true;
             }
@@ -3963,6 +4041,8 @@ class AuthController extends Controller
                 'Pendaftaran Individu' => $totalIndividual,
                 'Pendaftaran Kelompok' => $totalGroup,
                 'Total Pendapatan' => $totalRevenue,
+                'Total Pengeluaran' => $totalExpenditure,
+                'Total Keseluruhan' => $totalOverall,
                 'Tanggal Pendaftaran Tertinggi' => $peakMonth,
             ],
             'rows' => $hasData ? $monthlyRows : [],
@@ -4007,6 +4087,21 @@ class AuthController extends Controller
                     $row['status'],
                     $row['revenue'],
                 ]);
+            }
+
+            if (!empty($reportData['salary_rows']) && is_array($reportData['salary_rows'])) {
+                fputcsv($stream, []);
+                fputcsv($stream, ['Laporan Pengeluaran Gaji Pengajar']);
+                fputcsv($stream, ['Tipe', 'Nama Pengajar', 'Tanggal', 'Status', 'Gaji']);
+                foreach ($reportData['salary_rows'] as $row) {
+                    fputcsv($stream, [
+                        $row['type'] ?? '-',
+                        $row['name'] ?? '-',
+                        $row['date'] ?? '-',
+                        $row['status'] ?? '-',
+                        $row['salary'] ?? 0,
+                    ]);
+                }
             }
         }
 

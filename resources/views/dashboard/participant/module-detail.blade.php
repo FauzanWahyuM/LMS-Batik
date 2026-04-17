@@ -9,6 +9,19 @@
             </div>
         @endif
 
+        @if (session('modal_success'))
+            <div
+                class="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-800">
+                {{ session('modal_success') }}
+            </div>
+        @endif
+
+        @if ($errors->has('forum'))
+            <div class="mb-4 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-800">
+                {{ $errors->first('forum') }}
+            </div>
+        @endif
+
         <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <h2 class="text-center text-xl font-bold text-slate-800 sm:text-left">Modul Pembelajaran</h2>
             <a href="{{ route('dashboard.participant.modules') }}"
@@ -347,7 +360,7 @@
             <div class="mt-6">
                 @php
                     $filteredDiscussions = $moduleDiscussions ?? collect();
-                    if ($selectedMaterial) {
+                    if ($activeTab !== 'diskusi' && $selectedMaterial) {
                         $materialTitle = strtolower($selectedMaterial->title);
                         $filteredDiscussions = $filteredDiscussions->filter(function ($discussion) use (
                             $materialTitle,
@@ -357,7 +370,7 @@
                         });
                     }
                 @endphp
-                @include('forum.discussions-list', [
+                @include('forum.module-discussions-list', [
                     'discussions' => $filteredDiscussions,
                     'user' => $user ?? [],
                     'moduleContext' => true,

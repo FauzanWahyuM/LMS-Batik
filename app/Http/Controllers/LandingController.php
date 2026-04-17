@@ -11,7 +11,6 @@ use App\Models\Program;
 use App\Models\RegistrationIndividual;
 use App\Models\RegistrationGroup;
 use App\Models\Testimonial;
-use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
@@ -152,12 +151,8 @@ class LandingController extends Controller
             ? Program::query()
                 ->where('is_active', true)
                 ->latest()
-                ->paginate(3)
-                ->withQueryString()
-            : new LengthAwarePaginator([], 0, 3, 1, [
-                'path' => request()->url(),
-                'query' => request()->query(),
-            ]);
+                ->get()
+            : collect();
 
         return view('landing.programs', [
             'programs' => $programs,
@@ -167,23 +162,16 @@ class LandingController extends Controller
     public function gallery()
     {
         $gallery = Schema::hasTable('artworks')
-            ? Artwork::latest()->paginate(6)->withQueryString()
-            : new LengthAwarePaginator([], 0, 6, 1, [
-                'path' => request()->url(),
-                'query' => request()->query(),
-            ]);
+            ? Artwork::latest()->get()
+            : collect();
 
         $achievements = Schema::hasTable('achievements')
             ? Achievement::query()
                 ->where('is_active', true)
                 ->orderByRaw('CASE WHEN rank IS NULL THEN 99 ELSE rank END')
                 ->orderByDesc('year')
-                ->paginate(3)
-                ->withQueryString()
-            : new LengthAwarePaginator([], 0, 3, 1, [
-                'path' => request()->url(),
-                'query' => request()->query(),
-            ]);
+                ->get()
+            : collect();
 
         return view('landing.gallery', compact('gallery', 'achievements'));
     }

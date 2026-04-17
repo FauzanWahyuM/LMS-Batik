@@ -99,10 +99,13 @@ class InstructorModuleController extends Controller
             return $guard;
         }
 
+        $discussionService = app(ForumDiscussionService::class);
+
         return view('dashboard.instructor.modules-edit', [
             'user' => $request->session()->get('auth_user'),
             'dashboard' => $this->getInstructorDashboardConfig('modules'),
             'module' => $this->formatModule($module),
+            'moduleDiscussions' => $discussionService->getModuleDiscussions($module->slug),
         ]);
     }
 

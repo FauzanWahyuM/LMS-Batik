@@ -179,7 +179,7 @@
         @endif
 
         <section class="mt-6">
-            @include('forum.discussions-list', [
+            @include('forum.module-discussions-list', [
                 'discussions' => $moduleDiscussions ?? collect(),
                 'user' => $user ?? [],
                 'moduleContext' => true,

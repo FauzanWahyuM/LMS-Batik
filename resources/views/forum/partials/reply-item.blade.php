@@ -26,7 +26,7 @@
                 Balas
             </button>
 
-            @if (($user['email'] ?? null) === $reply->user_email || $isCurrentUserInstructor)
+            @if (($user['email'] ?? null) === $reply->user_email)
                 <button type="button" data-edit-reply="{{ $reply->id }}"
                     class="text-xs font-semibold text-slate-600 hover:text-slate-900">
                     Edit
@@ -41,6 +41,28 @@
                 </form>
             @endif
         </div>
+
+        @if ($user && ($user['email'] ?? null) === $reply->user_email)
+            <div id="edit-reply-{{ $reply->id }}"
+                class="mt-3 hidden rounded-lg border border-slate-300 bg-slate-50 p-3">
+                <form method="POST" action="{{ route('forum.reply.update', ['reply' => $reply->id]) }}"
+                    class="space-y-2">
+                    @csrf
+                    <textarea name="content" rows="3" required
+                        class="w-full rounded-lg border border-slate-300 px-2 py-1 text-sm focus:border-slate-500 focus:outline-none">{{ $reply->content }}</textarea>
+                    <div class="flex justify-end gap-2">
+                        <button type="button" data-cancel-reply-edit="{{ $reply->id }}"
+                            class="rounded-lg border border-slate-300 px-2 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-100">
+                            Batal
+                        </button>
+                        <button type="submit"
+                            class="rounded-lg bg-slate-900 px-2 py-1 text-xs font-semibold text-white hover:bg-slate-700">
+                            Simpan
+                        </button>
+                    </div>
+                </form>
+            </div>
+        @endif
 
         <div id="child-reply-form-{{ $reply->id }}"
             class="mt-3 hidden rounded-lg border border-slate-300 bg-slate-50 p-3">
@@ -60,27 +82,6 @@
                     <button type="submit"
                         class="rounded-lg bg-slate-900 px-2 py-1 text-xs font-semibold text-white hover:bg-slate-700">
                         Kirim Balasan
-                        Edit
-                </div>
-            </form>
-        </div>
-    @endif
-
-    @if ($user && (($user['email'] ?? null) === $reply->user_email || $isCurrentUserInstructor))
-        <div id="edit-reply-{{ $reply->id }}"
-            class="mt-3 hidden rounded-lg border border-slate-300 bg-slate-50 p-3">
-            <form method="POST" action="{{ route('forum.reply.update', ['reply' => $reply->id]) }}" class="space-y-2">
-                @csrf
-                <textarea name="content" rows="3" required
-                    class="w-full rounded-lg border border-slate-300 px-2 py-1 text-sm focus:border-slate-500 focus:outline-none">{{ $reply->content }}</textarea>
-                <div class="flex justify-end gap-2">
-                    <button type="button" data-cancel-reply-edit="{{ $reply->id }}"
-                        class="rounded-lg border border-slate-300 px-2 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-100">
-                        Batal
-                    </button>
-                    <button type="submit"
-                        class="rounded-lg bg-slate-900 px-2 py-1 text-xs font-semibold text-white hover:bg-slate-700">
-                        Simpan
                     </button>
                 </div>
             </form>

@@ -168,13 +168,6 @@
                                         <option value="graduated" @selected(($participant['status'] ?? '') === 'graduated')>graduated</option>
                                         <option value="non-active" @selected(($participant['status'] ?? '') === 'non-active')>non-active</option>
                                     </select>
-                                    <label
-                                        class="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs text-slate-700">
-                                        <input type="hidden" name="forgot_password_enabled" value="0">
-                                        <input type="checkbox" name="forgot_password_enabled" value="1"
-                                            @checked(($participant['forgot_password_enabled'] ?? false) === true)>
-                                        Forgot Password
-                                    </label>
                                     <button type="submit"
                                         class="rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-slate-700">Update</button>
                                 </form>

@@ -197,6 +197,36 @@
             </tbody>
         @endif
     </table>
+
+    @if (($reportData['mode'] ?? '') !== 'annual' && !empty($reportData['salary_rows']))
+        <div class="report-title" style="font-size: 14px; margin-top: 18px;">Laporan Pengeluaran Gaji Pengajar</div>
+        <table class="data">
+            <thead>
+                <tr>
+                    <th>Tipe</th>
+                    <th>Nama Pengajar</th>
+                    <th>Tanggal</th>
+                    <th>Status</th>
+                    <th>Gaji</th>
+                </tr>
+            </thead>
+            <tbody>
+                @forelse (($reportData['salary_rows'] ?? []) as $row)
+                    <tr>
+                        <td>{{ $row['type'] ?? '-' }}</td>
+                        <td>{{ $row['name'] ?? '-' }}</td>
+                        <td>{{ $row['date'] ?? '-' }}</td>
+                        <td>{{ $row['status'] ?? '-' }}</td>
+                        <td>Rp {{ number_format((int) ($row['salary'] ?? 0), 0, ',', '.') }}</td>
+                    </tr>
+                @empty
+                    <tr>
+                        <td colspan="5" class="empty">Tidak ada data tersedia.</td>
+                    </tr>
+                @endforelse
+            </tbody>
+        </table>
+    @endif
 </body>
 
 </html>

@@ -14,6 +14,7 @@ class ForumDiscussion extends Model
 
     protected $fillable = [
         'module_id',
+        'theme',
         'user_id',
         'user_name',
         'user_email',
@@ -41,16 +42,16 @@ class ForumDiscussion extends Model
 
     public function module(): BelongsTo
     {
-        return $this->belongsTo(Module::class, 'module_id', 'slug');
+        return $this->belongsTo(Module::class, 'module_id');
     }
 
     public function getThemeAttribute(): string
     {
-        return (string) ($this->attributes['title'] ?? '');
+        return (string) ($this->attributes['theme'] ?? ($this->attributes['title'] ?? ''));
     }
 
     public function setThemeAttribute($value): void
     {
-        $this->attributes['title'] = $value;
+        $this->attributes['theme'] = $value;
     }
 }

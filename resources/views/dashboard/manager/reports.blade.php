@@ -38,7 +38,7 @@
     </section>
 
     <!-- Monthly Summary Cards -->
-    <section class="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <section class="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         <!-- Individual Registrations -->
         <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
             <p class="text-xs uppercase tracking-wide text-slate-500">Pendaftaran Individu</p>
@@ -58,12 +58,28 @@
             </p>
         </article>
 
-        <!-- Total Profit -->
+        <!-- Total Revenue -->
         <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
             <p class="text-xs uppercase tracking-wide text-slate-500">Total Pendapatan</p>
-            <p class="mt-2 text-2xl font-bold text-emerald-600">Rp
+            <p class="mt-2 text-3xl font-bold text-emerald-600">Rp
                 {{ number_format($monthlyData['total_profit'], 0, ',', '.') }}</p>
-            <p class="mt-1 text-xs text-slate-600">{{ $monthlyData['total_participants'] }} peserta total</p>
+            <p class="mt-1 text-xs text-slate-600">Pendapatan dari pendaftaran program</p>
+        </article>
+
+        <!-- Total Expenditure -->
+        <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <p class="text-xs uppercase tracking-wide text-slate-500">Total Pengeluaran</p>
+            <p class="mt-2 text-3xl font-bold text-rose-600">Rp
+                {{ number_format($monthlyData['total_expenditure'], 0, ',', '.') }}</p>
+            <p class="mt-1 text-xs text-slate-600">Akumulasi gaji pengajar</p>
+        </article>
+
+        <!-- Total Net -->
+        <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <p class="text-xs uppercase tracking-wide text-slate-500">Total Keseluruhan</p>
+            <p class="mt-2 text-3xl font-bold text-slate-900">Rp
+                {{ number_format($monthlyData['total_overall'], 0, ',', '.') }}</p>
+            <p class="mt-1 text-xs text-slate-600">Pendapatan dikurangi pengeluaran</p>
         </article>
 
         <!-- Peak Registration Date -->
@@ -104,16 +120,19 @@
         </div>
     </section>
 
-    <!-- Instructor Salary Report -->
+    <!-- Instructor Salary Expense Report -->
     <section class="mb-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-        <h2 class="mb-4 text-lg font-bold text-slate-900">Laporan Gaji Pengajar - {{ $monthlyData['month_name'] }}
+        <h2 class="mb-4 text-lg font-bold text-slate-900">Laporan Pengeluaran Gaji Pengajar -
+            {{ $monthlyData['month_name'] }}
             {{ $monthlyData['year'] }}</h2>
 
         <div class="overflow-x-auto">
             <table class="w-full text-sm">
                 <thead class="border-b border-slate-200">
                     <tr class="text-left">
+                        <th class="px-3 py-3 font-semibold text-slate-600">Tipe</th>
                         <th class="px-3 py-3 font-semibold text-slate-600">Nama Pengajar</th>
+                        <th class="px-3 py-3 font-semibold text-slate-600">Tanggal</th>
                         <th class="px-3 py-3 font-semibold text-slate-600 text-right">Status</th>
                         <th class="px-3 py-3 font-semibold text-slate-600 text-right">Gaji</th>
                     </tr>
@@ -121,7 +140,9 @@
                 <tbody class="divide-y divide-slate-200">
                     @forelse ($monthlyData['instructor_salaries'] as $salary)
                         <tr class="hover:bg-slate-50">
+                            <td class="px-3 py-3 font-medium text-slate-900">{{ $salary['type'] ?? 'Pengajar' }}</td>
                             <td class="px-3 py-3 font-medium text-slate-900">{{ $salary['name'] }}</td>
+                            <td class="px-3 py-3 text-slate-700">{{ $salary['date'] ?? '-' }}</td>
                             <td class="px-3 py-3 text-right">
                                 <span
                                     class="inline-block rounded-full px-2.5 py-1 text-xs font-semibold {{ $salary['status'] === 'Aktif' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600' }}">
@@ -133,7 +154,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="3" class="px-3 py-4 text-center text-sm text-slate-500">Tidak ada data tersedia.
+                            <td colspan="5" class="px-3 py-4 text-center text-sm text-slate-500">Tidak ada data tersedia.
                             </td>
                         </tr>
                     @endforelse

@@ -40,6 +40,12 @@ Route::middleware('simple.auth')->group(function (): void {
 	Route::post('/forum/{discussion}/reply', [ForumController::class, 'storeReply'])->name('forum.reply');
 	Route::post('/forum/reply/{reply}/update', [ForumController::class, 'updateReply'])->name('forum.reply.update');
 	Route::post('/forum/reply/{reply}/delete', [ForumController::class, 'deleteReply'])->name('forum.reply.delete');
+	Route::post('/forum/module-discussions/store', [ForumController::class, 'storeModuleDiscussion'])->name('forum.module-discussion.store');
+	Route::post('/forum/module-discussions/{discussion}/reply', [ForumController::class, 'storeModuleReply'])->name('forum.module-discussion.reply');
+	Route::post('/forum/module-discussions/{discussion}/update', [ForumController::class, 'updateModuleDiscussion'])->name('forum.module-discussion.update');
+	Route::post('/forum/module-discussions/{discussion}/delete', [ForumController::class, 'deleteModuleDiscussion'])->name('forum.module-discussion.delete');
+	Route::post('/forum/module-replies/{reply}/update', [ForumController::class, 'updateModuleReply'])->name('forum.module-reply.update');
+	Route::post('/forum/module-replies/{reply}/delete', [ForumController::class, 'deleteModuleReply'])->name('forum.module-reply.delete');
 
 	Route::get('/dashboard', [AuthController::class, 'dashboard'])->name('dashboard.index');
 

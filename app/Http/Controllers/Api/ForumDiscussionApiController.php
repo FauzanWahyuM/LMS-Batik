@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Models\DiscussionReply;
 use App\Models\ForumDiscussion;
+use App\Models\Module;
 use App\Services\ForumDiscussionService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -39,18 +40,27 @@ class ForumDiscussionApiController extends BaseApiController
         $user = $this->authUser($request);
 
         $validated = $request->validate([
-            'theme' => ['required', 'string', 'min:5', 'max:255'],
+            'title' => ['required', 'string', 'min:5', 'max:255'],
+            'theme' => ['required', 'string', 'min:3', 'max:255'],
             'content' => ['required', 'string', 'min:10', 'max:5000'],
             'module_id' => ['nullable', 'string', 'exists:modules,slug'],
         ]);
 
+        $moduleId = null;
+        if (!empty($validated['module_id'])) {
+            $moduleId = Module::query()
+                ->where('slug', (string) $validated['module_id'])
+                ->value('id');
+        }
+
         $discussion = ForumDiscussion::create([
-            'module_id' => $validated['module_id'] ?? null,
+            'module_id' => $moduleId,
+            'theme' => $validated['theme'],
             'user_id' => $user['id'] ?? null,
             'user_name' => $user['name'] ?? 'Peserta',
             'user_email' => $user['email'] ?? null,
             'user_role' => $this->normalizeRole($user['role'] ?? null),
-            'title' => $validated['theme'],
+            'title' => $validated['title'],
             'content' => $validated['content'],
         ]);
 
@@ -72,12 +82,14 @@ class ForumDiscussionApiController extends BaseApiController
         }
 
         $validated = $request->validate([
-            'theme' => ['required', 'string', 'min:5', 'max:255'],
+            'title' => ['required', 'string', 'min:5', 'max:255'],
+            'theme' => ['required', 'string', 'min:3', 'max:255'],
             'content' => ['required', 'string', 'min:10', 'max:5000'],
         ]);
 
         $target->update([
-            'title' => $validated['theme'],
+            'title' => $validated['title'],
+            'theme' => $validated['theme'],
             'content' => $validated['content'],
         ]);
 

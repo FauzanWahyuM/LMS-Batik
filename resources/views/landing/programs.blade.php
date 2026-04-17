@@ -32,98 +32,125 @@
             </div>
 
             @php
-                $programItems = collect($programs->items());
-                $isSingleProgram = $programItems->count() === 1;
+                $programCollection = collect($programs ?? []);
+                $programCount = $programCollection->count();
+                $programPages = $programCollection->chunk(3);
             @endphp
 
-            @if ($programItems->isNotEmpty())
-                @if ($isSingleProgram)
-                    <div class="flex justify-center">
-                        @foreach ($programItems as $program)
-                            <article class="w-full max-w-2xl bg-blue-950 rounded-xl shadow-xl p-8 text-white flex flex-col">
-                                <h3 class="text-2xl font-bold mb-4" style="font-family: 'Georgia', serif;">
-                                    {{ $program->name }}</h3>
+            @if ($programCollection->isNotEmpty())
+                <div id="program-pages-wrapper">
+                    @foreach ($programPages as $pageIndex => $programPage)
+                        @php
+                            $pageCount = $programPage->count();
+                            $isSingleProgram = $pageCount === 1;
+                            $isTwoPrograms = $pageCount === 2;
+                        @endphp
 
-                                <div class="space-y-2 text-sm text-gray-200 mb-4">
-                                    <p><span class="font-semibold text-white">Durasi:</span>
-                                        {{ number_format((float) $program->duration_hours, 1, ',', '.') }} jam</p>
-                                    <p><span class="font-semibold text-white">Biaya:</span> Rp
-                                        {{ number_format((float) $program->fee_amount, 0, ',', '.') }} /
-                                        {{ $program->fee_unit }}
-                                    </p>
+                        <div data-program-page="{{ $pageIndex + 1 }}" class="{{ $pageIndex === 0 ? '' : 'hidden' }}">
+                            @if ($isSingleProgram)
+                                <div class="flex justify-center">
+                                    @foreach ($programPage as $program)
+                                        <article
+                                            class="w-full max-w-2xl bg-blue-950 rounded-xl shadow-xl p-8 text-white flex flex-col">
+                                            <h3 class="text-2xl font-bold mb-4" style="font-family: 'Georgia', serif;">
+                                                {{ $program->name }}</h3>
+
+                                            <div class="space-y-2 text-sm text-gray-200 mb-4">
+                                                <p><span class="font-semibold text-white">Durasi:</span>
+                                                    {{ number_format((float) $program->duration_hours, 1, ',', '.') }} jam
+                                                </p>
+                                                <p><span class="font-semibold text-white">Biaya:</span> Rp
+                                                    {{ number_format((float) $program->fee_amount, 0, ',', '.') }} /
+                                                    {{ $program->fee_unit }}
+                                                </p>
+                                            </div>
+
+                                            <p class="text-sm md:text-base leading-relaxed text-gray-100 mb-4">
+                                                {{ $program->description }}</p>
+
+                                            <div
+                                                class="rounded-lg border border-blue-800 bg-blue-900/40 p-4 text-sm text-gray-100 mb-6">
+                                                <p class="font-semibold text-white mb-2">Benefit Program</p>
+                                                <ul class="space-y-1">
+                                                    @foreach ((array) $program->benefits as $benefit)
+                                                        <li class="flex items-start gap-2">
+                                                            <span class="text-amber-400 shrink-0">★</span>
+                                                            <span>{{ $benefit }}</span>
+                                                        </li>
+                                                    @endforeach
+                                                </ul>
+                                            </div>
+
+                                            <div class="mt-auto">
+                                                <a href="{{ route('landing.registration') }}"
+                                                    class="inline-block w-full sm:w-auto bg-amber-600 text-white px-8 py-3 rounded-full font-semibold hover:bg-amber-700 transition shadow-lg">
+                                                    Daftar Sekarang
+                                                </a>
+                                            </div>
+                                        </article>
+                                    @endforeach
                                 </div>
-
-                                <p class="text-sm md:text-base leading-relaxed text-gray-100 mb-4">
-                                    {{ $program->description }}</p>
-
+                            @else
                                 <div
-                                    class="rounded-lg border border-blue-800 bg-blue-900/40 p-4 text-sm text-gray-100 mb-6">
-                                    <p class="font-semibold text-white mb-2">Benefit Program</p>
-                                    <ul class="space-y-1">
-                                        @foreach ((array) $program->benefits as $benefit)
-                                            <li class="flex items-start gap-2">
-                                                <span class="text-amber-400 shrink-0">★</span>
-                                                <span>{{ $benefit }}</span>
-                                            </li>
-                                        @endforeach
-                                    </ul>
+                                    class="{{ $isTwoPrograms ? 'grid grid-cols-1 md:grid-cols-2 gap-8 max-w-5xl mx-auto' : 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8' }}">
+                                    @foreach ($programPage as $program)
+                                        <article class="bg-blue-950 rounded-xl shadow-xl p-8 text-white flex flex-col">
+                                            <h3 class="text-2xl font-bold mb-4" style="font-family: 'Georgia', serif;">
+                                                {{ $program->name }}</h3>
+
+                                            <div class="space-y-2 text-sm text-gray-200 mb-4">
+                                                <p><span class="font-semibold text-white">Durasi:</span>
+                                                    {{ number_format((float) $program->duration_hours, 1, ',', '.') }} jam
+                                                </p>
+                                                <p><span class="font-semibold text-white">Biaya:</span> Rp
+                                                    {{ number_format((float) $program->fee_amount, 0, ',', '.') }} /
+                                                    {{ $program->fee_unit }}
+                                                </p>
+                                            </div>
+
+                                            <p class="text-sm md:text-base leading-relaxed text-gray-100 mb-4">
+                                                {{ $program->description }}</p>
+
+                                            <div
+                                                class="rounded-lg border border-blue-800 bg-blue-900/40 p-4 text-sm text-gray-100 mb-6">
+                                                <p class="font-semibold text-white mb-2">Benefit Program</p>
+                                                <ul class="space-y-1">
+                                                    @foreach ((array) $program->benefits as $benefit)
+                                                        <li class="flex items-start gap-2">
+                                                            <span class="text-amber-400 shrink-0">★</span>
+                                                            <span>{{ $benefit }}</span>
+                                                        </li>
+                                                    @endforeach
+                                                </ul>
+                                            </div>
+
+                                            <div class="mt-auto">
+                                                <a href="{{ route('landing.registration') }}"
+                                                    class="inline-block w-full sm:w-auto bg-amber-600 text-white px-8 py-3 rounded-full font-semibold hover:bg-amber-700 transition shadow-lg">
+                                                    Daftar Sekarang
+                                                </a>
+                                            </div>
+                                        </article>
+                                    @endforeach
                                 </div>
+                            @endif
+                        </div>
+                    @endforeach
+                </div>
 
-                                <div class="mt-auto">
-                                    <a href="{{ route('landing.registration') }}"
-                                        class="inline-block w-full sm:w-auto bg-amber-600 text-white px-8 py-3 rounded-full font-semibold hover:bg-amber-700 transition shadow-lg">
-                                        Daftar Sekarang
-                                    </a>
-                                </div>
-                            </article>
-                        @endforeach
-                    </div>
-                @else
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                        @foreach ($programItems as $program)
-                            <article class="bg-blue-950 rounded-xl shadow-xl p-8 text-white flex flex-col">
-                                <h3 class="text-2xl font-bold mb-4" style="font-family: 'Georgia', serif;">
-                                    {{ $program->name }}</h3>
+                @if ($programCount > 3)
+                    <div id="program-pagination" class="mt-10 flex flex-wrap items-center justify-center gap-2">
+                        <button type="button" id="program-prev-page"
+                            class="px-4 py-2 rounded-full border border-blue-900 text-blue-900 hover:bg-blue-900 hover:text-white transition disabled:opacity-40 disabled:cursor-not-allowed">
+                            Sebelumnya
+                        </button>
 
-                                <div class="space-y-2 text-sm text-gray-200 mb-4">
-                                    <p><span class="font-semibold text-white">Durasi:</span>
-                                        {{ number_format((float) $program->duration_hours, 1, ',', '.') }} jam</p>
-                                    <p><span class="font-semibold text-white">Biaya:</span> Rp
-                                        {{ number_format((float) $program->fee_amount, 0, ',', '.') }} /
-                                        {{ $program->fee_unit }}
-                                    </p>
-                                </div>
+                        <div id="program-page-buttons" class="flex flex-wrap items-center justify-center gap-2"></div>
 
-                                <p class="text-sm md:text-base leading-relaxed text-gray-100 mb-4">
-                                    {{ $program->description }}</p>
-
-                                <div
-                                    class="rounded-lg border border-blue-800 bg-blue-900/40 p-4 text-sm text-gray-100 mb-6">
-                                    <p class="font-semibold text-white mb-2">Benefit Program</p>
-                                    <ul class="space-y-1">
-                                        @foreach ((array) $program->benefits as $benefit)
-                                            <li class="flex items-start gap-2">
-                                                <span class="text-amber-400 shrink-0">★</span>
-                                                <span>{{ $benefit }}</span>
-                                            </li>
-                                        @endforeach
-                                    </ul>
-                                </div>
-
-                                <div class="mt-auto">
-                                    <a href="{{ route('landing.registration') }}"
-                                        class="inline-block w-full sm:w-auto bg-amber-600 text-white px-8 py-3 rounded-full font-semibold hover:bg-amber-700 transition shadow-lg">
-                                        Daftar Sekarang
-                                    </a>
-                                </div>
-                            </article>
-                        @endforeach
-                    </div>
-                @endif
-
-                @if ($programs->hasPages())
-                    <div class="mt-10">
-                        {{ $programs->links() }}
+                        <button type="button" id="program-next-page"
+                            class="px-4 py-2 rounded-full border border-blue-900 text-blue-900 hover:bg-blue-900 hover:text-white transition disabled:opacity-40 disabled:cursor-not-allowed">
+                            Berikutnya
+                        </button>
                     </div>
                 @endif
             @else
@@ -204,3 +231,79 @@
     </section>
 
 @endsection
+
+@push('scripts')
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            const pagesWrapper = document.getElementById("program-pages-wrapper");
+            const pagination = document.getElementById("program-pagination");
+
+            if (!pagesWrapper || !pagination) return;
+
+            const pages = Array.from(pagesWrapper.querySelectorAll("[data-program-page]"));
+            if (pages.length <= 1) return;
+
+            const prevButton = document.getElementById("program-prev-page");
+            const nextButton = document.getElementById("program-next-page");
+            const pageButtonsContainer = document.getElementById("program-page-buttons");
+
+            if (!prevButton || !nextButton || !pageButtonsContainer) return;
+
+            let currentPage = 1;
+            const totalPages = pages.length;
+
+            function renderPageButtons() {
+                pageButtonsContainer.innerHTML = "";
+
+                for (let page = 1; page <= totalPages; page++) {
+                    const button = document.createElement("button");
+                    button.type = "button";
+                    button.textContent = page;
+                    button.className =
+                        "program-page-btn px-3 py-2 rounded-full border border-blue-900 text-blue-900 hover:bg-blue-900 hover:text-white transition";
+
+                    button.addEventListener("click", () => {
+                        currentPage = page;
+                        updatePage();
+                    });
+
+                    pageButtonsContainer.appendChild(button);
+                }
+            }
+
+            function updatePage() {
+                pages.forEach((page, index) => {
+                    page.classList.toggle("hidden", index + 1 !== currentPage);
+                });
+
+                const pageButtons = pageButtonsContainer.querySelectorAll(".program-page-btn");
+                pageButtons.forEach((button, index) => {
+                    const isActive = index + 1 === currentPage;
+                    button.className = isActive ?
+                        "program-page-btn px-3 py-2 rounded-full border border-amber-600 bg-amber-600 text-white transition" :
+                        "program-page-btn px-3 py-2 rounded-full border border-blue-900 text-blue-900 hover:bg-blue-900 hover:text-white transition";
+                });
+
+                prevButton.disabled = currentPage === 1;
+                nextButton.disabled = currentPage === totalPages;
+            }
+
+            prevButton.addEventListener("click", () => {
+                if (currentPage > 1) {
+                    currentPage -= 1;
+                    updatePage();
+                }
+            });
+
+            nextButton.addEventListener("click", () => {
+                if (currentPage < totalPages) {
+                    currentPage += 1;
+                    updatePage();
+                }
+            });
+
+            renderPageButtons();
+            updatePage();
+        });
+    </script>
+@endpush
