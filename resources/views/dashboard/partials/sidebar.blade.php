@@ -2,7 +2,7 @@
     class="fixed inset-y-0 left-0 z-40 flex w-72 -translate-x-full flex-col border-r border-slate-200 bg-white transition-transform duration-200 ease-out lg:sticky lg:top-0 lg:min-h-screen lg:translate-x-0">
     <div class="flex items-center justify-between border-b border-slate-200 px-5 py-5">
         <a href="{{ route('dashboard.index') }}" class="flex items-center gap-3">
-            <img src="{{ asset('img/komunitasbatik.png') }}" alt="Logo" class="h-10 w-10 rounded-md object-cover">
+            <img src="{{ asset('img/Logo.png') }}" alt="Logo" class="h-10 w-10 rounded-md object-cover">
             <div>
                 <p class="font-bold text-slate-800">LMS Batik</p>
                 <p class="text-xs text-slate-500">LPK Kama Praja Madiun</p>
@@ -171,12 +171,50 @@
                 class="mt-2 inline-block rounded-full px-2.5 py-1 text-xs font-semibold {{ $dashboard['roleBadgeClasses'] }}">{{ $user['sidebar_role_label'] ?? ucfirst($user['role'] ?? 'participant') }}</span>
         </a>
 
-        <form method="POST" action="{{ route('logout') }}">
-            @csrf
-            <button type="submit"
-                class="w-full rounded-lg bg-slate-800 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-700 transition">
-                Logout
-            </button>
-        </form>
+        <button type="button" id="sidebar-logout-button"
+            class="w-full rounded-lg bg-slate-800 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-700 transition">
+            Logout
+        </button>
     </div>
 </aside>
+
+<script>
+    (function() {
+        const logoutButton = document.getElementById('sidebar-logout-button');
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+
+        if (!logoutButton) {
+            return;
+        }
+
+        logoutButton.addEventListener('click', async function() {
+            try {
+                const response = await fetch('/api/v1/auth/logout', {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken,
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                    credentials: 'same-origin',
+                });
+
+                const result = await response.json().catch(function() {
+                    return {
+                        success: false,
+                        message: 'Logout gagal diproses.',
+                    };
+                });
+
+                if (!response.ok || result.success !== true) {
+                    throw new Error(result.message || 'Logout gagal diproses.');
+                }
+
+                window.location.assign(result.data?.redirect_url || '/login');
+            } catch (error) {
+                alert(error.message || 'Logout gagal diproses.');
+            }
+        });
+    })();
+</script>

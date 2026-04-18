@@ -4,6 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Masuk - LMS Batik</title>
     <link rel="icon" type="image/png" href="{{ asset('img/Logo.png') }}">
     <script src="https://cdn.tailwindcss.com"></script>
@@ -76,6 +77,8 @@
                 </div>
             </div>
 
+            <div id="api-feedback" class="mb-6 hidden rounded-lg px-4 py-3 text-sm"></div>
+
             @if (session('status'))
                 <div
                     class="mb-6 rounded-lg border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm text-emerald-700 flex items-start gap-3">
@@ -101,7 +104,7 @@
             @endif
 
             <section id="login-form-section" class="{{ $showForgotPasswordSection ? 'hidden' : '' }}">
-                <form method="POST" action="{{ route('login.attempt') }}" class="space-y-5">
+                <form id="login-form" class="space-y-5">
                     @csrf
 
                     <div>
@@ -170,7 +173,7 @@
                 <p class="mt-1 text-xs text-slate-500">Masukkan username peserta untuk membuat kode
                     verifikasi internal.</p>
 
-                <form method="POST" action="{{ route('login.forgot-password.request') }}" class="mt-3 space-y-3">
+                <form id="forgot-request-form" class="mt-3 space-y-3">
                     @csrf
                     <div>
                         <label for="forgot_username_request"
@@ -189,17 +192,17 @@
                     </button>
                 </form>
 
-                @if (session('forgot_password_wa_url'))
-                    <div
-                        class="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-700">
-                        <p>Kirim kode ke WhatsApp tujuan: {{ session('forgot_password_wa_target') }}</p>
-                        <a href="{{ session('forgot_password_wa_url') }}" target="_blank" rel="noopener"
-                            class="mt-2 inline-flex rounded-md bg-emerald-600 px-3 py-1.5 font-semibold text-white hover:bg-emerald-700">Kirim
-                            Kode via WhatsApp</a>
-                    </div>
-                @endif
+                <div id="forgot-password-wa-container"
+                    class="{{ session('forgot_password_wa_url') ? '' : 'hidden' }} mt-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-700">
+                    <p id="forgot-password-wa-target">Kirim kode ke WhatsApp tujuan:
+                        {{ session('forgot_password_wa_target') }}</p>
+                    <a id="forgot-password-wa-link" href="{{ session('forgot_password_wa_url') }}" target="_blank"
+                        rel="noopener"
+                        class="mt-2 inline-flex rounded-md bg-emerald-600 px-3 py-1.5 font-semibold text-white hover:bg-emerald-700">Kirim
+                        Kode via WhatsApp</a>
+                </div>
 
-                <form method="POST" action="{{ route('login.forgot-password.reset') }}" class="mt-4 space-y-3">
+                <form id="forgot-reset-form" class="mt-4 space-y-3">
                     @csrf
                     <div>
                         <label for="forgot_username_reset" class="mb-1.5 block text-xs font-semibold text-slate-700">
@@ -252,6 +255,14 @@
             const backToLoginToggle = document.getElementById('back-to-login-toggle');
             const loginFormSection = document.getElementById('login-form-section');
             const forgotPasswordSection = document.getElementById('forgot-password-section');
+            const apiFeedback = document.getElementById('api-feedback');
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+            const loginForm = document.getElementById('login-form');
+            const forgotRequestForm = document.getElementById('forgot-request-form');
+            const forgotResetForm = document.getElementById('forgot-reset-form');
+            const forgotWaContainer = document.getElementById('forgot-password-wa-container');
+            const forgotWaTarget = document.getElementById('forgot-password-wa-target');
+            const forgotWaLink = document.getElementById('forgot-password-wa-link');
 
             const headerSection = document.getElementById('header-section');
 
@@ -285,6 +296,59 @@
                 }
             };
 
+            const showFeedback = function(type, message) {
+                if (!apiFeedback) {
+                    return;
+                }
+
+                apiFeedback.classList.remove('hidden', 'border-emerald-100', 'bg-emerald-50', 'text-emerald-700',
+                    'border-rose-100', 'bg-rose-50', 'text-rose-700');
+
+                if (type === 'success') {
+                    apiFeedback.classList.add('border', 'border-emerald-100', 'bg-emerald-50', 'text-emerald-700');
+                } else {
+                    apiFeedback.classList.add('border', 'border-rose-100', 'bg-rose-50', 'text-rose-700');
+                }
+
+                apiFeedback.textContent = message;
+            };
+
+            const hideFeedback = function() {
+                if (!apiFeedback) {
+                    return;
+                }
+
+                apiFeedback.classList.add('hidden');
+            };
+
+            const postJson = async function(url, payload) {
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken,
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                    credentials: 'same-origin',
+                    body: JSON.stringify(payload),
+                });
+
+                const data = await response.json().catch(function() {
+                    return {
+                        success: false,
+                        message: 'Terjadi kesalahan saat memproses permintaan.',
+                        data: null,
+                    };
+                });
+
+                if (!response.ok || data.success !== true) {
+                    throw new Error(data.message || 'Permintaan gagal diproses.');
+                }
+
+                return data;
+            };
+
             toggleButtons.forEach(function(button) {
                 button.addEventListener('click', function() {
                     const targetId = button.getAttribute('data-password-target');
@@ -316,6 +380,97 @@
 
             if (backToLoginToggle) {
                 backToLoginToggle.addEventListener('click', showLoginForm);
+            }
+
+            if (loginForm) {
+                loginForm.addEventListener('submit', async function(event) {
+                    event.preventDefault();
+                    hideFeedback();
+
+                    const username = document.getElementById('username')?.value || '';
+                    const password = document.getElementById('password')?.value || '';
+
+                    try {
+                        const result = await postJson('/api/v1/auth/login', {
+                            username,
+                            password,
+                        });
+
+                        showFeedback('success', result.message || 'Login berhasil.');
+
+                        const redirectUrl = result.data?.redirect_url || '/dashboard';
+                        window.location.assign(redirectUrl);
+                    } catch (error) {
+                        showFeedback('error', error.message || 'Username atau password tidak valid.');
+                    }
+                });
+            }
+
+            if (forgotRequestForm) {
+                forgotRequestForm.addEventListener('submit', async function(event) {
+                    event.preventDefault();
+                    hideFeedback();
+
+                    const forgotUsername = document.getElementById('forgot_username_request')?.value || '';
+
+                    try {
+                        const result = await postJson('/api/v1/auth/forgot-password/request', {
+                            forgot_username: forgotUsername,
+                        });
+
+                        const waTarget = result.data?.forgot_password_wa_target || '-';
+                        const waUrl = result.data?.forgot_password_wa_url || '#';
+
+                        if (forgotWaTarget) {
+                            forgotWaTarget.textContent = 'Kirim kode ke WhatsApp tujuan: ' + waTarget;
+                        }
+
+                        if (forgotWaLink) {
+                            forgotWaLink.setAttribute('href', waUrl);
+                        }
+
+                        if (forgotWaContainer) {
+                            forgotWaContainer.classList.remove('hidden');
+                        }
+
+                        const forgotResetUsername = document.getElementById('forgot_username_reset');
+                        if (forgotResetUsername) {
+                            forgotResetUsername.value = forgotUsername;
+                        }
+
+                        showFeedback('success', result.message || 'Kode verifikasi berhasil dibuat.');
+                    } catch (error) {
+                        showFeedback('error', error.message || 'Gagal membuat kode verifikasi.');
+                    }
+                });
+            }
+
+            if (forgotResetForm) {
+                forgotResetForm.addEventListener('submit', async function(event) {
+                    event.preventDefault();
+                    hideFeedback();
+
+                    const forgotUsername = document.getElementById('forgot_username_reset')?.value || '';
+                    const verificationCode = document.getElementById('verification_code')?.value || '';
+                    const password = document.getElementById('reset_password')?.value || '';
+                    const passwordConfirmation = document.getElementById('reset_password_confirmation')
+                        ?.value || '';
+
+                    try {
+                        const result = await postJson('/api/v1/auth/forgot-password/reset', {
+                            forgot_username: forgotUsername,
+                            verification_code: verificationCode,
+                            password,
+                            password_confirmation: passwordConfirmation,
+                        });
+
+                        showFeedback('success', result.message ||
+                            'Password berhasil direset. Silakan login menggunakan password baru.');
+                        showLoginForm();
+                    } catch (error) {
+                        showFeedback('error', error.message || 'Gagal reset password.');
+                    }
+                });
             }
         })();
     </script>

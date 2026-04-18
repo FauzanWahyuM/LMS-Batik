@@ -96,45 +96,30 @@
         </script>
     @endif
 
-    @if (session('success'))
-        <div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 px-4"
-            id="registration-success-modal">
-            <div class="w-full max-w-md rounded-2xl border border-emerald-200 bg-white p-6 shadow-2xl">
-                <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100">
-                    <svg class="h-7 w-7 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                </div>
-                <h2 class="mt-4 text-center text-xl font-bold text-slate-900">Pendaftaran Berhasil</h2>
-                <p class="mt-2 text-center text-sm leading-6 text-slate-600">{{ session('success') }}</p>
-                <div class="mt-6 flex justify-center">
-                    <button type="button" onclick="closeRegistrationSuccessModal()"
-                        class="rounded-lg bg-slate-900 px-5 py-2 text-sm font-semibold text-white hover:bg-slate-700">
-                        Tutup
-                    </button>
-                </div>
+    <div class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/70 px-4" id="registration-success-modal">
+        <div class="w-full max-w-md rounded-2xl border border-emerald-200 bg-white p-6 shadow-2xl">
+            <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100">
+                <svg class="h-7 w-7 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+            </div>
+            <h2 class="mt-4 text-center text-xl font-bold text-slate-900">Pendaftaran Berhasil</h2>
+            <p class="mt-2 text-center text-sm leading-6 text-slate-600" id="registration-success-message"></p>
+            <div class="mt-6 flex justify-center">
+                <button type="button" onclick="closeRegistrationSuccessModal()"
+                    class="rounded-lg bg-slate-900 px-5 py-2 text-sm font-semibold text-white hover:bg-slate-700">
+                    Tutup
+                </button>
             </div>
         </div>
-        <script>
-            window.addEventListener('DOMContentLoaded', function() {
-                setTimeout(function() {
-                    closeRegistrationSuccessModal();
-                }, 7000);
-            });
-
-            function closeRegistrationSuccessModal() {
-                var modal = document.getElementById('registration-success-modal');
-                if (modal) {
-                    modal.remove();
-                }
-            }
-        </script>
-    @endif
+    </div>
 
     <section class="py-16 bg-blue-900">
         {{-- Mengubah max-w-2xl menjadi max-w-4xl agar form lebih lebar --}}
         <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+
+            <div id="registration-api-feedback" class="mb-4 hidden rounded-md px-4 py-3 text-sm font-medium"></div>
 
             {{-- Wrapper Utama --}}
             <div class="rounded-xl shadow-2xl overflow-hidden flex flex-col">
@@ -160,8 +145,7 @@
                         {{-- Slide 1: Individu (Tambahkan ID panel-individu) --}}
                         <div class="slide-panel" id="panel-individu">
                             <div class="p-8 md:p-10">
-                                <form action="{{ route('landing.registration.individu') }}" method="POST"
-                                    id="form-individu">
+                                <form id="form-individu">
                                     @csrf
                                     <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
                                         <div class="md:col-span-2">
@@ -218,8 +202,7 @@
                         <div class="slide-panel" id="panel-kelompok">
                             <div class="p-8 md:p-10">
                                 <div class="kelompok-form-mobile-center">
-                                    <form action="{{ route('landing.registration.kelompok') }}" method="POST"
-                                        enctype="multipart/form-data" id="form-kelompok">
+                                    <form enctype="multipart/form-data" id="form-kelompok">
                                         @csrf
                                         <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
                                             <div class="md:col-span-2">
@@ -328,6 +311,44 @@
 @push('scripts')
     <script>
         let currentTab = 'individu';
+        let registrationSuccessTimer = null;
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+        const apiFeedback = document.getElementById('registration-api-feedback');
+        const successModal = document.getElementById('registration-success-modal');
+        const successMessage = document.getElementById('registration-success-message');
+        const initialSuccessMessage = @json(session('success'));
+
+        function closeRegistrationSuccessModal() {
+            if (!successModal) {
+                return;
+            }
+
+            successModal.classList.add('hidden');
+            successModal.classList.remove('flex');
+
+            if (registrationSuccessTimer) {
+                clearTimeout(registrationSuccessTimer);
+                registrationSuccessTimer = null;
+            }
+        }
+
+        function showRegistrationSuccessModal(message) {
+            if (!successModal || !successMessage) {
+                return;
+            }
+
+            successMessage.textContent = message || 'Pendaftaran berhasil dikirim.';
+            successModal.classList.remove('hidden');
+            successModal.classList.add('flex');
+
+            if (registrationSuccessTimer) {
+                clearTimeout(registrationSuccessTimer);
+            }
+
+            registrationSuccessTimer = setTimeout(function() {
+                closeRegistrationSuccessModal();
+            }, 7000);
+        }
 
         // Fungsi untuk menyesuaikan tinggi kotak agar tidak ada "space" kosong
         function updateHeight(tab) {
@@ -363,6 +384,10 @@
         // Jalankan penyesuaian tinggi saat halaman pertama kali diload
         window.addEventListener('DOMContentLoaded', () => {
             setTimeout(() => updateHeight('individu'), 50);
+
+            if (initialSuccessMessage) {
+                showRegistrationSuccessModal(initialSuccessMessage);
+            }
         });
 
         // Sesuaikan kembali tingginya jika layar diubah ukurannya (responsive)
@@ -403,6 +428,112 @@
             document.getElementById('upload-preview').classList.add('hidden');
             document.getElementById('upload-preview').classList.remove('flex');
             document.getElementById('upload-placeholder').classList.remove('hidden');
+        }
+
+        function setRegistrationFeedback(type, message) {
+            if (!apiFeedback) {
+                return;
+            }
+
+            apiFeedback.classList.remove('hidden', 'border', 'border-emerald-200', 'bg-emerald-50',
+                'text-emerald-700', 'border-rose-200', 'bg-rose-50', 'text-rose-700');
+
+            if (type === 'success') {
+                apiFeedback.classList.add('border', 'border-emerald-200', 'bg-emerald-50', 'text-emerald-700');
+            } else {
+                apiFeedback.classList.add('border', 'border-rose-200', 'bg-rose-50', 'text-rose-700');
+            }
+
+            apiFeedback.textContent = message;
+        }
+
+        async function submitRegistration(url, body, isFormData) {
+            const headers = {
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': csrfToken,
+                'X-Requested-With': 'XMLHttpRequest',
+            };
+
+            if (!isFormData) {
+                headers['Content-Type'] = 'application/json';
+            }
+
+            const response = await fetch(url, {
+                method: 'POST',
+                headers,
+                credentials: 'same-origin',
+                body: isFormData ? body : JSON.stringify(body),
+            });
+
+            const result = await response.json().catch(function() {
+                return {
+                    success: false,
+                    message: 'Permintaan pendaftaran gagal diproses.',
+                };
+            });
+
+            if (!response.ok || result.success !== true) {
+                throw new Error(result.message || 'Permintaan pendaftaran gagal diproses.');
+            }
+
+            return result;
+        }
+
+        const formIndividu = document.getElementById('form-individu');
+        if (formIndividu) {
+            formIndividu.addEventListener('submit', async function(event) {
+                event.preventDefault();
+
+                const formData = new FormData(formIndividu);
+                const payload = {
+                    nama_lengkap: formData.get('nama_lengkap') || '',
+                    email: formData.get('email') || '',
+                    no_handphone: formData.get('no_handphone') || '',
+                    alamat: formData.get('alamat') || '',
+                    pendidikan_terakhir: formData.get('pendidikan_terakhir') || '',
+                    motivasi: formData.get('motivasi') || '',
+                };
+
+                try {
+                    const result = await submitRegistration('/api/v1/registrations/individual', payload, false);
+                    setRegistrationFeedback('success', result.message ||
+                        'Pendaftaran individu berhasil dikirim. Kami akan menghubungi Anda segera.');
+                    showRegistrationSuccessModal(result.message ||
+                        'Pendaftaran individu berhasil dikirim. Kami akan menghubungi Anda segera.');
+                    formIndividu.reset();
+                    window.scrollTo({
+                        top: document.getElementById('registration-api-feedback')?.offsetTop || 0,
+                        behavior: 'smooth',
+                    });
+                } catch (error) {
+                    setRegistrationFeedback('error', error.message || 'Gagal mengirim pendaftaran individu.');
+                }
+            });
+        }
+
+        const formKelompok = document.getElementById('form-kelompok');
+        if (formKelompok) {
+            formKelompok.addEventListener('submit', async function(event) {
+                event.preventDefault();
+
+                const formData = new FormData(formKelompok);
+
+                try {
+                    const result = await submitRegistration('/api/v1/registrations/group', formData, true);
+                    setRegistrationFeedback('success', result.message ||
+                        'Pendaftaran kelompok berhasil dikirim. Kami akan menghubungi Anda segera.');
+                    showRegistrationSuccessModal(result.message ||
+                        'Pendaftaran kelompok berhasil dikirim. Kami akan menghubungi Anda segera.');
+                    formKelompok.reset();
+                    clearFile();
+                    window.scrollTo({
+                        top: document.getElementById('registration-api-feedback')?.offsetTop || 0,
+                        behavior: 'smooth',
+                    });
+                } catch (error) {
+                    setRegistrationFeedback('error', error.message || 'Gagal mengirim pendaftaran kelompok.');
+                }
+            });
         }
     </script>
 @endpush

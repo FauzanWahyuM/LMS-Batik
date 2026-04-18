@@ -15,6 +15,8 @@
             </div>
         @endif
 
+        <div id="testimonial-feedback" class="mt-4 hidden rounded-lg px-3 py-2 text-xs font-medium sm:text-sm"></div>
+
         <div class="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center">
             <form method="GET" action="{{ route('dashboard.manager.testimonials') }}"
                 class="flex w-full gap-2 flex-col sm:flex-row">
@@ -30,8 +32,7 @@
 
         <div id="create-testimonial-form" class="mt-4 hidden rounded-xl border border-slate-200 bg-slate-50 p-4">
             <h3 class="text-sm font-semibold text-slate-900">Tambah Testimoni</h3>
-            <form method="POST" action="{{ route('dashboard.manager.testimonials.store') }}"
-                class="mt-3 grid gap-3 sm:grid-cols-2">
+            <form id="create-testimonial-api-form" class="mt-3 grid gap-3 sm:grid-cols-2">
                 @csrf
                 <div>
                     <label class="mb-1 block text-xs font-semibold text-slate-600">Nama</label>
@@ -77,21 +78,17 @@
                         <div class="flex w-full flex-col gap-2 sm:w-32">
                             <button type="button" data-toggle="edit-{{ $testimonial->id }}"
                                 class="rounded-lg border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100">Edit</button>
-                            <form method="POST"
-                                action="{{ route('dashboard.manager.testimonials.delete', ['testimonial' => $testimonial->id]) }}">
-                                @csrf
-                                <button type="button" data-delete-name="{{ $testimonial->name }}"
-                                    class="delete-testimonial-btn w-full rounded-lg bg-rose-600 px-3 py-2 text-xs font-semibold text-white hover:bg-rose-700">Hapus</button>
-                            </form>
+                            <button type="button" data-delete-id="{{ $testimonial->id }}"
+                                data-delete-name="{{ $testimonial->name }}"
+                                class="delete-testimonial-btn w-full rounded-lg bg-rose-600 px-3 py-2 text-xs font-semibold text-white hover:bg-rose-700">Hapus</button>
                         </div>
                     </div>
 
                     <div id="edit-{{ $testimonial->id }}"
                         class="mt-4 hidden rounded-lg border border-slate-200 bg-white p-4">
                         <h4 class="mb-3 text-sm font-semibold text-slate-900">Edit Testimoni</h4>
-                        <form method="POST"
-                            action="{{ route('dashboard.manager.testimonials.edit', ['testimonial' => $testimonial->id]) }}"
-                            class="grid gap-3 sm:grid-cols-2">
+                        <form class="edit-testimonial-api-form grid gap-3 sm:grid-cols-2"
+                            data-testimonial-id="{{ $testimonial->id }}">
                             @csrf
                             <div>
                                 <label class="mb-1 block text-xs font-semibold text-slate-600">Nama</label>
@@ -179,8 +176,55 @@
             const cancelDeleteBtn = document.getElementById('cancel-delete-btn-testimonial');
             const modalTitle = document.getElementById('modal-title-testimonial');
             const modalMessage = document.getElementById('modal-message-testimonial');
+            const feedback = document.getElementById('testimonial-feedback');
+            const createApiForm = document.getElementById('create-testimonial-api-form');
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
 
-            let deleteForm = null;
+            let deleteId = null;
+
+            function setFeedback(type, message) {
+                if (!feedback) {
+                    return;
+                }
+
+                feedback.classList.remove('hidden', 'border-emerald-200', 'bg-emerald-50', 'text-emerald-700',
+                    'border-rose-200', 'bg-rose-50', 'text-rose-700');
+
+                if (type === 'success') {
+                    feedback.classList.add('border', 'border-emerald-200', 'bg-emerald-50', 'text-emerald-700');
+                } else {
+                    feedback.classList.add('border', 'border-rose-200', 'bg-rose-50', 'text-rose-700');
+                }
+
+                feedback.textContent = message;
+            }
+
+            async function requestApi(url, method, payload) {
+                const response = await fetch(url, {
+                    method,
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken,
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                    credentials: 'same-origin',
+                    body: payload ? JSON.stringify(payload) : null,
+                });
+
+                const result = await response.json().catch(function() {
+                    return {
+                        success: false,
+                        message: 'Permintaan gagal diproses.',
+                    };
+                });
+
+                if (!response.ok || result.success !== true) {
+                    throw new Error(result.message || 'Permintaan gagal diproses.');
+                }
+
+                return result;
+            }
 
             if (openButton && createForm) {
                 openButton.addEventListener('click', function() {
@@ -204,7 +248,7 @@
                 });
             });
 
-            function showModal(name, form) {
+            function showModal(name, testimonialId) {
                 if (!modal || !modalTitle || !modalMessage) {
                     return;
                 }
@@ -212,7 +256,7 @@
                 modalTitle.textContent = `Hapus Testimoni: ${name}`;
                 modalMessage.textContent =
                     `Apakah Anda yakin ingin menghapus testimoni dari "${name}"? Tindakan ini tidak dapat dibatalkan.`;
-                deleteForm = form;
+                deleteId = testimonialId;
                 modal.classList.remove('hidden');
                 document.body.classList.add('overflow-hidden');
             }
@@ -224,24 +268,35 @@
 
                 modal.classList.add('hidden');
                 document.body.classList.remove('overflow-hidden');
-                deleteForm = null;
+                deleteId = null;
             }
 
             document.querySelectorAll('.delete-testimonial-btn').forEach(function(button) {
                 button.addEventListener('click', function() {
                     const name = button.getAttribute('data-delete-name') || 'ini';
-                    const form = button.closest('form');
+                    const testimonialId = button.getAttribute('data-delete-id');
 
-                    if (form) {
-                        showModal(name, form);
+                    if (testimonialId) {
+                        showModal(name, testimonialId);
                     }
                 });
             });
 
             if (confirmBtn) {
-                confirmBtn.addEventListener('click', function() {
-                    if (deleteForm) {
-                        deleteForm.submit();
+                confirmBtn.addEventListener('click', async function() {
+                    if (!deleteId) {
+                        return;
+                    }
+
+                    try {
+                        const result = await requestApi(`/api/v1/manager/testimonials/${deleteId}`,
+                            'DELETE');
+                        setFeedback('success', result.message || 'Testimoni berhasil dihapus.');
+                        hideModal();
+                        window.location.reload();
+                    } catch (error) {
+                        setFeedback('error', error.message || 'Gagal menghapus testimoni.');
+                        hideModal();
                     }
                 });
             }
@@ -262,6 +317,57 @@
                 if (event.key === 'Escape' && modal && !modal.classList.contains('hidden')) {
                     hideModal();
                 }
+            });
+
+            if (createApiForm) {
+                createApiForm.addEventListener('submit', async function(event) {
+                    event.preventDefault();
+
+                    const formData = new FormData(createApiForm);
+                    const payload = {
+                        name: formData.get('name') || '',
+                        role_label: formData.get('role_label') || null,
+                        quote: formData.get('quote') || '',
+                        is_active: formData.get('is_active') === '1',
+                    };
+
+                    try {
+                        const result = await requestApi('/api/v1/manager/testimonials', 'POST', payload);
+                        setFeedback('success', result.message || 'Testimoni berhasil ditambahkan.');
+                        window.location.reload();
+                    } catch (error) {
+                        setFeedback('error', error.message || 'Gagal menambahkan testimoni.');
+                    }
+                });
+            }
+
+            document.querySelectorAll('.edit-testimonial-api-form').forEach(function(form) {
+                form.addEventListener('submit', async function(event) {
+                    event.preventDefault();
+
+                    const testimonialId = form.getAttribute('data-testimonial-id');
+                    if (!testimonialId) {
+                        return;
+                    }
+
+                    const formData = new FormData(form);
+                    const payload = {
+                        name: formData.get('name') || '',
+                        role_label: formData.get('role_label') || null,
+                        quote: formData.get('quote') || '',
+                        is_active: formData.get('is_active') === '1',
+                    };
+
+                    try {
+                        const result = await requestApi(
+                            `/api/v1/manager/testimonials/${testimonialId}`, 'PUT',
+                            payload);
+                        setFeedback('success', result.message || 'Testimoni berhasil diperbarui.');
+                        window.location.reload();
+                    } catch (error) {
+                        setFeedback('error', error.message || 'Gagal memperbarui testimoni.');
+                    }
+                });
             });
         })();
     </script>

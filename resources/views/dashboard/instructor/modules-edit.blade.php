@@ -157,22 +157,6 @@
                     @endif
                 </div>
 
-                <div class="rounded-xl border border-slate-200 bg-slate-50 p-6">
-                    <div class="mb-4 flex items-center justify-between gap-3">
-                        <h3 class="text-base font-bold text-slate-900">Diskusi Modul</h3>
-                        <span class="text-xs text-slate-500">{{ count($moduleDiscussions ?? []) }} pertanyaan</span>
-                    </div>
-                    @include('forum.module-discussions-list', [
-                        'discussions' => $moduleDiscussions ?? collect(),
-                        'user' => $user ?? [],
-                        'moduleContext' => true,
-                        'showModuleFilter' => false,
-                        'moduleSlug' => $module['slug'] ?? '',
-                        'moduleTitle' => $module['title'] ?? null,
-                        'selectedModuleSlug' => $module['slug'] ?? '',
-                    ])
-                </div>
-
                 <!-- Action Buttons -->
                 <div class="flex flex-col gap-3 sm:flex-row pt-4">
                     <button type="submit"
@@ -185,6 +169,22 @@
                     </a>
                 </div>
             </form>
+
+            <div class="mt-6 rounded-xl border border-slate-200 bg-slate-50 p-6">
+                <div class="mb-4 flex items-center justify-between gap-3">
+                    <h3 class="text-base font-bold text-slate-900">Diskusi Modul</h3>
+                    <span class="text-xs text-slate-500">{{ count($moduleDiscussions ?? []) }} pertanyaan</span>
+                </div>
+                @include('forum.module-discussions-list', [
+                    'discussions' => $moduleDiscussions ?? collect(),
+                    'user' => $user ?? [],
+                    'moduleContext' => true,
+                    'showModuleFilter' => false,
+                    'moduleSlug' => $module['slug'] ?? '',
+                    'moduleTitle' => $module['title'] ?? null,
+                    'selectedModuleSlug' => $module['slug'] ?? '',
+                ])
+            </div>
         </section>
     </div>
 

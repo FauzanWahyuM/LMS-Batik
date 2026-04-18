@@ -260,10 +260,9 @@
                                     <div class="mt-2 text-sm text-slate-600">{{ $assignment->assignment }}</div>
                                 @endif
 
-                                <form
-                                    action="{{ route('dashboard.participant.modules.tasks.upload', ['module' => $moduleSlug]) }}"
-                                    method="POST" enctype="multipart/form-data"
-                                    class="mt-4 rounded-lg border border-slate-300 bg-slate-50 p-4">
+                                <form method="POST" enctype="multipart/form-data"
+                                    class="assignment-upload-form mt-4 rounded-lg border border-slate-300 bg-slate-50 p-4"
+                                    data-api-url="{{ route('api.v1.participant.modules.assignments.upload', ['moduleSlug' => $moduleSlug]) }}">
                                     @csrf
                                     <input type="hidden" name="material_slug" value="{{ $assignment->slug }}">
 
@@ -273,9 +272,11 @@
                                     <p class="mt-2 text-xs text-slate-500">Format: PDF, DOC, DOCX, PPT, PPTX, JPG, PNG, ZIP,
                                         RAR. Maksimal 10MB.</p>
 
+                                    <p class="assignment-upload-feedback mt-3 hidden text-xs font-medium"></p>
+
                                     <div class="mt-4 flex justify-end">
                                         <button type="submit"
-                                            class="rounded-full bg-black px-5 py-2 text-xs sm:text-sm font-semibold text-white transition hover:bg-slate-800">
+                                            class="assignment-upload-submit rounded-full bg-black px-5 py-2 text-xs sm:text-sm font-semibold text-white transition hover:bg-slate-800">
                                             Kirim Tugas
                                         </button>
                                     </div>
@@ -521,6 +522,72 @@
             await submitProgressAction(url);
 
             this.disabled = false;
+        });
+
+        function setAssignmentFeedback(form, type, message) {
+            const feedback = form.querySelector('.assignment-upload-feedback');
+            if (!feedback) {
+                return;
+            }
+
+            feedback.classList.remove('hidden', 'text-emerald-700', 'text-rose-700');
+            feedback.classList.add(type === 'success' ? 'text-emerald-700' : 'text-rose-700');
+            feedback.textContent = message;
+        }
+
+        document.querySelectorAll('.assignment-upload-form').forEach(function(form) {
+            form.addEventListener('submit', async function(event) {
+                event.preventDefault();
+
+                const apiUrl = form.dataset.apiUrl;
+                const submitButton = form.querySelector('.assignment-upload-submit');
+                const formData = new FormData(form);
+
+                if (!apiUrl) {
+                    setAssignmentFeedback(form, 'error', 'Endpoint upload tidak ditemukan.');
+                    return;
+                }
+
+                if (submitButton) {
+                    submitButton.disabled = true;
+                    submitButton.textContent = 'Mengirim...';
+                }
+
+                try {
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Accept': 'application/json',
+                            'X-CSRF-TOKEN': csrfToken,
+                            'X-Requested-With': 'XMLHttpRequest',
+                        },
+                        credentials: 'same-origin',
+                        body: formData,
+                    });
+
+                    const result = await response.json().catch(function() {
+                        return {
+                            success: false,
+                            message: 'Gagal mengunggah tugas.',
+                        };
+                    });
+
+                    if (!response.ok || result.success !== true) {
+                        throw new Error(result.message || 'Gagal mengunggah tugas.');
+                    }
+
+                    setAssignmentFeedback(form, 'success', result.message ||
+                    'Tugas berhasil diunggah.');
+                    window.location.reload();
+                } catch (error) {
+                    setAssignmentFeedback(form, 'error', error.message || 'Gagal mengunggah tugas.');
+                } finally {
+                    if (submitButton) {
+                        submitButton.disabled = false;
+                        submitButton.textContent = 'Kirim Tugas';
+                    }
+                }
+            });
         });
 
         refreshProgress();
