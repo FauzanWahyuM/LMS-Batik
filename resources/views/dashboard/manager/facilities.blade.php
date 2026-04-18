@@ -76,11 +76,10 @@
                             <button type="button" data-toggle="edit-{{ $facility->id }}"
                                 class="rounded-lg border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100">Edit</button>
                             <form method="POST"
-                                action="{{ route('dashboard.manager.facilities.delete', ['facility' => $facility->id]) }}"
-                                onsubmit="return confirm('Hapus fasilitas ini?')">
+                                action="{{ route('dashboard.manager.facilities.delete', ['facility' => $facility->id]) }}">
                                 @csrf
-                                <button type="submit"
-                                    class="w-full rounded-lg bg-rose-600 px-3 py-2 text-xs font-semibold text-white hover:bg-rose-700">Hapus</button>
+                                <button type="button" data-delete-name="{{ $facility->name }}"
+                                    class="delete-facility-btn w-full rounded-lg bg-rose-600 px-3 py-2 text-xs font-semibold text-white hover:bg-rose-700">Hapus</button>
                             </form>
                         </div>
                     </div>
@@ -122,11 +121,59 @@
         </div>
     </section>
 
+    <div id="delete-modal-facility" class="fixed inset-0 z-50 hidden overflow-y-auto">
+        <div class="flex min-h-screen items-center justify-center px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+            <div class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm transition-opacity" id="modal-backdrop-facility">
+            </div>
+
+            <div
+                class="inline-block transform overflow-hidden rounded-2xl bg-white px-4 pt-5 pb-4 text-left align-bottom shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg sm:p-6 sm:align-middle">
+                <div class="sm:flex sm:items-start">
+                    <div
+                        class="mx-auto flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-red-100 sm:mx-0 sm:h-10 sm:w-10">
+                        <svg class="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                    </div>
+                    <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
+                        <h3 class="text-lg font-semibold leading-6 text-slate-900" id="modal-title-facility">
+                            Hapus Fasilitas
+                        </h3>
+                        <div class="mt-2">
+                            <p class="text-sm text-slate-500" id="modal-message-facility">
+                                Apakah Anda yakin ingin menghapus data fasilitas ini? Tindakan ini tidak dapat dibatalkan.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-5 sm:mt-4 sm:flex sm:flex-row-reverse sm:gap-3">
+                    <button type="button" id="confirm-delete-btn-facility"
+                        class="inline-flex w-full justify-center rounded-lg bg-red-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 sm:w-auto">
+                        Hapus
+                    </button>
+                    <button type="button" id="cancel-delete-btn-facility"
+                        class="mt-3 inline-flex w-full justify-center rounded-lg bg-white px-3 py-2 text-sm font-semibold text-slate-900 shadow-sm ring-1 ring-inset ring-slate-300 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 sm:mt-0 sm:w-auto">
+                        Batal
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
         (function() {
             const openButton = document.getElementById('open-create-facility');
             const cancelButton = document.getElementById('cancel-create-facility');
             const createForm = document.getElementById('create-facility-form');
+            const modal = document.getElementById('delete-modal-facility');
+            const backdrop = document.getElementById('modal-backdrop-facility');
+            const confirmBtn = document.getElementById('confirm-delete-btn-facility');
+            const cancelDeleteBtn = document.getElementById('cancel-delete-btn-facility');
+            const modalTitle = document.getElementById('modal-title-facility');
+            const modalMessage = document.getElementById('modal-message-facility');
+
+            let deleteForm = null;
 
             if (openButton && createForm) {
                 openButton.addEventListener('click', function() {
@@ -148,6 +195,66 @@
                         target.classList.toggle('hidden');
                     }
                 });
+            });
+
+            function showModal(name, form) {
+                if (!modal || !modalTitle || !modalMessage) {
+                    return;
+                }
+
+                modalTitle.textContent = `Hapus Fasilitas: ${name}`;
+                modalMessage.textContent =
+                    `Apakah Anda yakin ingin menghapus fasilitas "${name}"? Tindakan ini tidak dapat dibatalkan.`;
+                deleteForm = form;
+                modal.classList.remove('hidden');
+                document.body.classList.add('overflow-hidden');
+            }
+
+            function hideModal() {
+                if (!modal) {
+                    return;
+                }
+
+                modal.classList.add('hidden');
+                document.body.classList.remove('overflow-hidden');
+                deleteForm = null;
+            }
+
+            document.querySelectorAll('.delete-facility-btn').forEach(function(button) {
+                button.addEventListener('click', function() {
+                    const name = button.getAttribute('data-delete-name') || 'ini';
+                    const form = button.closest('form');
+
+                    if (form) {
+                        showModal(name, form);
+                    }
+                });
+            });
+
+            if (confirmBtn) {
+                confirmBtn.addEventListener('click', function() {
+                    if (deleteForm) {
+                        deleteForm.submit();
+                    }
+                });
+            }
+
+            if (cancelDeleteBtn) {
+                cancelDeleteBtn.addEventListener('click', function() {
+                    hideModal();
+                });
+            }
+
+            if (backdrop) {
+                backdrop.addEventListener('click', function() {
+                    hideModal();
+                });
+            }
+
+            document.addEventListener('keydown', function(event) {
+                if (event.key === 'Escape' && modal && !modal.classList.contains('hidden')) {
+                    hideModal();
+                }
             });
         })();
     </script>

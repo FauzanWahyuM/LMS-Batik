@@ -41,6 +41,23 @@
         .slide-panel {
             min-width: 100%;
             flex-shrink: 0;
+            overflow-x: hidden;
+        }
+
+        @media (max-width: 767px) {
+            #panel-kelompok>.p-8 {
+                padding-left: 1rem;
+                padding-right: 1rem;
+            }
+
+            .kelompok-form-mobile-center {
+                width: calc(100% - 0.5rem);
+                max-width: 36rem;
+                margin-left: auto;
+                margin-right: auto;
+                padding-left: 0.25rem;
+                padding-right: 0.25rem;
+            }
         }
     </style>
 @endpush
@@ -200,98 +217,102 @@
                         {{-- Slide 2: Kelompok (Tambahkan ID panel-kelompok) --}}
                         <div class="slide-panel" id="panel-kelompok">
                             <div class="p-8 md:p-10">
-                                <form action="{{ route('landing.registration.kelompok') }}" method="POST"
-                                    enctype="multipart/form-data" id="form-kelompok">
-                                    @csrf
-                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
-                                        <div class="md:col-span-2">
-                                            <label class="block text-sm font-medium text-white mb-1">Nama
-                                                Lembaga/Kelompok</label>
-                                            <input type="text" name="nama_lembaga"
-                                                placeholder="Nama Lembaga atau Kelompok"
-                                                class="w-full border border-gray-300 text-gray-900 rounded-md px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent transition"
-                                                required>
-                                        </div>
-                                        <div class="md:col-span-2">
-                                            <label class="block text-sm font-medium text-white mb-1">Alamat PIC</label>
-                                            <input type="text" name="alamat_pic" placeholder="Alamat Lengkap PIC"
-                                                class="w-full border border-gray-300 text-gray-900 rounded-md px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent transition"
-                                                required>
-                                        </div>
-                                        <div>
-                                            <label class="block text-sm font-medium text-white mb-1">Email PIC</label>
-                                            <input type="email" name="email_pic" placeholder="email@lembaga.com"
-                                                class="w-full border border-gray-300 text-gray-900 rounded-md px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent transition"
-                                                required>
-                                        </div>
-                                        <div>
-                                            <label class="block text-sm font-medium text-white mb-1">No. Handphone
-                                                PIC</label>
-                                            <input type="tel" name="no_handphone_pic"
-                                                placeholder="08xxxxxxxxxx | No. Handphone PIC"
-                                                class="w-full border border-gray-300 text-gray-900 rounded-md px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent transition"
-                                                required>
-                                        </div>
-                                        <div>
-                                            <label class="block text-sm font-medium text-white mb-1">Nama PIC</label>
-                                            <input type="text" name="nama_pic"
-                                                placeholder="Nama PIC (Person in Charge)"
-                                                class="w-full border border-gray-300 text-gray-900 rounded-md px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent transition"
-                                                required>
-                                        </div>
-                                        <div>
-                                            <label class="block text-sm font-medium text-white mb-1">Jumlah Peserta</label>
-                                            <input type="number" name="jumlah_peserta" placeholder="Jumlah Peserta"
-                                                min="1"
-                                                class="w-full border border-gray-300 text-gray-900 rounded-md px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent transition"
-                                                required>
-                                        </div>
-                                        <div class="md:col-span-2">
-                                            <label class="block text-sm font-medium text-white mb-1">Upload surat resmi
-                                                <span class="text-gray-300 font-normal">(opsional!)</span></label>
-                                            <div class="border-2 border-dashed border-white/50 bg-white rounded-md p-6 text-center hover:border-amber-400 transition cursor-pointer relative"
-                                                id="drop-zone"
-                                                ondragover="event.preventDefault(); this.classList.add('border-amber-500','bg-amber-50')"
-                                                ondragleave="this.classList.remove('border-amber-500','bg-amber-50')"
-                                                ondrop="handleDrop(event)">
-                                                <input type="file" name="surat_resmi" id="surat-input"
-                                                    accept=".pdf,.jpg,.jpeg,.png"
-                                                    class="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                                                    onchange="handleFileChange(this)">
-                                                <div id="upload-placeholder">
-                                                    <svg class="mx-auto h-10 w-10 text-gray-400 mb-2" fill="none"
-                                                        stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round"
-                                                            stroke-width="1.5"
-                                                            d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                                                    </svg>
-                                                    <p class="text-xs text-gray-500">Seret & lepas file di sini, atau klik
-                                                        untuk memilih</p>
-                                                    <p class="text-xs text-gray-400 mt-1">PDF, JPG, PNG (maks. 5MB)</p>
-                                                </div>
-                                                <div id="upload-preview"
-                                                    class="hidden items-center justify-center space-x-2">
-                                                    <svg class="h-5 w-5 text-amber-500" fill="none"
-                                                        stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round"
-                                                            stroke-width="2"
-                                                            d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                                    </svg>
-                                                    <span id="file-name"
-                                                        class="text-sm text-gray-700 truncate max-w-xs"></span>
-                                                    <button type="button" onclick="clearFile()"
-                                                        class="text-red-500 hover:text-red-700 ml-1 text-xs font-bold">Hapus</button>
+                                <div class="kelompok-form-mobile-center">
+                                    <form action="{{ route('landing.registration.kelompok') }}" method="POST"
+                                        enctype="multipart/form-data" id="form-kelompok">
+                                        @csrf
+                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                            <div class="md:col-span-2">
+                                                <label class="block text-sm font-medium text-white mb-1">Nama
+                                                    Lembaga/Kelompok</label>
+                                                <input type="text" name="nama_lembaga"
+                                                    placeholder="Nama Lembaga atau Kelompok"
+                                                    class="w-full border border-gray-300 text-gray-900 rounded-md px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent transition"
+                                                    required>
+                                            </div>
+                                            <div class="md:col-span-2">
+                                                <label class="block text-sm font-medium text-white mb-1">Alamat PIC</label>
+                                                <input type="text" name="alamat_pic" placeholder="Alamat Lengkap PIC"
+                                                    class="w-full border border-gray-300 text-gray-900 rounded-md px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent transition"
+                                                    required>
+                                            </div>
+                                            <div>
+                                                <label class="block text-sm font-medium text-white mb-1">Email PIC</label>
+                                                <input type="email" name="email_pic" placeholder="email@lembaga.com"
+                                                    class="w-full border border-gray-300 text-gray-900 rounded-md px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent transition"
+                                                    required>
+                                            </div>
+                                            <div>
+                                                <label class="block text-sm font-medium text-white mb-1">No. Handphone
+                                                    PIC</label>
+                                                <input type="tel" name="no_handphone_pic"
+                                                    placeholder="08xxxxxxxxxx | No. Handphone PIC"
+                                                    class="w-full border border-gray-300 text-gray-900 rounded-md px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent transition"
+                                                    required>
+                                            </div>
+                                            <div>
+                                                <label class="block text-sm font-medium text-white mb-1">Nama PIC</label>
+                                                <input type="text" name="nama_pic"
+                                                    placeholder="Nama PIC (Person in Charge)"
+                                                    class="w-full border border-gray-300 text-gray-900 rounded-md px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent transition"
+                                                    required>
+                                            </div>
+                                            <div>
+                                                <label class="block text-sm font-medium text-white mb-1">Jumlah
+                                                    Peserta</label>
+                                                <input type="number" name="jumlah_peserta" placeholder="Jumlah Peserta"
+                                                    min="1"
+                                                    class="w-full border border-gray-300 text-gray-900 rounded-md px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent transition"
+                                                    required>
+                                            </div>
+                                            <div class="md:col-span-2">
+                                                <label class="block text-sm font-medium text-white mb-1">Upload surat resmi
+                                                    <span class="text-gray-300 font-normal">(opsional!)</span></label>
+                                                <div class="border-2 border-dashed border-white/50 bg-white rounded-md p-6 text-center hover:border-amber-400 transition cursor-pointer relative"
+                                                    id="drop-zone"
+                                                    ondragover="event.preventDefault(); this.classList.add('border-amber-500','bg-amber-50')"
+                                                    ondragleave="this.classList.remove('border-amber-500','bg-amber-50')"
+                                                    ondrop="handleDrop(event)">
+                                                    <input type="file" name="surat_resmi" id="surat-input"
+                                                        accept=".pdf,.jpg,.jpeg,.png"
+                                                        class="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                                        onchange="handleFileChange(this)">
+                                                    <div id="upload-placeholder">
+                                                        <svg class="mx-auto h-10 w-10 text-gray-400 mb-2" fill="none"
+                                                            stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round"
+                                                                stroke-width="1.5"
+                                                                d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                                                        </svg>
+                                                        <p class="text-xs text-gray-500">Seret & lepas file di sini, atau
+                                                            klik
+                                                            untuk memilih</p>
+                                                        <p class="text-xs text-gray-400 mt-1">PDF, JPG, PNG (maks. 5MB)</p>
+                                                    </div>
+                                                    <div id="upload-preview"
+                                                        class="hidden items-center justify-center space-x-2">
+                                                        <svg class="h-5 w-5 text-amber-500" fill="none"
+                                                            stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round"
+                                                                stroke-width="2"
+                                                                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                        </svg>
+                                                        <span id="file-name"
+                                                            class="text-sm text-gray-700 truncate max-w-xs"></span>
+                                                        <button type="button" onclick="clearFile()"
+                                                            class="text-red-500 hover:text-red-700 ml-1 text-xs font-bold">Hapus</button>
+                                                    </div>
                                                 </div>
                                             </div>
+                                            <div class="md:col-span-2 pt-2">
+                                                <button type="submit"
+                                                    class="w-full bg-amber-500 hover:bg-amber-400 text-amber-950 font-bold py-3 rounded-md transition duration-300 text-sm tracking-wide shadow-md">
+                                                    Daftar Sekarang
+                                                </button>
+                                            </div>
                                         </div>
-                                        <div class="md:col-span-2 pt-2">
-                                            <button type="submit"
-                                                class="w-full bg-amber-500 hover:bg-amber-400 text-amber-950 font-bold py-3 rounded-md transition duration-300 text-sm tracking-wide shadow-md">
-                                                Daftar Sekarang
-                                            </button>
-                                        </div>
-                                    </div>
-                                </form>
+                                    </form>
+                                </div>
                             </div>
                         </div>
 
