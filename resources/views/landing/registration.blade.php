@@ -4,10 +4,22 @@
 
 @push('styles')
     <style>
+        /* Mobile-first responsive registration form */
+        .registration-wrapper {
+            width: 100%;
+            overflow-x: hidden;
+            box-sizing: border-box;
+        }
+
         /* Latar belakang kontainer tab (dibuat lebih gelap dari form agar kontras) */
         .tab-slider-bg {
             background-color: #78350f;
             /* amber-900 */
+            display: flex;
+            gap: 0.375rem;
+            padding: 0.375rem;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
         }
 
         /* Tombol tab yang aktif warnanya sama dengan warna form */
@@ -15,6 +27,8 @@
             background-color: #92400e;
             /* amber-800 */
             color: #fff;
+            white-space: nowrap;
+            flex-shrink: 0;
         }
 
         /* Tombol tab yang tidak aktif */
@@ -22,12 +36,17 @@
             background-color: transparent;
             color: #d1d5db;
             /* gray-300 */
+            white-space: nowrap;
+            flex-shrink: 0;
         }
 
         /* Form dibuat sewarna dengan tab yang aktif dan tanpa garis tepi (menyatu) */
         .form-card-bg {
             background-color: #92400e;
             /* amber-800 */
+            width: 100%;
+            box-sizing: border-box;
+            overflow-x: hidden;
         }
 
         .slider-track {
@@ -36,27 +55,93 @@
             /* Mencegah form yang pendek ikut memanjang */
             transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1), height 0.4s cubic-bezier(0.4, 0, 0.2, 1);
             will-change: transform, height;
+            width: 100%;
+            box-sizing: border-box;
         }
 
         .slide-panel {
             min-width: 100%;
             flex-shrink: 0;
             overflow-x: hidden;
+            box-sizing: border-box;
+            width: 100%;
+        }
+
+        .slide-panel>div {
+            box-sizing: border-box;
+            width: 100%;
+            max-width: 100%;
+            overflow-x: hidden;
+        }
+
+        .slide-panel input,
+        .slide-panel textarea,
+        .slide-panel select {
+            box-sizing: border-box;
+            max-width: 100%;
+        }
+
+        .kelompok-form-mobile-center {
+            width: 100%;
+            max-width: 100%;
+            box-sizing: border-box;
+        }
+
+        @media (max-width: 480px) {
+            .tab-slider-bg {
+                gap: 0.25rem;
+                padding: 0.25rem;
+            }
+
+            .tab-slider-bg button {
+                padding: 0.5rem 0.625rem;
+                font-size: 0.75rem;
+            }
+
+            .slide-panel>div {
+                padding: 0.75rem !important;
+            }
+
+            .slide-panel .grid {
+                gap: 0.625rem !important;
+            }
+
+            .slide-panel input,
+            .slide-panel textarea {
+                font-size: 0.8rem;
+                padding: 0.5rem 0.625rem;
+                min-height: 36px;
+            }
         }
 
         @media (max-width: 767px) {
+            .slide-panel>div {
+                padding: 0.875rem !important;
+            }
+
+            .slide-panel .grid {
+                gap: 0.75rem !important;
+            }
+
+            .slide-panel input,
+            .slide-panel textarea {
+                font-size: 0.85rem;
+                padding: 0.55rem 0.75rem;
+                min-height: 38px;
+            }
+
             #panel-kelompok>.p-8 {
-                padding-left: 1rem;
-                padding-right: 1rem;
+                padding-left: 0.875rem !important;
+                padding-right: 0.875rem !important;
             }
 
             .kelompok-form-mobile-center {
-                width: calc(100% - 0.5rem);
-                max-width: 36rem;
+                width: 100%;
+                max-width: 100%;
                 margin-left: auto;
                 margin-right: auto;
-                padding-left: 0.25rem;
-                padding-right: 0.25rem;
+                padding-left: 0;
+                padding-right: 0;
             }
         }
     </style>
@@ -117,22 +202,22 @@
 
     <section class="py-16 bg-blue-900">
         {{-- Mengubah max-w-2xl menjadi max-w-4xl agar form lebih lebar --}}
-        <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="max-w-4xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8">
 
             <div id="registration-api-feedback" class="mb-4 hidden rounded-md px-4 py-3 text-sm font-medium"></div>
 
             {{-- Wrapper Utama --}}
-            <div class="rounded-xl shadow-2xl overflow-hidden flex flex-col">
+            <div class="registration-wrapper rounded-xl shadow-2xl overflow-hidden flex flex-col">
 
                 {{-- Tab Switcher --}}
-                <div class="tab-slider-bg p-1.5 flex z-10">
+                <div class="tab-slider-bg z-10">
                     <button id="tab-individu" onclick="switchTab('individu')"
-                        class="flex-1 py-3 px-4 rounded-md text-sm font-semibold transition-all duration-300 tab-btn-active"
+                        class="flex-1 min-w-0 py-2.5 md:py-3 px-3 md:px-4 rounded-md text-xs md:text-sm font-semibold transition-all duration-300 tab-btn-active"
                         style="font-family: 'Poppins', sans-serif;">
                         Program Individu
                     </button>
                     <button id="tab-kelompok" onclick="switchTab('kelompok')"
-                        class="flex-1 py-3 px-4 rounded-md text-sm font-semibold transition-all duration-300 tab-btn-inactive"
+                        class="flex-1 min-w-0 py-2.5 md:py-3 px-3 md:px-4 rounded-md text-xs md:text-sm font-semibold transition-all duration-300 tab-btn-inactive"
                         style="font-family: 'Poppins', sans-serif;">
                         Program Kelompok
                     </button>
@@ -144,10 +229,10 @@
 
                         {{-- Slide 1: Individu (Tambahkan ID panel-individu) --}}
                         <div class="slide-panel" id="panel-individu">
-                            <div class="p-8 md:p-10">
-                                <form id="form-individu">
+                            <div class="p-4 sm:p-6 md:p-8 lg:p-10 w-full box-border">
+                                <form id="form-individu" class="w-full">
                                     @csrf
-                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4 lg:gap-5">
                                         <div class="md:col-span-2">
                                             <label class="block text-sm font-medium text-white mb-1">Nama Lengkap</label>
                                             <input type="text" name="nama_lengkap" placeholder="Nama Lengkap Anda"
@@ -200,11 +285,11 @@
 
                         {{-- Slide 2: Kelompok (Tambahkan ID panel-kelompok) --}}
                         <div class="slide-panel" id="panel-kelompok">
-                            <div class="p-8 md:p-10">
-                                <div class="kelompok-form-mobile-center">
-                                    <form enctype="multipart/form-data" id="form-kelompok">
+                            <div class="p-4 sm:p-6 md:p-8 lg:p-10 w-full box-border">
+                                <div class="kelompok-form-mobile-center w-full">
+                                    <form enctype="multipart/form-data" id="form-kelompok" class="w-full">
                                         @csrf
-                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4 lg:gap-5">
                                             <div class="md:col-span-2">
                                                 <label class="block text-sm font-medium text-white mb-1">Nama
                                                     Lembaga/Kelompok</label>
@@ -251,7 +336,7 @@
                                             <div class="md:col-span-2">
                                                 <label class="block text-sm font-medium text-white mb-1">Upload surat resmi
                                                     <span class="text-gray-300 font-normal">(opsional!)</span></label>
-                                                <div class="border-2 border-dashed border-white/50 bg-white rounded-md p-6 text-center hover:border-amber-400 transition cursor-pointer relative"
+                                                <div class="border-2 border-dashed border-white/50 bg-white rounded-md p-3 sm:p-4 md:p-6 text-center hover:border-amber-400 transition cursor-pointer relative overflow-hidden"
                                                     id="drop-zone"
                                                     ondragover="event.preventDefault(); this.classList.add('border-amber-500','bg-amber-50')"
                                                     ondragleave="this.classList.remove('border-amber-500','bg-amber-50')"
