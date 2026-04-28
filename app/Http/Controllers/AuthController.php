@@ -484,13 +484,27 @@ class AuthController extends Controller
         }
 
         $pendingParticipants = $this->getManagerPendingIndividualValidations();
+        $pendingPerPage = 5;
+        $pendingCurrentPage = max(1, (int) $request->query('pending_page', 1));
+        $pendingPageItems = array_slice($pendingParticipants, ($pendingCurrentPage - 1) * $pendingPerPage, $pendingPerPage);
+        $pendingParticipantsPaginator = new LengthAwarePaginator(
+            $pendingPageItems,
+            count($pendingParticipants),
+            $pendingPerPage,
+            $pendingCurrentPage,
+            [
+                'path' => $request->url(),
+                'query' => $request->query(),
+                'pageName' => 'pending_page',
+            ]
+        );
         $managedParticipants = $this->getManagerIndividualParticipants();
 
         return view('dashboard.manager.participants-individual', [
             'user' => $request->session()->get('auth_user'),
             'dashboard' => $this->getManagerDashboardConfig('participants-individual'),
             'participants' => $managedParticipants,
-            'pendingParticipants' => $pendingParticipants,
+            'pendingParticipantsPaginator' => $pendingParticipantsPaginator,
             'generatedCredential' => $request->session()->get('manager_generated_credential'),
         ]);
     }
@@ -675,6 +689,20 @@ class AuthController extends Controller
         $pendingGroups = array_values(array_filter($pendingGroups, function (array $group) use ($sentGroupIds): bool {
             return !in_array($group['id'], $sentGroupIds, true);
         }));
+        $pendingPerPage = 5;
+        $pendingCurrentPage = max(1, (int) $request->query('pending_page', 1));
+        $pendingPageItems = array_slice($pendingGroups, ($pendingCurrentPage - 1) * $pendingPerPage, $pendingPerPage);
+        $pendingGroupsPaginator = new LengthAwarePaginator(
+            $pendingPageItems,
+            count($pendingGroups),
+            $pendingPerPage,
+            $pendingCurrentPage,
+            [
+                'path' => $request->url(),
+                'query' => $request->query(),
+                'pageName' => 'pending_page',
+            ]
+        );
 
         $managedGroups = $this->getManagerGroupParticipants();
         $perPage = 6;
@@ -696,7 +724,7 @@ class AuthController extends Controller
             'dashboard' => $this->getManagerDashboardConfig('participants-group'),
             'groups' => $managedGroups,
             'groupPaginator' => $groupPaginator,
-            'pendingGroups' => $pendingGroups,
+            'pendingGroupsPaginator' => $pendingGroupsPaginator,
             'generatedGroupCredential' => $request->session()->get('manager_generated_group_credential'),
             'groupExportMeta' => $request->session()->get('manager_group_last_export'),
         ]);

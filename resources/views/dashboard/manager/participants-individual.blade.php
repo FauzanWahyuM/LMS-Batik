@@ -14,7 +14,7 @@
         </div>
 
         <div class="mt-5 space-y-4">
-            @forelse ($pendingParticipants as $participant)
+            @forelse ($pendingParticipantsPaginator as $participant)
                 <article class="rounded-xl border border-slate-200 bg-slate-50 p-4">
                     <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                         <div>
@@ -78,6 +78,34 @@
                 </div>
             @endforelse
         </div>
+
+        @if ($pendingParticipantsPaginator->hasPages())
+            <div
+                class="mt-4 flex flex-col gap-2 border-t border-slate-100 pt-4 text-xs text-slate-500 sm:flex-row sm:items-center sm:justify-between sm:text-sm">
+                <span>
+                    Menampilkan
+                    {{ $pendingParticipantsPaginator->firstItem() }}-{{ $pendingParticipantsPaginator->lastItem() }} dari
+                    {{ $pendingParticipantsPaginator->total() }} pendaftar
+                </span>
+                <div class="inline-flex items-center gap-2">
+                    <a href="{{ $pendingParticipantsPaginator->previousPageUrl() ?? '#' }}"
+                        class="inline-flex items-center rounded-md border border-slate-200 px-3 py-1.5 font-semibold {{ $pendingParticipantsPaginator->onFirstPage() ? 'pointer-events-none cursor-default text-slate-300' : 'text-slate-700 hover:bg-slate-100' }}"
+                        aria-label="Previous page"
+                        @if ($pendingParticipantsPaginator->onFirstPage()) aria-disabled="true" tabindex="-1" @endif>
+                        &larr;
+                    </a>
+                    <span class="rounded-md bg-slate-50 px-3 py-1.5 font-semibold text-slate-700">
+                        {{ $pendingParticipantsPaginator->currentPage() }} /
+                        {{ $pendingParticipantsPaginator->lastPage() }}
+                    </span>
+                    <a href="{{ $pendingParticipantsPaginator->nextPageUrl() ?? '#' }}"
+                        class="inline-flex items-center rounded-md border border-slate-200 px-3 py-1.5 font-semibold {{ $pendingParticipantsPaginator->hasMorePages() ? 'text-slate-700 hover:bg-slate-100' : 'pointer-events-none cursor-default text-slate-300' }}"
+                        aria-label="Next page" @if (!$pendingParticipantsPaginator->hasMorePages()) aria-disabled="true" tabindex="-1" @endif>
+                        &rarr;
+                    </a>
+                </div>
+            </div>
+        @endif
     </section>
 
     <section class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
