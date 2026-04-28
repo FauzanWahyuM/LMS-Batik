@@ -57,7 +57,7 @@
 
                                             <div class="space-y-2 text-sm text-gray-200 mb-4">
                                                 <p><span class="font-semibold text-white">Durasi:</span>
-                                                    {{ number_format((float) $program->duration_hours, 1, ',', '.') }} jam
+                                                    {{ $program->duration_label }}
                                                 </p>
                                                 <p><span class="font-semibold text-white">Biaya:</span> Rp
                                                     {{ number_format((float) $program->fee_amount, 0, ',', '.') }} /
@@ -100,7 +100,7 @@
 
                                             <div class="space-y-2 text-sm text-gray-200 mb-4">
                                                 <p><span class="font-semibold text-white">Durasi:</span>
-                                                    {{ number_format((float) $program->duration_hours, 1, ',', '.') }} jam
+                                                    {{ $program->duration_label }}
                                                 </p>
                                                 <p><span class="font-semibold text-white">Biaya:</span> Rp
                                                     {{ number_format((float) $program->fee_amount, 0, ',', '.') }} /

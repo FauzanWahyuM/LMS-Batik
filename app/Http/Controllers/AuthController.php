@@ -1230,7 +1230,8 @@ class AuthController extends Controller
 
         $payload = $request->validate([
             'name' => ['required', 'string', 'min:3', 'max:120'],
-            'duration_hours' => ['required', 'numeric', 'min:0.5', 'max:10000'],
+            'duration_hours' => ['required', 'numeric', 'min:0.01', 'max:10000'],
+            'duration_unit' => ['required', Rule::in(['hours', 'minutes'])],
             'fee_amount' => ['required', 'numeric', 'min:0'],
             'fee_unit' => ['required', 'string', 'min:2', 'max:50'],
             'description' => ['required', 'string', 'min:10', 'max:2000'],
@@ -1239,9 +1240,22 @@ class AuthController extends Controller
             'is_active' => ['nullable', 'boolean'],
         ]);
 
+        $durationValue = (float) $payload['duration_hours'];
+        $minDuration = $payload['duration_unit'] === 'minutes' ? 1 : 0.5;
+
+        if ($durationValue < $minDuration) {
+            $label = $payload['duration_unit'] === 'minutes' ? 'menit' : 'jam';
+
+            return redirect()
+                ->route('dashboard.manager.programs')
+                ->withErrors(['programs' => 'Durasi minimal untuk satuan ' . $label . ' adalah ' . $minDuration . '.'])
+                ->withInput();
+        }
+
         Program::create([
             'name' => $payload['name'],
             'duration_hours' => $payload['duration_hours'],
+            'duration_unit' => $payload['duration_unit'],
             'fee_amount' => $payload['fee_amount'],
             'fee_unit' => $payload['fee_unit'],
             'description' => $payload['description'],
@@ -1269,7 +1283,8 @@ class AuthController extends Controller
 
         $payload = $request->validate([
             'name' => ['required', 'string', 'min:3', 'max:120'],
-            'duration_hours' => ['required', 'numeric', 'min:0.5', 'max:10000'],
+            'duration_hours' => ['required', 'numeric', 'min:0.01', 'max:10000'],
+            'duration_unit' => ['required', Rule::in(['hours', 'minutes'])],
             'fee_amount' => ['required', 'numeric', 'min:0'],
             'fee_unit' => ['required', 'string', 'min:2', 'max:50'],
             'description' => ['required', 'string', 'min:10', 'max:2000'],
@@ -1277,6 +1292,18 @@ class AuthController extends Controller
             'benefits.*' => ['required', 'string', 'min:3', 'max:255'],
             'is_active' => ['nullable', 'boolean'],
         ]);
+
+        $durationValue = (float) $payload['duration_hours'];
+        $minDuration = $payload['duration_unit'] === 'minutes' ? 1 : 0.5;
+
+        if ($durationValue < $minDuration) {
+            $label = $payload['duration_unit'] === 'minutes' ? 'menit' : 'jam';
+
+            return redirect()
+                ->route('dashboard.manager.programs')
+                ->withErrors(['programs' => 'Durasi minimal untuk satuan ' . $label . ' adalah ' . $minDuration . '.'])
+                ->withInput();
+        }
 
         $target = Program::find($program);
 
@@ -1289,6 +1316,7 @@ class AuthController extends Controller
         $target->update([
             'name' => $payload['name'],
             'duration_hours' => $payload['duration_hours'],
+            'duration_unit' => $payload['duration_unit'],
             'fee_amount' => $payload['fee_amount'],
             'fee_unit' => $payload['fee_unit'],
             'description' => $payload['description'],

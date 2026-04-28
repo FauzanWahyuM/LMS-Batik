@@ -42,9 +42,18 @@
                         placeholder="Masukkan nama program">
                 </div>
                 <div>
-                    <label class="mb-1 block text-xs font-semibold text-slate-600">Durasi Program (Jam)</label>
+                    <label class="mb-1 block text-xs font-semibold text-slate-600">Durasi Program</label>
                     <input type="number" min="0.5" step="0.5" name="duration_hours" required
-                        class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" placeholder="Contoh: 24">
+                        class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" placeholder="Contoh: 24"
+                        data-duration-input="create">
+                </div>
+                <div>
+                    <label class="mb-1 block text-xs font-semibold text-slate-600">Satuan Durasi</label>
+                    <select name="duration_unit" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                        data-duration-unit-select="create">
+                        <option value="hours" selected>Jam</option>
+                        <option value="minutes">Menit</option>
+                    </select>
                 </div>
                 <div>
                     <label class="mb-1 block text-xs font-semibold text-slate-600">Biaya Program</label>
@@ -91,8 +100,7 @@
                     <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                         <div class="space-y-1">
                             <p class="text-sm font-bold text-slate-900">{{ $program->name }}</p>
-                            <p class="text-xs text-slate-600">Durasi:
-                                {{ number_format((float) $program->duration_hours, 1, ',', '.') }} jam</p>
+                            <p class="text-xs text-slate-600">Durasi: {{ $program->duration_label }}</p>
                             <p class="text-xs text-slate-600">Biaya: Rp
                                 {{ number_format((float) $program->fee_amount, 0, ',', '.') }} / {{ $program->fee_unit }}
                             </p>
@@ -135,10 +143,24 @@
                                     class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
                             </div>
                             <div>
-                                <label class="mb-1 block text-xs font-semibold text-slate-600">Durasi Program (Jam)</label>
+                                <label class="mb-1 block text-xs font-semibold text-slate-600">Durasi Program</label>
                                 <input type="number" min="0.5" step="0.5" name="duration_hours"
                                     value="{{ $program->duration_hours }}" required
-                                    class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
+                                    class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                                    data-duration-input="edit-{{ $program->id }}">
+                            </div>
+                            <div>
+                                <label class="mb-1 block text-xs font-semibold text-slate-600">Satuan Durasi</label>
+                                <select name="duration_unit"
+                                    class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                                    data-duration-unit-select="edit-{{ $program->id }}">
+                                    <option value="hours"
+                                        {{ ($program->duration_unit ?? 'hours') === 'hours' ? 'selected' : '' }}>
+                                        Jam</option>
+                                    <option value="minutes"
+                                        {{ ($program->duration_unit ?? 'hours') === 'minutes' ? 'selected' : '' }}>Menit
+                                    </option>
+                                </select>
                             </div>
                             <div>
                                 <label class="mb-1 block text-xs font-semibold text-slate-600">Biaya Program</label>
@@ -359,6 +381,27 @@
                 if (event.key === 'Escape' && modal && !modal.classList.contains('hidden')) {
                     hideModal();
                 }
+            });
+
+            function syncDurationInput(selectElement, inputElement) {
+                if (!selectElement || !inputElement) {
+                    return;
+                }
+
+                const isMinutes = selectElement.value === 'minutes';
+                inputElement.min = isMinutes ? '1' : '0.5';
+                inputElement.step = isMinutes ? '1' : '0.5';
+                inputElement.placeholder = isMinutes ? 'Contoh: 90' : 'Contoh: 24';
+            }
+
+            document.querySelectorAll('[data-duration-unit-select]').forEach(function(selectElement) {
+                const key = selectElement.getAttribute('data-duration-unit-select');
+                const inputElement = document.querySelector('[data-duration-input="' + key + '"]');
+
+                syncDurationInput(selectElement, inputElement);
+                selectElement.addEventListener('change', function() {
+                    syncDurationInput(selectElement, inputElement);
+                });
             });
         })();
     </script>
