@@ -68,6 +68,52 @@
                                             <p class="text-sm md:text-base leading-relaxed text-gray-100 mb-4">
                                                 {{ $program->description }}</p>
 
+                                            @php
+                                                $trainingSchedules = $program->training_schedules ?? [];
+                                                if (
+                                                    isset($trainingSchedules['gelombang']) ||
+                                                    isset($trainingSchedules['waktu'])
+                                                ) {
+                                                    $scheduleGelombang =
+                                                        (array) ($trainingSchedules['gelombang'] ?? []);
+                                                    $scheduleDeskripsi =
+                                                        (array) ($trainingSchedules['deskripsi'] ?? []);
+                                                    $scheduleWaktu = (array) ($trainingSchedules['waktu'] ?? []);
+                                                } else {
+                                                    $scheduleGelombang = [];
+                                                    $scheduleDeskripsi = [];
+                                                    $scheduleWaktu = [];
+                                                    foreach ((array) $trainingSchedules as $entry) {
+                                                        $scheduleGelombang[] = $entry['gelombang'] ?? ($entry[0] ?? '');
+                                                        $scheduleDeskripsi[] = $entry['deskripsi'] ?? '';
+                                                        $scheduleWaktu[] = $entry['waktu'] ?? '';
+                                                    }
+                                                }
+                                            @endphp
+
+                                            @if (!empty($scheduleGelombang))
+                                                <div
+                                                    class="rounded-lg border border-blue-800 bg-blue-900/40 p-4 text-sm text-gray-100 mb-6">
+                                                    <p class="font-semibold text-white mb-2">Jadwal Pelatihan</p>
+                                                    <ul class="space-y-2">
+                                                        @foreach ($scheduleGelombang as $index => $gelombang)
+                                                            <li
+                                                                class="flex flex-col sm:flex-row sm:items-start gap-1 sm:gap-2">
+                                                                <div class="flex items-start gap-2">
+                                                                    <span class="text-amber-400 shrink-0">●</span>
+                                                                    <span
+                                                                        class="font-semibold">{{ $gelombang }}{{ isset($scheduleDeskripsi[$index]) && $scheduleDeskripsi[$index] !== '' ? ': ' . $scheduleDeskripsi[$index] : '' }}</span>
+                                                                </div>
+                                                                @if (isset($scheduleWaktu[$index]) && $scheduleWaktu[$index] !== '')
+                                                                    <div class="text-gray-200">Waktu:
+                                                                        {{ $scheduleWaktu[$index] }}</div>
+                                                                @endif
+                                                            </li>
+                                                        @endforeach
+                                                    </ul>
+                                                </div>
+                                            @endif
+
                                             <div
                                                 class="rounded-lg border border-blue-800 bg-blue-900/40 p-4 text-sm text-gray-100 mb-6">
                                                 <p class="font-semibold text-white mb-2">Benefit Program</p>
@@ -110,6 +156,52 @@
 
                                             <p class="text-sm md:text-base leading-relaxed text-gray-100 mb-4">
                                                 {{ $program->description }}</p>
+
+                                            @php
+                                                $trainingSchedules = $program->training_schedules ?? [];
+                                                if (
+                                                    isset($trainingSchedules['gelombang']) ||
+                                                    isset($trainingSchedules['waktu'])
+                                                ) {
+                                                    $scheduleGelombang =
+                                                        (array) ($trainingSchedules['gelombang'] ?? []);
+                                                    $scheduleDeskripsi =
+                                                        (array) ($trainingSchedules['deskripsi'] ?? []);
+                                                    $scheduleWaktu = (array) ($trainingSchedules['waktu'] ?? []);
+                                                } else {
+                                                    $scheduleGelombang = [];
+                                                    $scheduleDeskripsi = [];
+                                                    $scheduleWaktu = [];
+                                                    foreach ((array) $trainingSchedules as $entry) {
+                                                        $scheduleGelombang[] = $entry['gelombang'] ?? ($entry[0] ?? '');
+                                                        $scheduleDeskripsi[] = $entry['deskripsi'] ?? '';
+                                                        $scheduleWaktu[] = $entry['waktu'] ?? '';
+                                                    }
+                                                }
+                                            @endphp
+
+                                            @if (!empty($scheduleGelombang))
+                                                <div
+                                                    class="rounded-lg border border-blue-800 bg-blue-900/40 p-4 text-sm text-gray-100 mb-6">
+                                                    <p class="font-semibold text-white mb-2">Jadwal Pelatihan</p>
+                                                    <ul class="space-y-2">
+                                                        @foreach ($scheduleGelombang as $index => $gelombang)
+                                                            <li
+                                                                class="flex flex-col sm:flex-row sm:items-start gap-1 sm:gap-2">
+                                                                <div class="flex items-start gap-2">
+                                                                    <span class="text-amber-400 shrink-0">●</span>
+                                                                    <span
+                                                                        class="font-semibold">{{ $gelombang }}{{ isset($scheduleDeskripsi[$index]) && $scheduleDeskripsi[$index] !== '' ? ': ' . $scheduleDeskripsi[$index] : '' }}</span>
+                                                                </div>
+                                                                @if (isset($scheduleWaktu[$index]) && $scheduleWaktu[$index] !== '')
+                                                                    <div class="text-gray-200">Waktu:
+                                                                        {{ $scheduleWaktu[$index] }}</div>
+                                                                @endif
+                                                            </li>
+                                                        @endforeach
+                                                    </ul>
+                                                </div>
+                                            @endif
 
                                             <div
                                                 class="rounded-lg border border-blue-800 bg-blue-900/40 p-4 text-sm text-gray-100 mb-6">

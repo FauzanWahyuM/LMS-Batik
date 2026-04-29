@@ -1230,36 +1230,43 @@ class AuthController extends Controller
 
         $payload = $request->validate([
             'name' => ['required', 'string', 'min:3', 'max:120'],
-            'duration_hours' => ['required', 'numeric', 'min:0.01', 'max:10000'],
-            'duration_unit' => ['required', Rule::in(['hours', 'minutes'])],
+            'duration' => ['required', 'string', 'min:3', 'max:100'],
             'fee_amount' => ['required', 'numeric', 'min:0'],
             'fee_unit' => ['required', 'string', 'min:2', 'max:50'],
             'description' => ['required', 'string', 'min:10', 'max:2000'],
             'benefits' => ['required', 'array', 'min:1'],
             'benefits.*' => ['required', 'string', 'min:3', 'max:255'],
+            'training_schedules' => ['nullable', 'array'],
+            'training_schedules.gelombang' => ['nullable', 'array'],
+            'training_schedules.gelombang.*' => ['nullable', 'string', 'max:255'],
+            'training_schedules.deskripsi' => ['nullable', 'array'],
+            'training_schedules.deskripsi.*' => ['nullable', 'string', 'max:1000'],
+            'training_schedules.waktu' => ['nullable', 'array'],
+            'training_schedules.waktu.*' => ['nullable', 'string', 'max:255'],
             'is_active' => ['nullable', 'boolean'],
         ]);
 
-        $durationValue = (float) $payload['duration_hours'];
-        $minDuration = $payload['duration_unit'] === 'minutes' ? 1 : 0.5;
+        $gelombangArray = array_values(array_filter($request->input('training_schedules.gelombang', []), fn ($value) => !empty(trim((string) $value))));
+        $deskripsiArray = array_values(array_map(fn($v) => trim((string)$v), $request->input('training_schedules.deskripsi', [])));
+        $waktuArray = array_values(array_filter($request->input('training_schedules.waktu', []), fn ($value) => !empty(trim((string) $value))));
+        $trainingSchedules = [];
 
-        if ($durationValue < $minDuration) {
-            $label = $payload['duration_unit'] === 'minutes' ? 'menit' : 'jam';
-
-            return redirect()
-                ->route('dashboard.manager.programs')
-                ->withErrors(['programs' => 'Durasi minimal untuk satuan ' . $label . ' adalah ' . $minDuration . '.'])
-                ->withInput();
+        if ($gelombangArray !== [] || $waktuArray !== [] || $deskripsiArray !== []) {
+            $trainingSchedules = [
+                'gelombang' => $gelombangArray,
+                'deskripsi' => $deskripsiArray,
+                'waktu' => $waktuArray,
+            ];
         }
 
         Program::create([
             'name' => $payload['name'],
-            'duration_hours' => $payload['duration_hours'],
-            'duration_unit' => $payload['duration_unit'],
+            'duration' => $payload['duration'],
             'fee_amount' => $payload['fee_amount'],
             'fee_unit' => $payload['fee_unit'],
             'description' => $payload['description'],
-            'benefits' => array_filter($payload['benefits'], fn ($b) => !empty(trim($b))),
+            'benefits' => array_values(array_filter($payload['benefits'], fn ($benefit) => !empty(trim((string) $benefit)))),
+            'training_schedules' => $trainingSchedules,
             'is_active' => (bool) ($payload['is_active'] ?? false),
         ]);
 
@@ -1283,26 +1290,33 @@ class AuthController extends Controller
 
         $payload = $request->validate([
             'name' => ['required', 'string', 'min:3', 'max:120'],
-            'duration_hours' => ['required', 'numeric', 'min:0.01', 'max:10000'],
-            'duration_unit' => ['required', Rule::in(['hours', 'minutes'])],
+            'duration' => ['required', 'string', 'min:3', 'max:100'],
             'fee_amount' => ['required', 'numeric', 'min:0'],
             'fee_unit' => ['required', 'string', 'min:2', 'max:50'],
             'description' => ['required', 'string', 'min:10', 'max:2000'],
             'benefits' => ['required', 'array', 'min:1'],
             'benefits.*' => ['required', 'string', 'min:3', 'max:255'],
+            'training_schedules' => ['nullable', 'array'],
+            'training_schedules.gelombang' => ['nullable', 'array'],
+            'training_schedules.gelombang.*' => ['nullable', 'string', 'max:255'],
+            'training_schedules.deskripsi' => ['nullable', 'array'],
+            'training_schedules.deskripsi.*' => ['nullable', 'string', 'max:1000'],
+            'training_schedules.waktu' => ['nullable', 'array'],
+            'training_schedules.waktu.*' => ['nullable', 'string', 'max:255'],
             'is_active' => ['nullable', 'boolean'],
         ]);
 
-        $durationValue = (float) $payload['duration_hours'];
-        $minDuration = $payload['duration_unit'] === 'minutes' ? 1 : 0.5;
+        $gelombangArray = array_values(array_filter($request->input('training_schedules.gelombang', []), fn ($value) => !empty(trim((string) $value))));
+        $deskripsiArray = array_values(array_map(fn($v) => trim((string)$v), $request->input('training_schedules.deskripsi', [])));
+        $waktuArray = array_values(array_filter($request->input('training_schedules.waktu', []), fn ($value) => !empty(trim((string) $value))));
+        $trainingSchedules = [];
 
-        if ($durationValue < $minDuration) {
-            $label = $payload['duration_unit'] === 'minutes' ? 'menit' : 'jam';
-
-            return redirect()
-                ->route('dashboard.manager.programs')
-                ->withErrors(['programs' => 'Durasi minimal untuk satuan ' . $label . ' adalah ' . $minDuration . '.'])
-                ->withInput();
+        if ($gelombangArray !== [] || $waktuArray !== [] || $deskripsiArray !== []) {
+            $trainingSchedules = [
+                'gelombang' => $gelombangArray,
+                'deskripsi' => $deskripsiArray,
+                'waktu' => $waktuArray,
+            ];
         }
 
         $target = Program::find($program);
@@ -1315,12 +1329,12 @@ class AuthController extends Controller
 
         $target->update([
             'name' => $payload['name'],
-            'duration_hours' => $payload['duration_hours'],
-            'duration_unit' => $payload['duration_unit'],
+            'duration' => $payload['duration'],
+                        'training_schedules' => $trainingSchedules,
             'fee_amount' => $payload['fee_amount'],
             'fee_unit' => $payload['fee_unit'],
             'description' => $payload['description'],
-            'benefits' => array_filter($payload['benefits'], fn ($b) => !empty(trim($b))),
+            'benefits' => array_values(array_filter($payload['benefits'], fn ($benefit) => !empty(trim((string) $benefit)))),
             'is_active' => (bool) ($payload['is_active'] ?? false),
         ]);
 

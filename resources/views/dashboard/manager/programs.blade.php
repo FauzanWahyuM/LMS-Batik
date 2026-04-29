@@ -41,19 +41,11 @@
                         class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
                         placeholder="Masukkan nama program">
                 </div>
-                <div>
+                <div class="sm:col-span-2">
                     <label class="mb-1 block text-xs font-semibold text-slate-600">Durasi Program</label>
-                    <input type="number" min="0.5" step="0.5" name="duration_hours" required
-                        class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" placeholder="Contoh: 24"
-                        data-duration-input="create">
-                </div>
-                <div>
-                    <label class="mb-1 block text-xs font-semibold text-slate-600">Satuan Durasi</label>
-                    <select name="duration_unit" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-                        data-duration-unit-select="create">
-                        <option value="hours" selected>Jam</option>
-                        <option value="minutes">Menit</option>
-                    </select>
+                    <input type="text" name="duration" required
+                        class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                        placeholder="Contoh: 24 jam, 120 menit, 2 hari">
                 </div>
                 <div>
                     <label class="mb-1 block text-xs font-semibold text-slate-600">Biaya Program</label>
@@ -70,6 +62,25 @@
                     <label class="mb-1 block text-xs font-semibold text-slate-600">Deskripsi Program</label>
                     <textarea name="description" rows="3" required class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
                         placeholder="Masukkan deskripsi program"></textarea>
+                </div>
+                <div class="sm:col-span-2">
+                    <label class="mb-1 block text-xs font-semibold text-slate-600">Jadwal Pelatihan</label>
+                    <div id="create-training-schedules-list" class="space-y-3 mb-3">
+                        <div class="flex gap-2">
+                            <input type="text" name="training_schedules[gelombang][]"
+                                class="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                                placeholder="Contoh: Gelombang 1">
+                            <input type="text" name="training_schedules[deskripsi][]"
+                                class="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                                placeholder="Contoh: Minggu ke-1 setiap bulan">
+                            <input type="text" name="training_schedules[waktu][]"
+                                class="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                                placeholder="Contoh: 09:00 - 14:00 WIB">
+                        </div>
+                    </div>
+                    <button type="button"
+                        class="add-training-schedule-btn text-xs font-semibold text-blue-600 hover:text-blue-700">+
+                        Tambah Jadwal Lagi</button>
                 </div>
                 <div class="sm:col-span-2">
                     <label class="mb-1 block text-xs font-semibold text-slate-600">Benefit Program</label>
@@ -105,6 +116,37 @@
                                 {{ number_format((float) $program->fee_amount, 0, ',', '.') }} / {{ $program->fee_unit }}
                             </p>
                             <p class="text-xs text-slate-500">{{ $program->description }}</p>
+                            @php
+                                $trainingSchedules = $program->training_schedules ?? [];
+                                // Support both parallel-array shape and array-of-objects shape
+                                if (isset($trainingSchedules['gelombang']) || isset($trainingSchedules['waktu'])) {
+                                    $scheduleGelombang = (array) ($trainingSchedules['gelombang'] ?? []);
+                                    $scheduleDeskripsi = (array) ($trainingSchedules['deskripsi'] ?? []);
+                                    $scheduleWaktu = (array) ($trainingSchedules['waktu'] ?? []);
+                                } else {
+                                    $scheduleGelombang = [];
+                                    $scheduleDeskripsi = [];
+                                    $scheduleWaktu = [];
+                                    foreach ((array) $trainingSchedules as $entry) {
+                                        $scheduleGelombang[] = $entry['gelombang'] ?? ($entry[0] ?? '');
+                                        $scheduleDeskripsi[] = $entry['deskripsi'] ?? '';
+                                        $scheduleWaktu[] = $entry['waktu'] ?? '';
+                                    }
+                                }
+                            @endphp
+                            @if (!empty($scheduleGelombang))
+                                <div class="text-xs text-slate-500 mb-1">
+                                    <p class="font-semibold">Jadwal Pelatihan:</p>
+                                    <ul class="ml-4 space-y-1">
+                                        @foreach ($scheduleGelombang as $index => $gelombang)
+                                            <li>●
+                                                {{ $gelombang }}{{ isset($scheduleDeskripsi[$index]) && $scheduleDeskripsi[$index] !== '' ? ': ' . $scheduleDeskripsi[$index] : '' }}
+                                                {{ isset($scheduleWaktu[$index]) && $scheduleWaktu[$index] !== '' ? ' - Waktu: ' . $scheduleWaktu[$index] : '' }}
+                                            </li>
+                                        @endforeach
+                                    </ul>
+                                </div>
+                            @endif
                             <div class="text-xs text-slate-500 mb-1">
                                 <p class="font-semibold">Manfaat:</p>
                                 <ul class="ml-4 space-y-1">
@@ -142,25 +184,11 @@
                                 <input type="text" name="name" value="{{ $program->name }}" required
                                     class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
                             </div>
-                            <div>
+                            <div class="sm:col-span-2">
                                 <label class="mb-1 block text-xs font-semibold text-slate-600">Durasi Program</label>
-                                <input type="number" min="0.5" step="0.5" name="duration_hours"
-                                    value="{{ $program->duration_hours }}" required
+                                <input type="text" name="duration" value="{{ $program->duration }}" required
                                     class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-                                    data-duration-input="edit-{{ $program->id }}">
-                            </div>
-                            <div>
-                                <label class="mb-1 block text-xs font-semibold text-slate-600">Satuan Durasi</label>
-                                <select name="duration_unit"
-                                    class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-                                    data-duration-unit-select="edit-{{ $program->id }}">
-                                    <option value="hours"
-                                        {{ ($program->duration_unit ?? 'hours') === 'hours' ? 'selected' : '' }}>
-                                        Jam</option>
-                                    <option value="minutes"
-                                        {{ ($program->duration_unit ?? 'hours') === 'minutes' ? 'selected' : '' }}>Menit
-                                    </option>
-                                </select>
+                                    placeholder="Contoh: 24 jam, 120 menit, 2 hari">
                             </div>
                             <div>
                                 <label class="mb-1 block text-xs font-semibold text-slate-600">Biaya Program</label>
@@ -177,6 +205,65 @@
                                 <label class="mb-1 block text-xs font-semibold text-slate-600">Deskripsi Program</label>
                                 <textarea name="description" rows="3" required
                                     class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">{{ $program->description }}</textarea>
+                            </div>
+                            @php
+                                $editTrainingSchedules = $program->training_schedules ?? [];
+                                $editGelombang = [];
+                                $editDeskripsi = [];
+                                $editWaktu = [];
+
+                                if (
+                                    isset($editTrainingSchedules['gelombang']) ||
+                                    isset($editTrainingSchedules['waktu'])
+                                ) {
+                                    $editGelombang = (array) ($editTrainingSchedules['gelombang'] ?? []);
+                                    $editDeskripsi = (array) ($editTrainingSchedules['deskripsi'] ?? []);
+                                    $editWaktu = (array) ($editTrainingSchedules['waktu'] ?? []);
+                                } else {
+                                    foreach ((array) $editTrainingSchedules as $entry) {
+                                        $editGelombang[] = $entry['gelombang'] ?? ($entry[0] ?? '');
+                                        $editDeskripsi[] = $entry['deskripsi'] ?? '';
+                                        $editWaktu[] = $entry['waktu'] ?? '';
+                                    }
+                                }
+                            @endphp
+                            <div class="sm:col-span-2">
+                                <label class="mb-1 block text-xs font-semibold text-slate-600">Jadwal Pelatihan</label>
+                                <div id="edit-{{ $program->id }}-training-schedules-list" class="space-y-3 mb-3">
+                                    @forelse ($editGelombang as $index => $gelombang)
+                                        <div class="flex gap-2">
+                                            <input type="text" name="training_schedules[gelombang][]"
+                                                value="{{ $gelombang }}"
+                                                class="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                                                placeholder="Contoh: Gelombang 1">
+                                            <input type="text" name="training_schedules[deskripsi][]"
+                                                value="{{ $editDeskripsi[$index] ?? '' }}"
+                                                class="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                                                placeholder="Contoh: Minggu ke-1 setiap bulan">
+                                            <input type="text" name="training_schedules[waktu][]"
+                                                value="{{ $editWaktu[$index] ?? '' }}"
+                                                class="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                                                placeholder="Contoh: Jam 09:00 - 14:00">
+                                            <button type="button"
+                                                class="remove-training-schedule-btn rounded-lg border border-rose-300 px-2 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-50">Hapus</button>
+                                        </div>
+                                    @empty
+                                        <div class="flex gap-2">
+                                            <input type="text" name="training_schedules[gelombang][]"
+                                                class="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                                                placeholder="Contoh: Gelombang 1">
+                                            <input type="text" name="training_schedules[deskripsi][]"
+                                                class="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                                                placeholder="Contoh: Minggu ke-1 setiap bulan">
+                                            <input type="text" name="training_schedules[waktu][]"
+                                                class="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                                                placeholder="Contoh: Jam 09:00 - 14:00">
+                                        </div>
+                                    @endforelse
+                                </div>
+                                <button type="button"
+                                    class="add-training-schedule-btn text-xs font-semibold text-blue-600 hover:text-blue-700">+
+                                    Tambah Jadwal Lagi</button>
                             </div>
                             <div class="sm:col-span-2">
                                 <label class="mb-1 block text-xs font-semibold text-slate-600">Benefit Program</label>
@@ -383,25 +470,48 @@
                 }
             });
 
-            function syncDurationInput(selectElement, inputElement) {
-                if (!selectElement || !inputElement) {
-                    return;
+            document.addEventListener('click', function(event) {
+                if (event.target.classList.contains('add-training-schedule-btn')) {
+                    event.preventDefault();
+                    const schedulesList = event.target.previousElementSibling;
+                    const wrapper = document.createElement('div');
+                    wrapper.className = 'flex gap-2';
+
+                    const gelombangInput = document.createElement('input');
+                    gelombangInput.type = 'text';
+                    gelombangInput.name = 'training_schedules[gelombang][]';
+                    gelombangInput.placeholder = 'Contoh: Gelombang 1';
+                    gelombangInput.className = 'flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm';
+                    wrapper.appendChild(gelombangInput);
+
+                    const deskripsiInput = document.createElement('input');
+                    deskripsiInput.type = 'text';
+                    deskripsiInput.name = 'training_schedules[deskripsi][]';
+                    deskripsiInput.placeholder = 'Contoh: Minggu ke-1 setiap bulan';
+                    deskripsiInput.className = 'flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm';
+                    wrapper.appendChild(deskripsiInput);
+
+                    const waktuInput = document.createElement('input');
+                    waktuInput.type = 'text';
+                    waktuInput.name = 'training_schedules[waktu][]';
+                    waktuInput.placeholder = 'Contoh: 09:00 - 14:00 WIB';
+                    waktuInput.className = 'flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm';
+                    wrapper.appendChild(waktuInput);
+
+                    const removeBtn = document.createElement('button');
+                    removeBtn.type = 'button';
+                    removeBtn.textContent = 'Hapus';
+                    removeBtn.className =
+                        'remove-training-schedule-btn rounded-lg border border-rose-300 px-2 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-50';
+                    wrapper.appendChild(removeBtn);
+
+                    schedulesList.appendChild(wrapper);
                 }
 
-                const isMinutes = selectElement.value === 'minutes';
-                inputElement.min = isMinutes ? '1' : '0.5';
-                inputElement.step = isMinutes ? '1' : '0.5';
-                inputElement.placeholder = isMinutes ? 'Contoh: 90' : 'Contoh: 24';
-            }
-
-            document.querySelectorAll('[data-duration-unit-select]').forEach(function(selectElement) {
-                const key = selectElement.getAttribute('data-duration-unit-select');
-                const inputElement = document.querySelector('[data-duration-input="' + key + '"]');
-
-                syncDurationInput(selectElement, inputElement);
-                selectElement.addEventListener('change', function() {
-                    syncDurationInput(selectElement, inputElement);
-                });
+                if (event.target.classList.contains('remove-training-schedule-btn')) {
+                    event.preventDefault();
+                    event.target.parentElement.remove();
+                }
             });
         })();
     </script>
