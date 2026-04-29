@@ -162,7 +162,7 @@ class AuthApiController extends BaseApiController
         $validated = $request->validate([
             'forgot_username' => ['required', 'string', 'min:3', 'max:120'],
             'verification_code' => ['required', 'digits:6'],
-            'password' => ['required', 'string', 'min:6', 'max:40', 'confirmed'],
+            'password' => ['required', 'string', 'min:4', 'max:4', 'confirmed'],
         ]);
 
         $username = strtolower(trim((string) $validated['forgot_username']));

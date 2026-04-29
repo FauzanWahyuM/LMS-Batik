@@ -217,7 +217,7 @@
                     <div>
                         <label for="verification_code" class="mb-1.5 block text-xs font-semibold text-slate-700">Kode
                             Verifikasi</label>
-                        <input id="verification_code" name="verification_code" type="text" minlength="6"
+                        <input id="verification_code" name="verification_code" type="text" minlength="4"
                             maxlength="6" required
                             class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs tracking-[0.25em] transition-all focus:border-amber-500 focus:outline-none focus:ring-4 focus:ring-amber-500/10"
                             placeholder="6 digit kode">
@@ -226,17 +226,19 @@
                     <div>
                         <label for="reset_password" class="mb-1.5 block text-xs font-semibold text-slate-700">Password
                             Baru</label>
-                        <input id="reset_password" name="password" type="password" required
+                        <input id="reset_password" name="password" type="password" required minlength="4"
+                            maxlength="4" autocomplete="new-password"
                             class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs transition-all focus:border-amber-500 focus:outline-none focus:ring-4 focus:ring-amber-500/10"
-                            placeholder="Minimal 6 karakter">
+                            placeholder="4 karakter">
                     </div>
 
                     <div>
                         <label for="reset_password_confirmation"
                             class="mb-1.5 block text-xs font-semibold text-slate-700">Konfirmasi Password Baru</label>
                         <input id="reset_password_confirmation" name="password_confirmation" type="password" required
+                            minlength="4" maxlength="4" autocomplete="new-password"
                             class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs transition-all focus:border-amber-500 focus:outline-none focus:ring-4 focus:ring-amber-500/10"
-                            placeholder="Ulangi password baru">
+                            placeholder="Ulangi 4 karakter">
                     </div>
 
                     <button type="submit"
