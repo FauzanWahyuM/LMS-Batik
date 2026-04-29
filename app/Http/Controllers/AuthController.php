@@ -33,7 +33,7 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class AuthController extends Controller
 {
-    private const WA_VALIDATION_SENDER_NUMBER = '081332650772';
+    private const WA_VALIDATION_SENDER_NUMBER = '+62 851-2425-5339';
     private const FORGOT_PASSWORD_CODE_TTL_MINUTES = 10;
     private const HARDCODED_ADMIN_USERNAME = 'admin';
     private const HARDCODED_ADMIN_PASSWORD = 'Admin@2026!';
@@ -385,7 +385,7 @@ class AuthController extends Controller
         $validated = $request->validate([
             'forgot_username' => ['required', 'string', 'min:3', 'max:120'],
             'verification_code' => ['required', 'digits:6'],
-            'password' => ['required', 'string', 'min:6', 'max:40', 'confirmed'],
+            'password' => ['required', 'string', 'min:4', 'max:4', 'confirmed'],
         ]);
 
         $username = strtolower(trim((string) $validated['forgot_username']));
@@ -542,7 +542,7 @@ class AuthController extends Controller
             }
         }
 
-        $password = Str::upper(Str::random(2)) . rand(10, 99) . Str::lower(Str::random(3)) . '!';
+        $password = Str::random(4);
 
         $userData = [
             'name' => $registration->nama_lengkap,
@@ -598,7 +598,7 @@ class AuthController extends Controller
 
         $request->validate([
             'username' => ['required', 'string', 'min:4', 'max:30'],
-            'password' => ['required', 'string', 'min:6', 'max:30'],
+            'password' => ['required', 'string', 'min:4', 'max:4'],
         ]);
 
         $generatedCredential = $request->session()->get('manager_generated_credential');
@@ -755,7 +755,7 @@ class AuthController extends Controller
             while (User::where('username', $username)->exists()) {
                 $username = $prefix . $registrationId . str_pad((string) $index, 2, '0', STR_PAD_LEFT) . rand(1, 9);
             }
-            $password = Str::upper(Str::random(2)) . rand(10, 99) . Str::lower(Str::random(2)) . '!';
+            $password = Str::random(4);
 
             // Create user account
             $groupUserData = [
@@ -979,7 +979,7 @@ class AuthController extends Controller
         $payload = $request->validate([
             'name' => ['required', 'string', 'min:3', 'max:120'],
             'username' => ['nullable', 'string', 'min:4', 'max:30', Rule::unique('users', 'username')],
-            'password' => ['nullable', 'string', 'min:6', 'max:50'],
+            'password' => ['nullable', 'string', 'min:4', 'max:4'],
             'email' => ['required', 'email'],
             'phone' => ['required', 'string', 'min:8', 'max:20'],
             'address' => ['required', 'string', 'min:5', 'max:255'],
@@ -998,7 +998,7 @@ class AuthController extends Controller
         }
 
         if ($password === '') {
-            $password = Str::upper(Str::random(2)) . rand(10, 99) . Str::lower(Str::random(3)) . '!';
+            $password = Str::random(4);
         }
 
         $certificateName = null;
@@ -1074,7 +1074,7 @@ class AuthController extends Controller
         $payload = $request->validate([
             'name' => ['required', 'string', 'min:3', 'max:120'],
             'username' => $usernameRules,
-            'password' => ['nullable', 'string', 'min:6', 'max:50'],
+            'password' => ['nullable', 'string', 'min:4', 'max:4'],
             'email' => ['required', 'email'],
             'phone' => ['required', 'string', 'min:8', 'max:20'],
             'address' => ['required', 'string', 'min:5', 'max:255'],
@@ -2110,7 +2110,7 @@ class AuthController extends Controller
         $validated = $request->validate([
             'full_name' => ['required', 'string', 'min:3', 'max:120'],
             'username' => ['required', 'string', 'min:4', 'max:40'],
-            'password' => ['required', 'string', 'min:6', 'max:40'],
+            'password' => ['required', 'string', 'min:4', 'max:4'],
             'email' => ['required', 'email'],
             'phone' => ['required', 'string', 'min:7', 'max:20'],
             'address' => ['required', 'string', 'min:5', 'max:255'],
@@ -2186,7 +2186,7 @@ class AuthController extends Controller
         $validated = $request->validate([
             'full_name' => ['required', 'string', 'min:3', 'max:120'],
             'username' => ['required', 'string', 'min:4', 'max:40'],
-            'password' => ['required', 'string', 'min:6', 'max:40'],
+            'password' => ['required', 'string', 'min:4', 'max:4'],
             'email' => ['required', 'email'],
             'phone' => ['required', 'string', 'min:7', 'max:20'],
             'address' => ['required', 'string', 'min:5', 'max:255'],
@@ -2647,7 +2647,7 @@ class AuthController extends Controller
             'participant_type' => ['required', 'in:individual,group'],
             'full_name' => ['required', 'string', 'min:3', 'max:120'],
             'username' => ['required', 'string', 'min:4', 'max:40'],
-            'password' => ['required', 'string', 'min:6', 'max:40'],
+            'password' => ['required', 'string', 'min:4', 'max:4'],
             'password_confirmation' => ['required', 'string', 'same:password'],
             'email' => ['required', 'email'],
             'phone' => ['required', 'string', 'min:7', 'max:20'],

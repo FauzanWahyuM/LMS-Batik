@@ -21,7 +21,8 @@
                 <div class="sm:col-span-2">
                     <label class="mb-1 block text-xs font-semibold text-slate-600">Password</label>
                     <div class="relative">
-                        <input id="instructor-profile-password" type="password" name="password"
+                        <input id="instructor-profile-password" type="password" name="password" minlength="4"
+                            maxlength="4" autocomplete="new-password"
                             value="{{ old('password', $profile['password'] ?? '') }}" required
                             class="w-full rounded-lg border border-slate-300 px-3 py-2 pr-10 text-sm">
                         <button type="button" data-password-toggle data-password-target="instructor-profile-password"

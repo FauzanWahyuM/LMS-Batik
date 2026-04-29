@@ -40,7 +40,8 @@
                 <div>
                     <label class="mb-1 block text-xs font-semibold text-slate-700">Password (Random)</label>
                     <div class="relative">
-                        <input name="password" id="create-password" type="password"
+                        <input name="password" id="create-password" type="password" minlength="4" maxlength="4"
+                            autocomplete="new-password"
                             class="w-full rounded-lg border border-slate-300 px-3 py-2 pr-10 text-sm"
                             placeholder="Klik generate random">
                         <button type="button" data-password-toggle data-password-target="create-password"
@@ -205,6 +206,7 @@
                                 <label class="mb-1 block text-xs font-semibold text-slate-600">Password</label>
                                 <div class="relative">
                                     <input id="edit-password-{{ $instructor['id'] }}" type="password" name="password"
+                                        minlength="4" maxlength="4" autocomplete="new-password"
                                         class="w-full rounded-lg border border-slate-300 px-3 py-2 pr-10 text-sm"
                                         placeholder="Kosongkan jika tidak ingin mengubah password">
                                     <button type="button" data-password-toggle

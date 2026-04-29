@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\Schema;
 
 class AuthApiController extends BaseApiController
 {
-    private const WA_VALIDATION_SENDER_NUMBER = '081332650772';
+    private const WA_VALIDATION_SENDER_NUMBER = '+62 851-2425-5339';
     private const FORGOT_PASSWORD_CODE_TTL_MINUTES = 10;
     private const HARDCODED_ADMIN_USERNAME = 'admin';
     private const HARDCODED_ADMIN_PASSWORD = 'Admin@2026!';

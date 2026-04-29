@@ -41,7 +41,8 @@
                 <div>
                     <label class="mb-1 block text-xs font-semibold text-slate-600">Password</label>
                     <div class="relative">
-                        <input id="participant-profile-password" type="password" name="password"
+                        <input id="participant-profile-password" type="password" name="password" minlength="4"
+                            maxlength="4" autocomplete="new-password"
                             value="{{ old('password', $profile['password'] ?? '') }}" required
                             class="w-full rounded-lg border border-slate-300 px-3 py-2 pr-10 text-sm">
 
@@ -74,6 +75,7 @@
                     <label class="mb-1 block text-xs font-semibold text-slate-600">Konfirmasi Password</label>
                     <div class="relative">
                         <input id="participant-profile-password-confirmation" type="password" name="password_confirmation"
+                            minlength="4" maxlength="4" autocomplete="new-password"
                             value="{{ old('password_confirmation', $profile['password'] ?? '') }}" required
                             class="w-full rounded-lg border border-slate-300 px-3 py-2 pr-10 text-sm">
 
@@ -93,7 +95,8 @@
                             </svg>
 
                             <!-- ICON OPEN -->
-                            <svg data-icon="open" class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg data-icon="open" class="h-5 w-5" fill="none" stroke="currentColor"
+                                viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                     d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
