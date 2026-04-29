@@ -94,8 +94,14 @@
                                             @else
                                                 <div class="w-full h-48 bg-slate-200"></div>
                                             @endif
-                                            <div class="bg-blue-950 px-4 py-3 text-center">
+                                            <div
+                                                class="bg-blue-950 px-4 py-3 text-center flex flex-col justify-center flex-1">
                                                 <h3 class="text-base font-semibold text-white">{{ $facility->name }}</h3>
+                                                @if (!empty($facility->description))
+                                                    <p class="mt-2 text-sm leading-relaxed text-blue-100">
+                                                        {{ $facility->description }}
+                                                    </p>
+                                                @endif
                                             </div>
                                         </article>
                                     @endforeach
@@ -112,8 +118,14 @@
                                             @else
                                                 <div class="w-full h-48 bg-slate-200"></div>
                                             @endif
-                                            <div class="bg-blue-950 px-4 py-3 text-center">
+                                            <div
+                                                class="bg-blue-950 px-4 py-3 text-center flex flex-col justify-center flex-1">
                                                 <h3 class="text-base font-semibold text-white">{{ $facility->name }}</h3>
+                                                @if (!empty($facility->description))
+                                                    <p class="mt-2 text-sm leading-relaxed text-blue-100">
+                                                        {{ $facility->description }}
+                                                    </p>
+                                                @endif
                                             </div>
                                         </article>
                                     @endforeach
@@ -140,7 +152,8 @@
                 @endif
             @else
                 <div class="max-w-5xl mx-auto">
-                    <div class="bg-slate-100 rounded-xl border border-dashed border-slate-300 p-8 text-center text-slate-600">
+                    <div
+                        class="bg-slate-100 rounded-xl border border-dashed border-slate-300 p-8 text-center text-slate-600">
                         Data fasilitas belum tersedia.
                     </div>
                 </div>

@@ -38,6 +38,11 @@
                     <input type="text" name="name" required
                         class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
                 </div>
+                <div class="sm:col-span-2">
+                    <label class="mb-1 block text-xs font-semibold text-slate-600">Deskripsi Fasilitas</label>
+                    <textarea name="description" rows="4" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                        placeholder="Tuliskan deskripsi singkat fasilitas"></textarea>
+                </div>
                 <div>
                     <label class="mb-1 block text-xs font-semibold text-slate-600">Gambar</label>
                     <input type="file" name="image" accept=".jpg,.jpeg,.png,.webp"
@@ -62,6 +67,9 @@
                     <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                         <div class="space-y-1">
                             <p class="text-sm font-bold text-slate-900">{{ $facility->name }}</p>
+                            @if (!empty($facility->description))
+                                <p class="text-sm text-slate-600 leading-relaxed">{{ $facility->description }}</p>
+                            @endif
                             @if (!empty($facility->image_path))
                                 <img src="{{ route('public-file', ['path' => $facility->image_path]) }}"
                                     alt="{{ $facility->name }}"
@@ -94,6 +102,11 @@
                                 <label class="mb-1 block text-xs font-semibold text-slate-600">Nama Fasilitas</label>
                                 <input type="text" name="name" value="{{ $facility->name }}" required
                                     class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
+                            </div>
+                            <div class="sm:col-span-2">
+                                <label class="mb-1 block text-xs font-semibold text-slate-600">Deskripsi Fasilitas</label>
+                                <textarea name="description" rows="4" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                                    placeholder="Tuliskan deskripsi singkat fasilitas">{{ $facility->description }}</textarea>
                             </div>
                             <div>
                                 <label class="mb-1 block text-xs font-semibold text-slate-600">Ganti Gambar</label>

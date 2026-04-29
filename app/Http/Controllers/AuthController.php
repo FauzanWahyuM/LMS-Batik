@@ -1798,6 +1798,7 @@ class AuthController extends Controller
 
         $payload = $request->validate([
             'name' => ['required', 'string', 'min:3', 'max:120'],
+            'description' => ['nullable', 'string', 'max:1000'],
             'image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:4096'],
             'sort_order' => ['nullable', 'integer', 'min:0', 'max:9999'],
             'is_active' => ['nullable', 'boolean'],
@@ -1810,6 +1811,7 @@ class AuthController extends Controller
 
         Facility::create([
             'name' => $payload['name'],
+            'description' => $payload['description'] ?? null,
             'image_path' => $imagePath,
             'sort_order' => (int) ($payload['sort_order'] ?? 0),
             'is_active' => (bool) ($payload['is_active'] ?? false),
@@ -1834,6 +1836,7 @@ class AuthController extends Controller
 
         $payload = $request->validate([
             'name' => ['required', 'string', 'min:3', 'max:120'],
+            'description' => ['nullable', 'string', 'max:1000'],
             'image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:4096'],
             'sort_order' => ['nullable', 'integer', 'min:0', 'max:9999'],
             'is_active' => ['nullable', 'boolean'],
@@ -1854,6 +1857,7 @@ class AuthController extends Controller
         }
 
         $target->name = $payload['name'];
+        $target->description = $payload['description'] ?? null;
         $target->sort_order = (int) ($payload['sort_order'] ?? 0);
         $target->is_active = (bool) ($payload['is_active'] ?? false);
         $target->save();
