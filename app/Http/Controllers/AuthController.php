@@ -15,6 +15,7 @@ use App\Models\RegistrationGroup;
 use App\Models\RegistrationIndividual;
 use App\Models\Testimonial;
 use App\Models\User;
+use App\Models\WarehouseMaterial;
 use App\Services\ForumDiscussionService;
 use App\Services\ParticipantModuleService;
 use Illuminate\Http\RedirectResponse;
@@ -676,6 +677,34 @@ class AuthController extends Controller
             ->with('status', 'Status peserta individu ' . $user->name . ' berhasil diperbarui menjadi ' . $this->buildParticipantRoleLabel($status) . '.');
     }
 
+    public function managerIndividualParticipantsReject(Request $request, string $participant): RedirectResponse
+    {
+        $guard = $this->ensureManagerRole($request);
+
+        if ($guard) {
+            return $guard;
+        }
+
+        $registrationId = (int) str_replace('individual-', '', $participant);
+        $registration = RegistrationIndividual::where('id', $registrationId)
+            ->where('status', 'pending')
+            ->first();
+
+        if (!$registration) {
+            return redirect()
+                ->route('dashboard.manager.participants.individual')
+                ->withErrors(['credential' => 'Data peserta untuk ditolak tidak ditemukan atau sudah diproses.']);
+        }
+
+        $registration->update(['status' => 'rejected']);
+
+        $request->session()->forget('manager_generated_credential');
+
+        return redirect()
+            ->route('dashboard.manager.participants.individual')
+            ->with('status', 'Pendaftaran peserta individu ' . $registration->nama_lengkap . ' berhasil ditolak.');
+    }
+
     public function managerGroupParticipants(Request $request): View|RedirectResponse
     {
         $guard = $this->ensureManagerRole($request);
@@ -951,6 +980,35 @@ class AuthController extends Controller
         return redirect()
             ->route('dashboard.manager.participants.group')
             ->with('status', 'Status peserta kelompok untuk lembaga ' . $registration->nama_lembaga . ' berhasil diperbarui menjadi ' . $this->buildParticipantRoleLabel($status) . '.');
+    }
+
+    public function managerGroupParticipantsReject(Request $request, string $group): RedirectResponse
+    {
+        $guard = $this->ensureManagerRole($request);
+
+        if ($guard) {
+            return $guard;
+        }
+
+        $registrationId = str_starts_with($group, 'group-') ? (int) str_replace('group-', '', $group) : (int) $group;
+        $registration = RegistrationGroup::query()
+            ->where('id', $registrationId)
+            ->where('status', 'pending')
+            ->first();
+
+        if (!$registration) {
+            return redirect()
+                ->route('dashboard.manager.participants.group')
+                ->withErrors(['group_credential' => 'Data kelompok untuk ditolak tidak ditemukan atau sudah diproses.']);
+        }
+
+        $registration->update(['status' => 'rejected']);
+
+        $request->session()->forget('manager_generated_group_credential');
+
+        return redirect()
+            ->route('dashboard.manager.participants.group')
+            ->with('status', 'Pendaftaran kelompok ' . $registration->nama_lembaga . ' berhasil ditolak.');
     }
 
     public function managerInstructors(Request $request): View|RedirectResponse
@@ -1885,6 +1943,32 @@ class AuthController extends Controller
 
         return redirect()->route('dashboard.manager.facilities')
             ->with('status', 'Fasilitas berhasil dihapus.');
+    }
+
+    public function managerStorage(Request $request): View|RedirectResponse
+    {
+        $guard = $this->ensureManagerRole($request);
+
+        if ($guard) {
+            return $guard;
+        }
+
+        $search = trim((string) $request->query('search', ''));
+        $query = Schema::hasTable('warehouse_materials') ? WarehouseMaterial::query()->latest() : null;
+
+        if ($query && $search !== '') {
+            $query->where(function ($builder) use ($search) {
+                $builder->where('name', 'like', '%' . $search . '%')
+                    ->orWhere('category', 'like', '%' . $search . '%');
+            });
+        }
+
+        return view('dashboard.manager.storage', [
+            'user' => $request->session()->get('auth_user'),
+            'dashboard' => $this->getManagerDashboardConfig('storage'),
+            'materials' => $query ? $query->get() : collect(),
+            'search' => $search,
+        ]);
     }
 
     public function managerPartners(Request $request): View|RedirectResponse
@@ -3097,6 +3181,10 @@ class AuthController extends Controller
                 'title' => 'Kelola Fasilitas',
                 'subtitle' => 'Kelola fasilitas pada halaman Tentang Kami secara dinamis.',
             ],
+            'storage' => [
+                'title' => 'Kelola Gudang',
+                'subtitle' => 'Pantau stok bahan, minimum stok, dan pembaruan data gudang secara real-time.',
+            ],
             'partners' => [
                 'title' => 'Kelola Mitra',
                 'subtitle' => 'Kelola daftar mitra kerja sama pada halaman Tentang Kami.',
@@ -3174,6 +3262,12 @@ class AuthController extends Controller
                     'icon' => 'facilities',
                     'url' => route('dashboard.manager.facilities'),
                     'active' => $activePage === 'facilities',
+                ],
+                [
+                    'label' => 'Kelola Gudang',
+                    'icon' => 'storage',
+                    'url' => route('dashboard.manager.storage'),
+                    'active' => $activePage === 'storage',
                 ],
                 [
                     'label' => 'Kelola Mitra',
@@ -3809,6 +3903,11 @@ class AuthController extends Controller
     {
         $monthIndividual = [];
         $monthGroup = [];
+        $approvedIndividualCount = 0;
+        $approvedGroupCount = 0;
+        $approvedGroupMembers = 0;
+        $pendingIndividualCount = 0;
+        $pendingGroupCount = 0;
         $registrationByDate = [];
         $programRates = $this->getReportProgramRates();
         $individualCost = (int) $programRates['individual_cost'];
@@ -3823,8 +3922,21 @@ class AuthController extends Controller
                 ->orderBy('created_at')
                 ->get();
 
-            $monthIndividual = $individualRegistrations->map(function (RegistrationIndividual $registration) use (&$registrationByDate, $individualCost, $individualProgramName): array {
+            $monthIndividual = $individualRegistrations->map(function (RegistrationIndividual $registration) use (&$registrationByDate, &$pendingIndividualCount, &$approvedIndividualCount, $individualCost, $individualProgramName): array {
                 $registrationDate = optional($registration->created_at)->format('Y-m-d') ?? '';
+                $status = (string) ($registration->status ?? 'pending');
+                $normalizedStatus = strtolower(trim($status));
+                $isApproved = in_array($normalizedStatus, ['approved', 'disetujui'], true);
+                $isPending = in_array($normalizedStatus, ['pending', 'menunggu'], true);
+
+                if ($isPending) {
+                    $pendingIndividualCount++;
+                }
+
+                if ($isApproved) {
+                    $approvedIndividualCount++;
+                }
+
                 if ($registrationDate !== '') {
                     $registrationByDate[$registrationDate] = ($registrationByDate[$registrationDate] ?? 0) + 1;
                 }
@@ -3834,8 +3946,10 @@ class AuthController extends Controller
                     'name' => (string) $registration->nama_lengkap,
                     'program' => $individualProgramName,
                     'registration_date' => $registrationDate,
-                    'status' => $this->formatReportStatus((string) ($registration->status ?? 'pending')),
+                    'validation_status' => $this->formatReportStatus($status),
+                    'payment_status' => $this->formatReportPaymentStatus($status),
                     'cost' => $individualCost,
+                    'revenue' => $isApproved ? $individualCost : 0,
                 ];
             })->all();
         }
@@ -3847,8 +3961,22 @@ class AuthController extends Controller
                 ->orderBy('created_at')
                 ->get();
 
-            $monthGroup = $groupRegistrations->map(function (RegistrationGroup $registration) use (&$registrationByDate, $groupCost, $groupProgramName): array {
+            $monthGroup = $groupRegistrations->map(function (RegistrationGroup $registration) use (&$registrationByDate, &$pendingGroupCount, &$approvedGroupCount, &$approvedGroupMembers, $groupCost, $groupProgramName): array {
                 $registrationDate = optional($registration->created_at)->format('Y-m-d') ?? '';
+                $status = (string) ($registration->status ?? 'pending');
+                $normalizedStatus = strtolower(trim($status));
+                $isApproved = in_array($normalizedStatus, ['approved', 'disetujui'], true);
+                $isPending = in_array($normalizedStatus, ['pending', 'menunggu'], true);
+
+                if ($isPending) {
+                    $pendingGroupCount++;
+                }
+
+                if ($isApproved) {
+                    $approvedGroupCount++;
+                    $approvedGroupMembers += (int) $registration->jumlah_peserta;
+                }
+
                 if ($registrationDate !== '') {
                     $registrationByDate[$registrationDate] = ($registrationByDate[$registrationDate] ?? 0) + (int) $registration->jumlah_peserta;
                 }
@@ -3858,18 +3986,22 @@ class AuthController extends Controller
                     'group_name' => (string) $registration->nama_lembaga,
                     'members' => (int) $registration->jumlah_peserta,
                     'program' => $groupProgramName,
-                    'status' => $this->formatReportStatus((string) ($registration->status ?? 'pending')),
+                    'validation_status' => $this->formatReportStatus($status),
+                    'payment_status' => $this->formatReportPaymentStatus($status),
                     'registration_date' => $registrationDate,
                     'cost' => $groupCost,
+                    'revenue' => $isApproved ? $groupCost : 0,
                 ];
             })->all();
         }
 
-        $totalIndividual = count($monthIndividual);
-        $totalGroup = count($monthGroup);
-        $totalGroupMembers = array_sum(array_column($monthGroup, 'members'));
-        $totalParticipants = $totalIndividual + $totalGroupMembers;
-        $totalProfit = ($totalIndividual * $individualCost) + ($totalGroup * $groupCost);
+        $totalIndividual = $approvedIndividualCount;
+        $totalGroup = $approvedGroupCount;
+        $totalGroupMembers = $approvedGroupMembers;
+        $totalParticipants = $approvedIndividualCount + $approvedGroupMembers;
+        $totalPendingRegistrations = $pendingIndividualCount + $pendingGroupCount;
+        $totalPotentialRevenue = ($pendingIndividualCount * $individualCost) + ($pendingGroupCount * $groupCost);
+        $totalProfit = ($approvedIndividualCount * $individualCost) + ($approvedGroupCount * $groupCost);
         $instructorSalaries = $this->getReportInstructorSalaries();
         $totalExpenditure = array_sum(array_column($instructorSalaries, 'salary'));
         $totalOverall = $totalProfit - $totalExpenditure;
@@ -3883,6 +4015,47 @@ class AuthController extends Controller
             }
         }
 
+        // Warehouse inventory data
+        $totalWarehouseItems = 0;
+        $lowStockItems = 0;
+        $warehouseCategories = [];
+        $warehouseMaterials = [];
+
+        if (Schema::hasTable('warehouse_materials')) {
+            $allMaterials = WarehouseMaterial::query()->get();
+            $totalWarehouseItems = $allMaterials->count();
+            $lowStockItems = $allMaterials->where('stock', '<', function () {
+                return 'minimum_stock';
+            })->count();
+
+            // Count by counting items where stock < minimum_stock
+            foreach ($allMaterials as $material) {
+                if ((int) $material->stock < (int) $material->minimum_stock) {
+                    $lowStockItems++;
+                }
+            }
+
+            $warehouseCategories = $allMaterials->groupBy('category')->map(fn ($items) => [
+                'category' => $items->first()->category,
+                'count' => $items->count(),
+                'total_stock' => $items->sum('stock'),
+            ])->values()->all();
+
+            $warehouseMaterials = $allMaterials->map(function (WarehouseMaterial $material) {
+                $isLowStock = (int) $material->stock < (int) $material->minimum_stock;
+                return [
+                    'id' => $material->id,
+                    'name' => (string) $material->name,
+                    'category' => (string) $material->category,
+                    'unit' => (string) $material->unit,
+                    'stock' => (int) $material->stock,
+                    'minimum_stock' => (int) $material->minimum_stock,
+                    'status' => $isLowStock ? 'Stok Rendah' : 'Normal',
+                    'status_color' => $isLowStock ? 'amber' : 'emerald',
+                ];
+            })->all();
+        }
+
         return [
             'month' => $month,
             'year' => $year,
@@ -3891,10 +4064,16 @@ class AuthController extends Controller
             'total_group_registrations' => $totalGroup,
             'total_group_members' => $totalGroupMembers,
             'total_participants' => $totalParticipants,
+            'total_pending_registrations' => $totalPendingRegistrations,
+            'total_pending_individual_registrations' => $pendingIndividualCount,
+            'total_pending_group_registrations' => $pendingGroupCount,
+            'total_paid_individual_registrations' => $approvedIndividualCount,
+            'total_paid_group_registrations' => $approvedGroupCount,
             'individual_cost' => $individualCost,
             'group_cost' => $groupCost,
             'total_cost' => $totalIndividual * $individualCost,
             'group_income' => $totalGroup * $groupCost,
+            'total_potential_revenue' => $totalPotentialRevenue,
             'total_profit' => $totalProfit,
             'total_expenditure' => $totalExpenditure,
             'total_overall' => $totalOverall,
@@ -3902,6 +4081,12 @@ class AuthController extends Controller
             'instructor_salaries' => $instructorSalaries,
             'individual_participants' => $monthIndividual,
             'group_participants' => $monthGroup,
+            'pending_individual_participants' => array_values(array_filter($monthIndividual, fn (array $row): bool => ($row['payment_status'] ?? '') === 'Belum Membayar')),
+            'pending_group_participants' => array_values(array_filter($monthGroup, fn (array $row): bool => ($row['payment_status'] ?? '') === 'Belum Membayar')),
+            'total_warehouse_items' => $totalWarehouseItems,
+            'low_stock_items' => $lowStockItems,
+            'warehouse_categories' => $warehouseCategories,
+            'warehouse_materials' => $warehouseMaterials,
         ];
     }
 
@@ -4004,6 +4189,7 @@ class AuthController extends Controller
                 'month' => $month,
                 'month_name' => $this->getMonthName($month),
                 'total_registrations' => $data['total_participants'],
+                'pending_registrations' => $data['total_pending_registrations'],
                 'total_profit' => $data['total_profit'],
             ];
         }
@@ -4035,8 +4221,9 @@ class AuthController extends Controller
                 'program' => (string) ($participant['program'] ?? '-'),
                 'date' => (string) ($participant['registration_date'] ?? '-'),
                 'members' => '1',
-                'status' => (string) ($participant['status'] ?? '-'),
-                'revenue' => (int) ($participant['cost'] ?? $monthlyData['individual_cost']),
+                'validation_status' => (string) ($participant['validation_status'] ?? $participant['status'] ?? '-'),
+                'payment_status' => (string) ($participant['payment_status'] ?? '-'),
+                'revenue' => (int) ($participant['revenue'] ?? 0),
             ];
         }, $monthlyData['individual_participants']);
 
@@ -4048,8 +4235,9 @@ class AuthController extends Controller
                 'program' => (string) ($group['program'] ?? '-'),
                 'date' => (string) ($group['registration_date'] ?? '-'),
                 'members' => (string) $members,
-                'status' => (string) ($group['status'] ?? '-'),
-                'revenue' => (int) ($group['cost'] ?? $monthlyData['group_cost']),
+                'validation_status' => (string) ($group['validation_status'] ?? $group['status'] ?? '-'),
+                'payment_status' => (string) ($group['payment_status'] ?? '-'),
+                'revenue' => (int) ($group['revenue'] ?? 0),
             ];
         }, $monthlyData['group_participants']);
 
@@ -4059,12 +4247,18 @@ class AuthController extends Controller
             'summary' => [
                 'Pendaftaran Individu' => $monthlyData['total_individual_registrations'],
                 'Pendaftaran Kelompok' => $monthlyData['total_group_registrations'],
-                'Total Pendapatan' => (int) $monthlyData['total_profit'],
+                'Calon Peserta' => (int) $monthlyData['total_pending_registrations'],
+                'Belum Membayar' => (int) $monthlyData['total_pending_registrations'],
+                'Pendapatan Diterima' => (int) $monthlyData['total_profit'],
+                'Potensi Pendapatan Tertunda' => (int) $monthlyData['total_potential_revenue'],
                 'Total Pengeluaran' => (int) $monthlyData['total_expenditure'],
                 'Total Keseluruhan' => (int) $monthlyData['total_overall'],
                 'Tanggal Pendaftaran Tertinggi' => $monthlyData['peak_registration_date'],
             ],
             'rows' => array_merge($individualRows, $groupRows),
+            'pending_rows' => array_values(array_filter(array_merge($individualRows, $groupRows), function (array $row): bool {
+                return ($row['payment_status'] ?? '') === 'Belum Membayar';
+            })),
             'salary_rows' => $monthlyData['instructor_salaries'],
         ];
     }
@@ -4077,6 +4271,7 @@ class AuthController extends Controller
         $monthlyRows = [];
         $totalIndividual = 0;
         $totalGroup = 0;
+        $totalPending = 0;
         $totalRevenue = 0;
         $totalExpenditure = 0;
         $totalOverall = 0;
@@ -4089,6 +4284,7 @@ class AuthController extends Controller
             $monthlyBreakdown = $this->getMonthlyReportData($monthNumber, $year);
             $totalIndividual += (int) $monthlyBreakdown['total_individual_registrations'];
             $totalGroup += (int) $monthlyBreakdown['total_group_registrations'];
+            $totalPending += (int) $monthlyBreakdown['total_pending_registrations'];
             $totalRevenue += (int) $monthlyBreakdown['total_profit'];
             $totalExpenditure += (int) $monthlyBreakdown['total_expenditure'];
             $totalOverall += (int) $monthlyBreakdown['total_overall'];
@@ -4104,6 +4300,7 @@ class AuthController extends Controller
             $monthlyRows[] = [
                 'month' => $monthData['month_name'],
                 'registrations' => (int) $monthData['total_registrations'],
+                'pending' => (int) $monthData['pending_registrations'],
                 'revenue' => (int) $monthData['total_profit'],
             ];
         }
@@ -4114,6 +4311,8 @@ class AuthController extends Controller
             'summary' => [
                 'Pendaftaran Individu' => $totalIndividual,
                 'Pendaftaran Kelompok' => $totalGroup,
+                'Calon Peserta' => $totalPending,
+                'Belum Membayar' => $totalPending,
                 'Total Pendapatan' => $totalRevenue,
                 'Total Pengeluaran' => $totalExpenditure,
                 'Total Keseluruhan' => $totalOverall,
@@ -4141,16 +4340,18 @@ class AuthController extends Controller
         fputcsv($stream, ['Data']);
 
         if (($reportData['mode'] ?? '') === 'annual') {
-            fputcsv($stream, ['Bulan', 'Total Pendaftaran', 'Total Pendapatan']);
+            fputcsv($stream, ['Bulan', 'Total Pendaftaran', 'Calon Peserta', 'Belum Membayar', 'Total Pendapatan']);
             foreach ($reportData['rows'] as $row) {
                 fputcsv($stream, [
                     $row['month'],
                     $row['registrations'],
+                    $row['pending'] ?? 0,
+                    $row['pending'] ?? 0,
                     $row['revenue'],
                 ]);
             }
         } else {
-            fputcsv($stream, ['Tipe', 'Nama', 'Program', 'Tanggal', 'Jumlah Anggota', 'Status', 'Pendapatan']);
+            fputcsv($stream, ['Tipe', 'Nama', 'Program', 'Tanggal', 'Jumlah Anggota', 'Status Validasi', 'Status Pembayaran', 'Pendapatan']);
             foreach ($reportData['rows'] as $row) {
                 fputcsv($stream, [
                     $row['type'],
@@ -4158,9 +4359,28 @@ class AuthController extends Controller
                     $row['program'],
                     $row['date'],
                     $row['members'],
-                    $row['status'],
+                    $row['validation_status'] ?? $row['status'],
+                    $row['payment_status'] ?? $row['status'],
                     $row['revenue'],
                 ]);
+            }
+
+            if (!empty($reportData['pending_rows']) && is_array($reportData['pending_rows'])) {
+                fputcsv($stream, []);
+                fputcsv($stream, ['Calon Peserta / Belum Membayar']);
+                fputcsv($stream, ['Tipe', 'Nama', 'Program', 'Tanggal', 'Jumlah Anggota', 'Status Validasi', 'Status Pembayaran', 'Pendapatan']);
+                foreach ($reportData['pending_rows'] as $row) {
+                    fputcsv($stream, [
+                        $row['type'] ?? '-',
+                        $row['name'] ?? '-',
+                        $row['program'] ?? '-',
+                        $row['date'] ?? '-',
+                        $row['members'] ?? '-',
+                        $row['validation_status'] ?? '-',
+                        $row['payment_status'] ?? '-',
+                        $row['revenue'] ?? 0,
+                    ]);
+                }
             }
 
             if (!empty($reportData['salary_rows']) && is_array($reportData['salary_rows'])) {
@@ -4278,13 +4498,26 @@ class AuthController extends Controller
         } elseif (($reportData['mode'] ?? '') === 'annual') {
             foreach ($reportData['rows'] as $row) {
                 $lines[] = ($row['month'] ?? '-') . ' | Pendaftaran: ' . number_format((int) ($row['registrations'] ?? 0), 0, ',', '.')
+                    . ' | Calon Peserta: ' . number_format((int) ($row['pending'] ?? 0), 0, ',', '.')
                     . ' | Pendapatan: Rp ' . number_format((int) ($row['revenue'] ?? 0), 0, ',', '.');
             }
         } else {
             foreach ($reportData['rows'] as $row) {
                 $lines[] = ($row['type'] ?? '-') . ' | ' . ($row['name'] ?? '-') . ' | ' . ($row['program'] ?? '-')
-                    . ' | ' . ($row['date'] ?? '-') . ' | ' . ($row['status'] ?? '-') . ' | Rp '
+                    . ' | ' . ($row['date'] ?? '-') . ' | ' . ($row['validation_status'] ?? $row['status'] ?? '-') . ' | '
+                    . ($row['payment_status'] ?? '-') . ' | Rp '
                     . number_format((int) ($row['revenue'] ?? 0), 0, ',', '.');
+            }
+
+            if (!empty($reportData['pending_rows']) && is_array($reportData['pending_rows'])) {
+                $lines[] = '';
+                $lines[] = 'Calon Peserta / Belum Membayar';
+                foreach ($reportData['pending_rows'] as $row) {
+                    $lines[] = ($row['type'] ?? '-') . ' | ' . ($row['name'] ?? '-') . ' | ' . ($row['program'] ?? '-')
+                        . ' | ' . ($row['date'] ?? '-') . ' | ' . ($row['validation_status'] ?? '-') . ' | '
+                        . ($row['payment_status'] ?? '-') . ' | Rp '
+                        . number_format((int) ($row['revenue'] ?? 0), 0, ',', '.');
+                }
             }
         }
 
@@ -4642,6 +4875,18 @@ class AuthController extends Controller
         return match ($normalized) {
             'pending', 'menunggu' => 'Pending',
             'approved', 'disetujui' => 'Disetujui',
+            'rejected', 'ditolak' => 'Ditolak',
+            default => $status !== '' ? ucfirst($status) : '-',
+        };
+    }
+
+    private function formatReportPaymentStatus(string $status): string
+    {
+        $normalized = strtolower(trim($status));
+
+        return match ($normalized) {
+            'pending', 'menunggu' => 'Belum Membayar',
+            'approved', 'disetujui' => 'Sudah Membayar',
             'rejected', 'ditolak' => 'Ditolak',
             default => $status !== '' ? ucfirst($status) : '-',
         };

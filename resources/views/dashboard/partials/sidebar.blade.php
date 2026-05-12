@@ -1,5 +1,5 @@
 <aside id="dashboard-sidebar"
-    class="fixed inset-y-0 left-0 z-40 flex w-72 -translate-x-full flex-col border-r border-slate-200 bg-white transition-transform duration-200 ease-out lg:sticky lg:top-0 lg:min-h-screen lg:translate-x-0">
+    class="fixed inset-y-0 left-0 z-40 flex h-screen w-72 -translate-x-full flex-col border-r border-slate-200 bg-white shadow-sm transition-transform duration-200 ease-out lg:sticky lg:top-0 lg:translate-x-0 lg:overflow-y-auto">
     <div class="flex items-center justify-between border-b border-slate-200 px-5 py-5">
         <a href="{{ route('dashboard.index') }}" class="flex items-center gap-3">
             <img src="{{ asset('img/Logo.png') }}" alt="Logo" class="h-10 w-10 rounded-md object-cover">
@@ -86,6 +86,13 @@
                             </svg>
                         @break
 
+                        @case('storage')
+                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M3 7h18M5 7v12a2 2 0 002 2h10a2 2 0 002-2V7M9 11h6m-6 4h4M8 3h8a1 1 0 011 1v3H7V4a1 1 0 011-1z" />
+                            </svg>
+                        @break
+
                         @case('partners')
                             <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -161,60 +168,5 @@
         @endforeach
     </nav>
 
-    <div class="border-t border-slate-200 p-4">
-        <a href="{{ $dashboard['profileUrl'] ?? '#' }}"
-            class="mb-4 block rounded-xl bg-slate-100 p-3 transition hover:bg-slate-200/80 focus:outline-none focus:ring-2 focus:ring-slate-400/60">
-            <p class="text-xs text-slate-500">Login sebagai</p>
-            <p class="mt-1 text-sm font-semibold text-slate-800">{{ $user['name'] ?? 'User' }}</p>
-            <p class="text-xs text-slate-500">{{ $user['sidebar_email'] ?? ($user['email'] ?? '-') }}</p>
-            <span
-                class="mt-2 inline-block rounded-full px-2.5 py-1 text-xs font-semibold {{ $dashboard['roleBadgeClasses'] }}">{{ $user['sidebar_role_label'] ?? ucfirst($user['role'] ?? 'participant') }}</span>
-        </a>
-
-        <button type="button" id="sidebar-logout-button"
-            class="w-full rounded-lg bg-slate-800 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-700 transition">
-            Logout
-        </button>
-    </div>
+    {{-- Profile and logout moved to the header dropdown --}}
 </aside>
-
-<script>
-    (function() {
-        const logoutButton = document.getElementById('sidebar-logout-button');
-        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
-
-        if (!logoutButton) {
-            return;
-        }
-
-        logoutButton.addEventListener('click', async function() {
-            try {
-                const response = await fetch('/api/v1/auth/logout', {
-                    method: 'POST',
-                    headers: {
-                        'Accept': 'application/json',
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': csrfToken,
-                        'X-Requested-With': 'XMLHttpRequest',
-                    },
-                    credentials: 'same-origin',
-                });
-
-                const result = await response.json().catch(function() {
-                    return {
-                        success: false,
-                        message: 'Logout gagal diproses.',
-                    };
-                });
-
-                if (!response.ok || result.success !== true) {
-                    throw new Error(result.message || 'Logout gagal diproses.');
-                }
-
-                window.location.assign(result.data?.redirect_url || '/login');
-            } catch (error) {
-                alert(error.message || 'Logout gagal diproses.');
-            }
-        });
-    })();
-</script>

@@ -51,11 +51,13 @@ Route::middleware('simple.auth')->group(function (): void {
 		Route::post('/profil/update', [AuthController::class, 'managerProfileUpdate'])->name('profile.update');
 		Route::get('/kelola-peserta-individu', [AuthController::class, 'managerIndividualParticipants'])->name('participants.individual');
 		Route::post('/kelola-peserta-individu/{participant}/generate-credential', [AuthController::class, 'managerIndividualParticipantsGenerateCredential'])->name('participants.individual.generate-credential');
+		Route::post('/kelola-peserta-individu/{participant}/reject', [AuthController::class, 'managerIndividualParticipantsReject'])->name('participants.individual.reject');
 		Route::post('/kelola-peserta-individu/{participant}/send-credential', [AuthController::class, 'managerIndividualParticipantsSendCredential'])->name('participants.individual.send-credential');
 		Route::post('/kelola-peserta-individu/{participant}/status', [AuthController::class, 'managerIndividualParticipantsUpdate'])->name('participants.individual.update');
 		Route::get('/kelola-peserta-kelompok', [AuthController::class, 'managerGroupParticipants'])->name('participants.group');
 		Route::get('/kelola-peserta-kelompok/{group}/download-export', [AuthController::class, 'managerGroupParticipantsDownloadCredentialExport'])->name('participants.group.download-export');
 		Route::post('/kelola-peserta-kelompok/{group}/generate-credential', [AuthController::class, 'managerGroupParticipantsGenerateCredential'])->name('participants.group.generate-credential');
+		Route::post('/kelola-peserta-kelompok/{group}/reject', [AuthController::class, 'managerGroupParticipantsReject'])->name('participants.group.reject');
 		Route::post('/kelola-peserta-kelompok/{group}/send-credential', [AuthController::class, 'managerGroupParticipantsSendCredential'])->name('participants.group.send-credential');
 		Route::post('/kelola-peserta-kelompok/{group}/status', [AuthController::class, 'managerGroupParticipantsUpdate'])->name('participants.group.update');
 		Route::get('/kelola-pengajar', [AuthController::class, 'managerInstructors'])->name('instructors');
@@ -76,6 +78,7 @@ Route::middleware('simple.auth')->group(function (): void {
 		Route::post('/kelola-fasilitas/create', [AuthController::class, 'managerFacilitiesStore'])->name('facilities.store');
 		Route::post('/kelola-fasilitas/{facility}/edit', [AuthController::class, 'managerFacilitiesEdit'])->name('facilities.edit');
 		Route::post('/kelola-fasilitas/{facility}/delete', [AuthController::class, 'managerFacilitiesDelete'])->name('facilities.delete');
+		Route::get('/kelola-gudang', [AuthController::class, 'managerStorage'])->name('storage');
 		Route::get('/kelola-mitra', [AuthController::class, 'managerPartners'])->name('partners');
 		Route::post('/kelola-mitra/create', [AuthController::class, 'managerPartnersStore'])->name('partners.store');
 		Route::post('/kelola-mitra/{partner}/edit', [AuthController::class, 'managerPartnersEdit'])->name('partners.edit');

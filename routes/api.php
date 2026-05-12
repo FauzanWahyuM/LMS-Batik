@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\ForumDiscussionApiController;
 use App\Http\Controllers\Api\InstructorModuleApiController;
 use App\Http\Controllers\Api\LandingRegistrationApiController;
 use App\Http\Controllers\Api\ManagerTestimonialApiController;
+use App\Http\Controllers\Api\ManagerStorageApiController;
 use App\Http\Controllers\Api\ManagerUserApiController;
 use App\Http\Controllers\Api\ParticipantLearningApiController;
 use Illuminate\Support\Facades\Route;
@@ -53,6 +54,14 @@ Route::prefix('v1')
                 Route::put('/{testimonial}', [ManagerTestimonialApiController::class, 'update'])->name('update');
                 Route::patch('/{testimonial}', [ManagerTestimonialApiController::class, 'update'])->name('patch');
                 Route::delete('/{testimonial}', [ManagerTestimonialApiController::class, 'destroy'])->name('destroy');
+            });
+
+            Route::prefix('manager/storage-materials')->name('api.v1.manager.storage-materials.')->group(function (): void {
+                Route::get('/', [ManagerStorageApiController::class, 'index'])->name('index');
+                Route::post('/', [ManagerStorageApiController::class, 'store'])->name('store');
+                Route::put('/{material}', [ManagerStorageApiController::class, 'update'])->name('update');
+                Route::patch('/{material}', [ManagerStorageApiController::class, 'update'])->name('patch');
+                Route::delete('/{material}', [ManagerStorageApiController::class, 'destroy'])->name('destroy');
             });
 
         Route::prefix('forum')->name('api.v1.forum.')->group(function (): void {

@@ -62,7 +62,14 @@
                         </table>
                     </div>
 
-                    <div class="mt-4 flex justify-end">
+                    <div class="mt-4 flex flex-col justify-end gap-2 sm:flex-row">
+                        <form method="POST"
+                            action="{{ route('dashboard.manager.participants.individual.reject', ['participant' => $participant['id']]) }}">
+                            @csrf
+                            <button type="submit"
+                                class="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700 transition hover:bg-rose-100 sm:text-sm">Tolak
+                                Pendaftaran</button>
+                        </form>
                         <form method="POST"
                             action="{{ route('dashboard.manager.participants.individual.generate-credential', ['participant' => $participant['id']]) }}">
                             @csrf

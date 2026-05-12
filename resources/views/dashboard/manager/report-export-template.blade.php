@@ -150,6 +150,8 @@
                 <tr>
                     <th>Bulan</th>
                     <th>Total Pendaftaran</th>
+                    <th>Calon Peserta</th>
+                    <th>Belum Membayar</th>
                     <th>Total Pendapatan</th>
                 </tr>
             </thead>
@@ -158,11 +160,13 @@
                     <tr>
                         <td>{{ $row['month'] ?? '-' }}</td>
                         <td>{{ $row['registrations'] ?? 0 }}</td>
+                        <td>{{ $row['pending'] ?? 0 }}</td>
+                        <td>{{ $row['pending'] ?? 0 }}</td>
                         <td>Rp {{ number_format((int) ($row['revenue'] ?? 0), 0, ',', '.') }}</td>
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="3" class="empty">Tidak ada data tersedia.</td>
+                        <td colspan="5" class="empty">Tidak ada data tersedia.</td>
                     </tr>
                 @endforelse
             </tbody>
@@ -174,7 +178,8 @@
                     <th>Program</th>
                     <th>Tanggal</th>
                     <th>Anggota</th>
-                    <th>Status</th>
+                    <th>Status Validasi</th>
+                    <th>Status Pembayaran</th>
                     <th>Pendapatan</th>
                 </tr>
             </thead>
@@ -186,17 +191,48 @@
                         <td>{{ $row['program'] ?? '-' }}</td>
                         <td>{{ $row['date'] ?? '-' }}</td>
                         <td>{{ $row['members'] ?? '-' }}</td>
-                        <td>{{ $row['status'] ?? '-' }}</td>
+                        <td>{{ $row['validation_status'] ?? ($row['status'] ?? '-') }}</td>
+                        <td>{{ $row['payment_status'] ?? '-' }}</td>
                         <td>Rp {{ number_format((int) ($row['revenue'] ?? 0), 0, ',', '.') }}</td>
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="7" class="empty">Tidak ada data tersedia.</td>
+                        <td colspan="8" class="empty">Tidak ada data tersedia.</td>
                     </tr>
                 @endforelse
             </tbody>
         @endif
     </table>
+
+    @if (!empty($reportData['pending_rows']) && is_array($reportData['pending_rows']))
+        <div class="report-title" style="font-size: 14px; margin-top: 18px;">Calon Peserta / Belum Membayar</div>
+        <table class="data">
+            <thead>
+                <tr>
+                    <th>Tipe</th>
+                    <th>Nama</th>
+                    <th>Status Validasi</th>
+                    <th>Status Pembayaran</th>
+                    <th>Pendapatan</th>
+                </tr>
+            </thead>
+            <tbody>
+                @forelse (($reportData['pending_rows'] ?? []) as $row)
+                    <tr>
+                        <td>{{ $row['type'] ?? '-' }}</td>
+                        <td>{{ $row['name'] ?? '-' }}</td>
+                        <td>{{ $row['validation_status'] ?? ($row['status'] ?? '-') }}</td>
+                        <td>{{ $row['payment_status'] ?? '-' }}</td>
+                        <td>Rp {{ number_format((int) ($row['revenue'] ?? 0), 0, ',', '.') }}</td>
+                    </tr>
+                @empty
+                    <tr>
+                        <td colspan="5" class="empty">Tidak ada data tersedia.</td>
+                    </tr>
+                @endforelse
+            </tbody>
+        </table>
+    @endif
 
     @if (($reportData['mode'] ?? '') !== 'annual' && !empty($reportData['salary_rows']))
         <div class="report-title" style="font-size: 14px; margin-top: 18px;">Laporan Pengeluaran Gaji Pengajar</div>

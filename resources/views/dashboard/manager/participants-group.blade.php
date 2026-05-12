@@ -81,6 +81,13 @@
                     <div class="mt-4 flex justify-end">
                         <div class="flex flex-col gap-2 sm:flex-row">
                             <form method="POST"
+                                action="{{ route('dashboard.manager.participants.group.reject', ['group' => $group['id']]) }}">
+                                @csrf
+                                <button type="submit"
+                                    class="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700 transition hover:bg-rose-100 sm:text-sm">Tolak
+                                    Pendaftaran</button>
+                            </form>
+                            <form method="POST"
                                 action="{{ route('dashboard.manager.participants.group.generate-credential', ['group' => $group['id']]) }}">
                                 @csrf
                                 <button type="submit"
