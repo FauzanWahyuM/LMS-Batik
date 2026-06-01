@@ -90,7 +90,8 @@
                 <div class="grid gap-0 md:grid-cols-[220px_minmax(0,1fr)]">
                     <div class="bg-slate-100">
                         <img src="{{ route('public-file', ['path' => ltrim($latestArtwork->image_path, '/')]) }}"
-                            alt="{{ $latestArtwork->title }}" class="h-full w-full object-cover">
+                            alt="{{ $latestArtwork->title }}" width="800" height="600"
+                            class="h-full w-full object-cover" loading="lazy" decoding="async">
                     </div>
                     <div class="p-5">
                         <p class="text-sm font-semibold text-slate-800">{{ $latestArtwork->title }}</p>

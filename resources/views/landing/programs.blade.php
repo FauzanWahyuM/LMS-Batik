@@ -1,20 +1,23 @@
 @extends('layouts.landing')
 
 @section('title', 'Program - LMS Batik')
+@section('meta_description',
+    'Lihat program pelatihan batik LMS Batik, durasi, biaya, jadwal, dan benefit program yang
+    tersedia.')
 
 @section('content')
 
     <section class="relative bg-cover bg-center h-screen flex items-center justify-center"
-        style="background-image: linear-gradient(to bottom, rgba(40, 25, 15, 0.3), rgba(40, 25, 15, 0.8)), url('{{ asset('img/Batik3.jpg') }}');">
+        style="background-image: linear-gradient(to bottom, rgba(20, 12, 8, 0.82), rgba(20, 12, 8, 0.96)), url('{{ asset('img/Batik3.jpg') }}');">
 
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center mt-10">
-            <h1 class="text-4xl md:text-6xl lg:text-7xl font-bold text-white mb-4 leading-tight tracking-wide drop-shadow-lg"
-                style="font-family: 'Georgia', serif;">
+            <h1 class="text-4xl md:text-6xl lg:text-7xl font-bold mb-4 leading-tight tracking-wide drop-shadow-lg"
+                style="font-family: 'Georgia', serif; color: #fff;">
                 Program Kami
             </h1>
             <div class="w-20 h-1 bg-amber-500 mx-auto my-6 rounded-full opacity-90"></div>
-            <p class="text-xl md:text-2xl text-gray-200 font-light tracking-widest drop-shadow-md"
-                style="font-family: 'Georgia', serif;">
+            <p class="text-xl md:text-2xl font-light tracking-widest drop-shadow-md"
+                style="font-family: 'Georgia', serif; color: #ffffff;">
                 LPK Kama Praja Madiun
             </p>
         </div>
@@ -129,7 +132,7 @@
 
                                             <div class="mt-auto">
                                                 <a href="{{ route('landing.registration') }}"
-                                                    class="inline-block w-full sm:w-auto bg-amber-600 text-white px-8 py-3 rounded-full font-semibold hover:bg-amber-700 transition shadow-lg">
+                                                    class="inline-block w-full sm:w-auto bg-amber-700 text-white px-8 py-3 rounded-full font-semibold hover:bg-amber-800 transition shadow-lg">
                                                     Daftar Sekarang
                                                 </a>
                                             </div>
@@ -218,7 +221,7 @@
 
                                             <div class="mt-auto">
                                                 <a href="{{ route('landing.registration') }}"
-                                                    class="inline-block w-full sm:w-auto bg-amber-600 text-white px-8 py-3 rounded-full font-semibold hover:bg-amber-700 transition shadow-lg">
+                                                    class="inline-block w-full sm:w-auto bg-amber-700 text-white px-8 py-3 rounded-full font-semibold hover:bg-amber-800 transition shadow-lg">
                                                     Daftar Sekarang
                                                 </a>
                                             </div>

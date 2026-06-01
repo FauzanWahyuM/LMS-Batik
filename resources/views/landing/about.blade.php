@@ -1,20 +1,23 @@
 @extends('layouts.landing')
 
 @section('title', 'Tentang Kami - LMS Batik')
+@section('meta_description',
+    'Tentang LMS Batik dan LPK Kama Praja Madiun sebagai lembaga pelatihan batik dengan
+    fasilitas dan mitra pendukung.')
 
 @section('content')
 
     <section class="relative bg-cover bg-center h-screen flex items-center justify-center"
-        style="background-image: linear-gradient(to bottom, rgba(40, 25, 15, 0.3), rgba(40, 25, 15, 0.8)), url('{{ asset('img/Batik1.jpg') }}');">
+        style="background-image: linear-gradient(to bottom, rgba(20, 12, 8, 0.82), rgba(20, 12, 8, 0.96)), url('{{ asset('img/Batik1.jpg') }}');">
 
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center mt-10">
-            <h1 class="text-4xl md:text-6xl lg:text-7xl font-bold text-white mb-4 leading-tight tracking-wide drop-shadow-lg"
-                style="font-family: 'Georgia', serif;">
+            <h1 class="text-4xl md:text-6xl lg:text-7xl font-bold mb-4 leading-tight tracking-wide drop-shadow-lg"
+                style="font-family: 'Georgia', serif; color: #fff;">
                 Tentang Kami
             </h1>
             <div class="w-20 h-1 bg-amber-500 mx-auto my-6 rounded-full opacity-90"></div>
-            <p class="text-xl md:text-2xl text-gray-200 font-light tracking-widest drop-shadow-md"
-                style="font-family: 'Georgia', serif;">
+            <p class="text-xl md:text-2xl font-light tracking-widest drop-shadow-md"
+                style="font-family: 'Georgia', serif; color: #ffffff;">
                 LPK Kama Praja Madiun
             </p>
         </div>
@@ -86,13 +89,16 @@
                             @if ($isSingleFacility)
                                 <div class="flex justify-center">
                                     @foreach ($facilityPage as $facility)
-                                        <article
-                                            class="w-full max-w-sm rounded-xl shadow-lg overflow-hidden h-full flex flex-col bg-white border border-slate-200">
+                                        <article class="w-full max-w-sm rounded-xl shadow-lg overflow-hidden h-full flex flex-col bg-white border border-slate-200">
                                             @if (!empty($facility->image_path))
-                                                <img src="{{ route('public-file', ['path' => $facility->image_path]) }}"
-                                                    alt="{{ $facility->name }}" class="w-full h-48 object-cover">
+                                                <div class="overflow-hidden bg-slate-200" style="aspect-ratio: 3 / 2;">
+                                                    <img src="{{ route('public-file', ['path' => $facility->image_path]) }}"
+                                                        alt="{{ $facility->name }}"
+                                                        class="w-full h-full object-cover"
+                                                        loading="lazy" decoding="async">
+                                                </div>
                                             @else
-                                                <div class="w-full h-48 bg-slate-200"></div>
+                                                <div class="bg-slate-200" style="aspect-ratio: 3 / 2;"></div>
                                             @endif
                                             <div
                                                 class="bg-blue-950 px-4 py-3 text-center flex flex-col justify-center flex-1">
@@ -110,13 +116,16 @@
                                 <div
                                     class="{{ $isTwoFacilities ? 'grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto' : 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8' }}">
                                     @foreach ($facilityPage as $facility)
-                                        <article
-                                            class="rounded-xl shadow-lg overflow-hidden h-full flex flex-col bg-white border border-slate-200">
+                                        <article class="rounded-xl shadow-lg overflow-hidden h-full flex flex-col bg-white border border-slate-200">
                                             @if (!empty($facility->image_path))
-                                                <img src="{{ route('public-file', ['path' => $facility->image_path]) }}"
-                                                    alt="{{ $facility->name }}" class="w-full h-48 object-cover">
+                                                <div class="overflow-hidden bg-slate-200" style="aspect-ratio: 3 / 2;">
+                                                    <img src="{{ route('public-file', ['path' => $facility->image_path]) }}"
+                                                        alt="{{ $facility->name }}"
+                                                        class="w-full h-full object-cover"
+                                                        loading="lazy" decoding="async">
+                                                </div>
                                             @else
-                                                <div class="w-full h-48 bg-slate-200"></div>
+                                                <div class="bg-slate-200" style="aspect-ratio: 3 / 2;"></div>
                                             @endif
                                             <div
                                                 class="bg-blue-950 px-4 py-3 text-center flex flex-col justify-center flex-1">
@@ -177,7 +186,10 @@
                                         class="w-32 h-32 bg-white rounded-full flex items-center justify-center mb-6 overflow-hidden">
                                         @if (!empty($partner->logo_path))
                                             <img src="{{ route('public-file', ['path' => $partner->logo_path]) }}"
-                                                alt="{{ $partner->name }}" class="w-20 h-20 object-contain">
+                                                alt="{{ $partner->name }}"
+                                                class="w-20 h-20 object-contain"
+                                                width="80" height="80"
+                                                loading="lazy" decoding="async">
                                         @else
                                             <span class="text-xs text-slate-500 px-2 text-center">Logo belum diunggah</span>
                                         @endif
@@ -197,14 +209,14 @@
                     </div>
                 </div>
 
-                <button id="prev-partner"
+                <button id="prev-partner" type="button" aria-label="Sebelumnya mitra"
                     class="hidden md:flex absolute -left-12 top-1/2 -translate-y-1/2 bg-amber-600 hover:bg-amber-700 text-white p-2 rounded-full shadow-lg transition">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
                     </svg>
                 </button>
 
-                <button id="next-partner"
+                <button id="next-partner" type="button" aria-label="Berikutnya mitra"
                     class="hidden md:flex absolute -right-12 top-1/2 -translate-y-1/2 bg-amber-600 hover:bg-amber-700 text-white p-2 rounded-full shadow-lg transition">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />

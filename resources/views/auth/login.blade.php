@@ -6,13 +6,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Masuk - LMS Batik</title>
-    <link rel="icon" type="image/png" href="{{ asset('img/Logo.png') }}">
+    <meta name="description"
+        content="Halaman masuk LMS Batik untuk peserta, instruktur, dan manajer mengakses portal belajar terpadu.">
+    <meta name="robots" content="noindex,follow">
+    <link rel="icon" type="image/png" href="{{ asset('img/Logo1.jpeg') }}">
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         /* Background utama yang elegan dengan overlay gelap transparan */
         .kp-bg-pattern {
             background-color: #473c38;
-            background-image: linear-gradient(rgba(45, 36, 33, 0.75), rgba(45, 36, 33, 0.85)), url('{{ asset('img/Batik6.jpg') }}');
+            background-image: linear-gradient(rgba(45, 36, 33, 0.86), rgba(45, 36, 33, 0.94)), url('{{ asset('img/Batik6.jpg') }}');
             background-size: cover;
             background-position: center;
             background-attachment: fixed;
@@ -20,7 +23,7 @@
     </style>
 </head>
 
-<body class="min-h-screen kp-bg-pattern flex items-center justify-center font-sans text-slate-800 p-4 sm:p-6 lg:p-8">
+<body class="min-h-screen kp-bg-pattern flex items-center justify-center font-sans p-4 sm:p-6 lg:p-8">
 
     <div class="w-full max-w-[950px] rounded-3xl bg-white shadow-2xl overflow-hidden grid lg:grid-cols-[1fr_1.2fr]">
 
@@ -28,11 +31,11 @@
             class="p-10 flex flex-col justify-between text-white relative min-h-[300px] lg:min-h-[600px] bg-cover bg-center overflow-hidden"
             style="background-image: url('{{ asset('img/Portal.jpg') }}');">
 
-            <div class="absolute inset-0 bg-slate-900/40 z-0"></div>
+            <div class="absolute inset-0 bg-slate-950/70 z-0"></div>
 
             <div class="relative z-10 mt-auto">
-                <h2 class="text-3xl font-semibold mb-3 tracking-tight">Portal Belajar Terpadu</h2>
-                <p class="text-sm text-slate-100/90 leading-relaxed max-w-sm">
+                <h2 class="text-3xl font-semibold mb-3 tracking-tight" style="color:#ffffff;">Portal Belajar Terpadu</h2>
+                <p class="text-sm leading-relaxed max-w-sm" style="color: #ffffff;">
                     Akses materi, jadwal, dan perkembangan belajar Anda dalam satu ekosistem yang terintegrasi dan mudah
                     digunakan.
                 </p>
@@ -43,7 +46,7 @@
             </div>
         </aside>
 
-        <section class="p-8 md:p-12 lg:p-14 bg-white flex flex-col justify-center relative">
+        <section class="p-8 md:p-12 lg:p-14 flex flex-col justify-center relative" style="color:#1e293b; background-color: #ffffff;">
 
             @php
                 $showForgotPasswordSection =
@@ -55,7 +58,8 @@
 
             <div id="header-section" class="{{ $showForgotPasswordSection ? 'hidden' : '' }}">
                 <a href="{{ route('landing.index') }}"
-                    class="absolute top-6 right-6 md:top-8 md:right-8 group flex items-center gap-2 text-sm font-medium text-slate-400 hover:text-slate-800 transition-colors duration-300">
+                    class="absolute top-6 right-6 md:top-8 md:right-8 group flex items-center gap-2 text-sm font-medium hover:text-slate-800 transition-colors duration-300"
+                    style="color: #334155;">
                     <svg class="w-4 h-4 transition-transform group-hover:-translate-x-1" fill="none"
                         stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -67,11 +71,12 @@
                 <div class="mb-10 mt-4 md:mt-0">
                     <div
                         class="h-12 w-12 rounded-lg bg-slate-50 border border-slate-100 flex items-center justify-center mb-5 overflow-hidden">
-                        <img src="{{ asset('img/Logo.png') }}" alt="Logo LPK" class="h-full w-full object-cover"
-                            onerror="this.style.display='none'">
+                        <img src="{{ asset('img/Logo1.jpeg') }}" alt="Logo LPK" width="560" height="633"
+                            class="h-full w-full object-cover" onerror="this.style.display='none'">
                     </div>
-                    <h1 class="text-2xl font-bold text-slate-800 tracking-tight">Selamat Datang</h1>
-                    <p class="text-sm text-slate-500 mt-2">
+                    <h1 class="text-2xl font-bold tracking-tight" style="color: #000000;">Selamat Datang
+                    </h1>
+                    <p class="text-sm mt-2" style="color: #000000;">
                         Silakan masukkan username dan kata sandi Anda untuk melanjutkan.
                     </p>
                 </div>
@@ -104,11 +109,12 @@
             @endif
 
             <section id="login-form-section" class="{{ $showForgotPasswordSection ? 'hidden' : '' }}">
+                <h2 class="sr-only" style="color: #1e293b;">Form masuk LMS Batik</h2>
                 <form id="login-form" class="space-y-5">
-                    @csrf
+                    <input type="hidden" name="_token" value="{{ csrf_token() }}">
 
                     <div>
-                        <label for="username" class="mb-1.5 block text-sm font-semibold text-slate-700">
+                        <label for="username" class="mb-1.5 block text-sm font-semibold" style="color: #000000;">
                             Username
                         </label>
                         <input id="username" name="username" type="text" value="{{ old('username') }}" required
@@ -117,7 +123,7 @@
                     </div>
 
                     <div>
-                        <label for="password" class="mb-1.5 block text-sm font-semibold text-slate-700">
+                        <label for="password" class="mb-1.5 block text-sm font-semibold" style="color: #000000;">
                             Kata Sandi
                         </label>
                         <div class="relative">
@@ -163,18 +169,21 @@
             </section>
 
             <section id="forgot-password-section"
-                class="mt-6 rounded-xl border border-slate-200 bg-slate-50 p-4 {{ $showForgotPasswordSection ? '' : 'hidden' }}">
+                class="mt-6 rounded-xl border border-slate-200 p-4 {{ $showForgotPasswordSection ? '' : 'hidden' }}"
+                style="background-color:#f8fafc;">
                 <div class="mb-3 text-right">
                     <button id="back-to-login-toggle" type="button"
                         class="text-xs font-semibold text-slate-600 transition hover:text-slate-800 hover:underline">Kembali
                         ke Form Login</button>
                 </div>
-                <h3 class="text-sm font-semibold text-slate-800">Reset Password via WhatsApp</h3>
-                <p class="mt-1 text-xs text-slate-500">Masukkan username peserta untuk membuat kode
+                <h3 class="text-sm font-semibold text-slate-900">Reset Password via WhatsApp
+                </h3>
+                <p class="mt-1 text-xs text-slate-700">Masukkan username peserta untuk membuat
+                    kode
                     verifikasi internal.</p>
 
                 <form id="forgot-request-form" class="mt-3 space-y-3">
-                    @csrf
+                    <input type="hidden" name="_token" value="{{ csrf_token() }}">
                     <div>
                         <label for="forgot_username_request"
                             class="mb-1.5 block text-xs font-semibold text-slate-700">
@@ -197,15 +206,17 @@
                     <p id="forgot-password-wa-target">Kirim kode ke WhatsApp tujuan:
                         {{ session('forgot_password_wa_target') }}</p>
                     <a id="forgot-password-wa-link" href="{{ session('forgot_password_wa_url') }}" target="_blank"
-                        rel="noopener"
-                        class="mt-2 inline-flex rounded-md bg-emerald-600 px-3 py-1.5 font-semibold text-white hover:bg-emerald-700">Kirim
-                        Kode via WhatsApp</a>
+                        rel="noopener noreferrer" title="Membuka WhatsApp di tab baru"
+                        aria-describedby="forgot-password-new-tab-note"
+                        class="mt-2 inline-flex rounded-md px-3 py-1.5 font-semibold"
+                        style="background-color:#064e3b; color:#ffffff;">Kirim Kode via WhatsApp</a>
+                    <span id="forgot-password-new-tab-note" class="sr-only">Link ini membuka tab baru.</span>
                 </div>
 
                 <form id="forgot-reset-form" class="mt-4 space-y-3">
-                    @csrf
+                    <input type="hidden" name="_token" value="{{ csrf_token() }}">
                     <div>
-                        <label for="forgot_username_reset" class="mb-1.5 block text-xs font-semibold text-slate-700">
+                        <label for="forgot_username_reset" class="mb-1.5 block text-xs font-semibold" style="color: #000000;">
                             Username Peserta
                         </label>
                         <input id="forgot_username_reset" name="forgot_username" type="text"
@@ -215,8 +226,9 @@
                     </div>
 
                     <div>
-                        <label for="verification_code" class="mb-1.5 block text-xs font-semibold text-slate-700">Kode
-                            Verifikasi</label>
+                        <label for="verification_code" class="mb-1.5 block text-xs font-semibold" style="color: #000000;">
+                            Kode Verifikasi
+                        </label>
                         <input id="verification_code" name="verification_code" type="text" minlength="4"
                             maxlength="6" required
                             class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs tracking-[0.25em] transition-all focus:border-amber-500 focus:outline-none focus:ring-4 focus:ring-amber-500/10"
@@ -224,8 +236,9 @@
                     </div>
 
                     <div>
-                        <label for="reset_password" class="mb-1.5 block text-xs font-semibold text-slate-700">Password
-                            Baru</label>
+                        <label for="reset_password" class="mb-1.5 block text-xs font-semibold" style="color: #000000;">
+                            Password Baru
+                        </label>
                         <input id="reset_password" name="password" type="password" required minlength="4"
                             maxlength="4" autocomplete="new-password"
                             class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs transition-all focus:border-amber-500 focus:outline-none focus:ring-4 focus:ring-amber-500/10"
@@ -234,7 +247,9 @@
 
                     <div>
                         <label for="reset_password_confirmation"
-                            class="mb-1.5 block text-xs font-semibold text-slate-700">Konfirmasi Password Baru</label>
+                            class="mb-1.5 block text-xs font-semibold" style="color: #000000;">
+                            Konfirmasi Password Baru
+                        </label>
                         <input id="reset_password_confirmation" name="password_confirmation" type="password" required
                             minlength="4" maxlength="4" autocomplete="new-password"
                             class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs transition-all focus:border-amber-500 focus:outline-none focus:ring-4 focus:ring-amber-500/10"

@@ -1,15 +1,18 @@
 @extends('layouts.landing')
 
 @section('title', 'Beranda - LMS Batik')
+@section('meta_description',
+    'Beranda LMS Batik untuk mengenal program pelatihan batik, testimoni peserta, dan informasi
+    pendaftaran.')
 
 @section('content')
 
     <section class="relative bg-cover bg-center h-screen flex items-center justify-center"
-        style="background-image: linear-gradient(to bottom, rgba(40, 25, 15, 0.3), rgba(40, 25, 15, 0.8)), url('{{ asset('img/Batik2.jpg') }}');">
+        style="background-image: linear-gradient(to bottom, rgba(20, 12, 8, 0.82), rgba(20, 12, 8, 0.96)), url('{{ asset('img/Batik2.jpg') }}');">
 
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center mt-10">
-            <h1 class="text-4xl md:text-6xl lg:text-7xl font-bold text-white leading-tight tracking-wide drop-shadow-lg"
-                style="font-family: 'Georgia', serif;">
+            <h1 class="text-4xl md:text-6xl lg:text-7xl font-bold leading-tight tracking-wide drop-shadow-lg"
+                style="font-family: 'Georgia', serif; color: #fff;">
                 Selamat Datang di<br />
                 LPK Kama Praja Madiun
             </h1>
@@ -27,6 +30,7 @@
     </section>
 
     <section class="py-12 bg-white">
+        <h2 class="sr-only">Mengapa belajar membatik</h2>
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="grid grid-cols-2 md:grid-cols-4 gap-8">
                 <div class="flex flex-col items-center text-center">
@@ -36,7 +40,7 @@
                             style="background-image: url('{{ asset('img/Motif1.jpg') }}');">
                         </div>
                     </div>
-                    <p class="text-sm text-gray-700 leading-relaxed px-2">
+                    <p class="text-base md:text-lg text-gray-700 leading-relaxed px-2">
                         Batik mengajarkan ketelitian, kesabaran, dan karakter berkarya yang kuat dari proses mencanting
                         hingga
                         pewarnaan akhir.
@@ -50,7 +54,7 @@
                             style="background-image: url('{{ asset('img/Motif2.jpg') }}');">
                         </div>
                     </div>
-                    <p class="text-sm text-gray-700 leading-relaxed px-2">
+                    <p class="text-base md:text-lg text-gray-700 leading-relaxed px-2">
                         Setiap motif batik memuat cerita budaya lokal yang memperkaya wawasan sekaligus menumbuhkan rasa
                         cinta
                         pada warisan bangsa.
@@ -64,7 +68,7 @@
                             style="background-image: url('{{ asset('img/Motif3.jpg') }}');">
                         </div>
                     </div>
-                    <p class="text-sm text-gray-700 leading-relaxed px-2">
+                    <p class="text-base md:text-lg text-gray-700 leading-relaxed px-2">
                         Keterampilan membatik membuka peluang wirausaha kreatif melalui produk fesyen, dekorasi, dan karya
                         seni bernilai ekonomi.
                     </p>
@@ -77,7 +81,7 @@
                             style="background-image: url('{{ asset('img/Motif4.jpg') }}');">
                         </div>
                     </div>
-                    <p class="text-sm text-gray-700 leading-relaxed px-2">
+                    <p class="text-base md:text-lg text-gray-700 leading-relaxed px-2">
                         Pembelajaran batik melatih kolaborasi dan inovasi, sehingga peserta siap berkembang di industri
                         kreatif
                         berbasis budaya.
@@ -117,7 +121,7 @@
 
                                 <div class="mt-auto">
                                     <a href="{{ route('landing.programs') }}"
-                                        class="inline-block w-full sm:w-auto bg-amber-600 text-white px-8 py-3 rounded-full font-semibold hover:bg-amber-700 transition shadow-lg">
+                                        class="inline-block w-full sm:w-auto bg-amber-900 text-white px-8 py-3 rounded-full font-semibold hover:bg-amber-800 transition shadow-lg">
                                         Lihat Program
                                     </a>
                                 </div>
@@ -125,8 +129,7 @@
                         @endforeach
                     </div>
                 @else
-                    <div
-                        id="program-grid"
+                    <div id="program-grid"
                         class="{{ $isTwoPrograms ? 'grid grid-cols-1 md:grid-cols-2 gap-8 max-w-5xl mx-auto' : 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8' }}">
                         @foreach ($programCollection as $program)
                             @php
@@ -159,7 +162,7 @@
 
                                 <div class="mt-auto">
                                     <a href="{{ route('landing.programs') }}"
-                                        class="inline-block w-full sm:w-auto bg-amber-600 text-white px-8 py-3 rounded-full font-semibold hover:bg-amber-700 transition shadow-lg">
+                                        class="inline-block w-full sm:w-auto bg-amber-900 text-white px-8 py-3 rounded-full font-semibold hover:bg-amber-800 transition shadow-lg">
                                         Lihat Program
                                     </a>
                                 </div>
@@ -188,7 +191,6 @@
                     Program belum tersedia.
                 </div>
             @endif
-        </div>
         </div>
     </section>
 
@@ -241,14 +243,14 @@
                     <div id="testimonial-dots" class="flex justify-center mt-6 space-x-2"></div>
                 </div>
 
-                <button id="prev-testimonial"
+                <button id="prev-testimonial" type="button" aria-label="Sebelumnya testimoni"
                     class="hidden md:flex absolute -left-12 top-1/2 -translate-y-1/2 bg-amber-600 hover:bg-amber-700 text-white p-2 rounded-full shadow-lg z-10 transition">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
                     </svg>
                 </button>
 
-                <button id="next-testimonial"
+                <button id="next-testimonial" type="button" aria-label="Berikutnya testimoni"
                     class="hidden md:flex absolute -right-12 top-1/2 -translate-y-1/2 bg-amber-600 hover:bg-amber-700 text-white p-2 rounded-full shadow-lg z-10 transition">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />

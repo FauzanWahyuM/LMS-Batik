@@ -1,160 +1,163 @@
 @extends('layouts.landing')
 
 @section('title', 'Pendaftaran - LMS Batik')
+@section('meta_description',
+    'Daftarkan diri ke program individu atau kelompok LMS Batik melalui formulir pendaftaran
+    yang mudah diisi.')
 
-@push('styles')
-    <style>
-        /* Mobile-first responsive registration form */
-        .registration-wrapper {
-            width: 100%;
-            overflow-x: hidden;
-            box-sizing: border-box;
-        }
+    @push('styles')
+        <style>
+            /* Mobile-first responsive registration form */
+            .registration-wrapper {
+                width: 100%;
+                overflow-x: hidden;
+                box-sizing: border-box;
+            }
 
-        /* Latar belakang kontainer tab (dibuat lebih gelap dari form agar kontras) */
-        .tab-slider-bg {
-            background-color: #78350f;
-            /* amber-900 */
-            display: flex;
-            gap: 0.375rem;
-            padding: 0.375rem;
-            overflow-x: auto;
-            -webkit-overflow-scrolling: touch;
-        }
-
-        /* Tombol tab yang aktif warnanya sama dengan warna form */
-        .tab-btn-active {
-            background-color: #92400e;
-            /* amber-800 */
-            color: #fff;
-            white-space: nowrap;
-            flex-shrink: 0;
-        }
-
-        /* Tombol tab yang tidak aktif */
-        .tab-btn-inactive {
-            background-color: transparent;
-            color: #d1d5db;
-            /* gray-300 */
-            white-space: nowrap;
-            flex-shrink: 0;
-        }
-
-        /* Form dibuat sewarna dengan tab yang aktif dan tanpa garis tepi (menyatu) */
-        .form-card-bg {
-            background-color: #92400e;
-            /* amber-800 */
-            width: 100%;
-            box-sizing: border-box;
-            overflow-x: hidden;
-        }
-
-        .slider-track {
-            display: flex;
-            align-items: flex-start;
-            /* Mencegah form yang pendek ikut memanjang */
-            transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1), height 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-            will-change: transform, height;
-            width: 100%;
-            box-sizing: border-box;
-        }
-
-        .slide-panel {
-            min-width: 100%;
-            flex-shrink: 0;
-            overflow-x: hidden;
-            box-sizing: border-box;
-            width: 100%;
-        }
-
-        .slide-panel>div {
-            box-sizing: border-box;
-            width: 100%;
-            max-width: 100%;
-            overflow-x: hidden;
-        }
-
-        .slide-panel input,
-        .slide-panel textarea,
-        .slide-panel select {
-            box-sizing: border-box;
-            max-width: 100%;
-        }
-
-        .kelompok-form-mobile-center {
-            width: 100%;
-            max-width: 100%;
-            box-sizing: border-box;
-        }
-
-        @media (max-width: 480px) {
+            /* Latar belakang kontainer tab (dibuat lebih gelap dari form agar kontras) */
             .tab-slider-bg {
-                gap: 0.25rem;
-                padding: 0.25rem;
+                background-color: #78350f;
+                /* amber-900 */
+                display: flex;
+                gap: 0.375rem;
+                padding: 0.375rem;
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
             }
 
-            .tab-slider-bg button {
-                padding: 0.5rem 0.625rem;
-                font-size: 0.75rem;
+            /* Tombol tab yang aktif warnanya sama dengan warna form */
+            .tab-btn-active {
+                background-color: #92400e;
+                /* amber-800 */
+                color: #fff;
+                white-space: nowrap;
+                flex-shrink: 0;
+            }
+
+            /* Tombol tab yang tidak aktif */
+            .tab-btn-inactive {
+                background-color: transparent;
+                color: #f9fafb;
+                /* gray-50 */
+                white-space: nowrap;
+                flex-shrink: 0;
+            }
+
+            /* Form dibuat sewarna dengan tab yang aktif dan tanpa garis tepi (menyatu) */
+            .form-card-bg {
+                background-color: #92400e;
+                /* amber-800 */
+                width: 100%;
+                box-sizing: border-box;
+                overflow-x: hidden;
+            }
+
+            .slider-track {
+                display: flex;
+                align-items: flex-start;
+                /* Mencegah form yang pendek ikut memanjang */
+                transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1), height 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+                will-change: transform, height;
+                width: 100%;
+                box-sizing: border-box;
+            }
+
+            .slide-panel {
+                min-width: 100%;
+                flex-shrink: 0;
+                overflow-x: hidden;
+                box-sizing: border-box;
+                width: 100%;
             }
 
             .slide-panel>div {
-                padding: 0.75rem !important;
-            }
-
-            .slide-panel .grid {
-                gap: 0.625rem !important;
-            }
-
-            .slide-panel input,
-            .slide-panel textarea {
-                font-size: 0.8rem;
-                padding: 0.5rem 0.625rem;
-                min-height: 36px;
-            }
-        }
-
-        @media (max-width: 767px) {
-            .slide-panel>div {
-                padding: 0.875rem !important;
-            }
-
-            .slide-panel .grid {
-                gap: 0.75rem !important;
+                box-sizing: border-box;
+                width: 100%;
+                max-width: 100%;
+                overflow-x: hidden;
             }
 
             .slide-panel input,
-            .slide-panel textarea {
-                font-size: 0.85rem;
-                padding: 0.55rem 0.75rem;
-                min-height: 38px;
-            }
-
-            #panel-kelompok>.p-8 {
-                padding-left: 0.875rem !important;
-                padding-right: 0.875rem !important;
+            .slide-panel textarea,
+            .slide-panel select {
+                box-sizing: border-box;
+                max-width: 100%;
             }
 
             .kelompok-form-mobile-center {
                 width: 100%;
                 max-width: 100%;
-                margin-left: auto;
-                margin-right: auto;
-                padding-left: 0;
-                padding-right: 0;
+                box-sizing: border-box;
             }
-        }
-    </style>
-@endpush
+
+            @media (max-width: 480px) {
+                .tab-slider-bg {
+                    gap: 0.25rem;
+                    padding: 0.25rem;
+                }
+
+                .tab-slider-bg button {
+                    padding: 0.5rem 0.625rem;
+                    font-size: 0.75rem;
+                }
+
+                .slide-panel>div {
+                    padding: 0.75rem !important;
+                }
+
+                .slide-panel .grid {
+                    gap: 0.625rem !important;
+                }
+
+                .slide-panel input,
+                .slide-panel textarea {
+                    font-size: 0.8rem;
+                    padding: 0.5rem 0.625rem;
+                    min-height: 36px;
+                }
+            }
+
+            @media (max-width: 767px) {
+                .slide-panel>div {
+                    padding: 0.875rem !important;
+                }
+
+                .slide-panel .grid {
+                    gap: 0.75rem !important;
+                }
+
+                .slide-panel input,
+                .slide-panel textarea {
+                    font-size: 0.85rem;
+                    padding: 0.55rem 0.75rem;
+                    min-height: 38px;
+                }
+
+                #panel-kelompok>.p-8 {
+                    padding-left: 0.875rem !important;
+                    padding-right: 0.875rem !important;
+                }
+
+                .kelompok-form-mobile-center {
+                    width: 100%;
+                    max-width: 100%;
+                    margin-left: auto;
+                    margin-right: auto;
+                    padding-left: 0;
+                    padding-right: 0;
+                }
+            }
+        </style>
+    @endpush
 
 @section('content')
 
     {{-- Hero Section --}}
     <section class="relative bg-cover bg-center flex items-center justify-center"
-        style="min-height: 100vh; background-image: linear-gradient(to bottom, rgba(20, 15, 40, 0.55), rgba(20, 15, 40, 0.85)), url('{{ asset('img/Batik5.jpg') }}');">
+        style="min-height: 100vh; background-image: linear-gradient(to bottom, rgba(20, 12, 8, 0.82), rgba(20, 12, 8, 0.96)), url('{{ asset('img/Batik5.jpg') }}');">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center py-20 mt-4">
-            <h1 class="text-4xl md:text-5xl lg:text-6xl font-bold text-white leading-tight tracking-wide drop-shadow-lg"
-                style="font-family: 'Georgia', serif;">
+            <h1 class="text-4xl md:text-5xl lg:text-6xl font-bold leading-tight tracking-wide drop-shadow-lg"
+                style="font-family: 'Georgia', serif; color: #fff;">
                 Pendaftaran<br />LPK Kama Praja Madiun
             </h1>
             <div class="w-20 h-1 bg-amber-500 mx-auto mt-6 rounded-full opacity-90"></div>
@@ -201,6 +204,7 @@
     </div>
 
     <section class="py-16 bg-blue-900">
+        <h2 class="sr-only">Form pendaftaran LMS Batik</h2>
         {{-- Mengubah max-w-2xl menjadi max-w-4xl agar form lebih lebar --}}
         <div class="max-w-4xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8">
 
@@ -211,12 +215,14 @@
 
                 {{-- Tab Switcher --}}
                 <div class="tab-slider-bg z-10">
-                    <button id="tab-individu" onclick="switchTab('individu')"
+                    <button id="tab-individu" type="button" aria-controls="panel-individu" aria-pressed="true"
+                        onclick="switchTab('individu')"
                         class="flex-1 min-w-0 py-2.5 md:py-3 px-3 md:px-4 rounded-md text-xs md:text-sm font-semibold transition-all duration-300 tab-btn-active"
                         style="font-family: 'Poppins', sans-serif;">
                         Program Individu
                     </button>
-                    <button id="tab-kelompok" onclick="switchTab('kelompok')"
+                    <button id="tab-kelompok" type="button" aria-controls="panel-kelompok" aria-pressed="false"
+                        onclick="switchTab('kelompok')"
                         class="flex-1 min-w-0 py-2.5 md:py-3 px-3 md:px-4 rounded-md text-xs md:text-sm font-semibold transition-all duration-300 tab-btn-inactive"
                         style="font-family: 'Poppins', sans-serif;">
                         Program Kelompok
@@ -231,7 +237,7 @@
                         <div class="slide-panel" id="panel-individu">
                             <div class="p-4 sm:p-6 md:p-8 lg:p-10 w-full box-border">
                                 <form id="form-individu" class="w-full">
-                                    @csrf
+                                    <input type="hidden" name="_token" value="{{ csrf_token() }}">
                                     <div class="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4 lg:gap-5">
                                         <div class="md:col-span-2">
                                             <label class="block text-sm font-medium text-white mb-1">Nama Lengkap</label>
@@ -266,9 +272,10 @@
                                                 required>
                                         </div>
                                         <div class="md:col-span-2">
-                                            <label class="block text-sm font-medium text-white mb-1">Motivasi Singkat Anda
+                                            <label for="motivasi" class="block text-sm font-medium text-white mb-1">Motivasi
+                                                Singkat Anda
                                                 Mengikuti Program!</label>
-                                            <textarea name="motivasi" rows="4" placeholder="Tuliskan motivasi singkat Anda..."
+                                            <textarea id="motivasi" name="motivasi" rows="4" placeholder="Tuliskan motivasi singkat Anda..."
                                                 class="w-full border border-gray-300 text-gray-900 rounded-md px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent transition resize-none"
                                                 required></textarea>
                                         </div>
@@ -288,7 +295,7 @@
                             <div class="p-4 sm:p-6 md:p-8 lg:p-10 w-full box-border">
                                 <div class="kelompok-form-mobile-center w-full">
                                     <form enctype="multipart/form-data" id="form-kelompok" class="w-full">
-                                        @csrf
+                                        <input type="hidden" name="_token" value="{{ csrf_token() }}">
                                         <div class="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4 lg:gap-5">
                                             <div class="md:col-span-2">
                                                 <label class="block text-sm font-medium text-white mb-1">Nama
@@ -334,7 +341,8 @@
                                                     required>
                                             </div>
                                             <div class="md:col-span-2">
-                                                <label class="block text-sm font-medium text-white mb-1">Upload surat resmi
+                                                <label id="surat-label" for="surat-input"
+                                                    class="block text-sm font-medium text-white mb-1">Upload surat resmi
                                                     <span class="text-gray-300 font-normal">(opsional!)</span></label>
                                                 <div class="border-2 border-dashed border-white/50 bg-white rounded-md p-3 sm:p-4 md:p-6 text-center hover:border-amber-400 transition cursor-pointer relative overflow-hidden"
                                                     id="drop-zone"
@@ -342,7 +350,7 @@
                                                     ondragleave="this.classList.remove('border-amber-500','bg-amber-50')"
                                                     ondrop="handleDrop(event)">
                                                     <input type="file" name="surat_resmi" id="surat-input"
-                                                        accept=".pdf,.jpg,.jpeg,.png"
+                                                        aria-describedby="surat-help" accept=".pdf,.jpg,.jpeg,.png"
                                                         class="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                                                         onchange="handleFileChange(this)">
                                                     <div id="upload-placeholder">
@@ -352,7 +360,8 @@
                                                                 stroke-width="1.5"
                                                                 d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                                                         </svg>
-                                                        <p class="text-xs text-gray-500">Seret & lepas file di sini, atau
+                                                        <p id="surat-help" class="text-xs text-gray-500">Seret & lepas
+                                                            file di sini, atau
                                                             klik
                                                             untuk memilih</p>
                                                         <p class="text-xs text-gray-400 mt-1">PDF, JPG, PNG (maks. 5MB)</p>
@@ -452,14 +461,18 @@
                 track.style.transform = 'translateX(0%)';
                 btnIndividu.classList.add('tab-btn-active');
                 btnIndividu.classList.remove('tab-btn-inactive');
+                btnIndividu.setAttribute('aria-pressed', 'true');
                 btnKelompok.classList.add('tab-btn-inactive');
                 btnKelompok.classList.remove('tab-btn-active');
+                btnKelompok.setAttribute('aria-pressed', 'false');
             } else {
                 track.style.transform = 'translateX(-100%)';
                 btnKelompok.classList.add('tab-btn-active');
                 btnKelompok.classList.remove('tab-btn-inactive');
+                btnKelompok.setAttribute('aria-pressed', 'true');
                 btnIndividu.classList.add('tab-btn-inactive');
                 btnIndividu.classList.remove('tab-btn-active');
+                btnIndividu.setAttribute('aria-pressed', 'false');
             }
 
             // Update tingginya setiap kali ganti tab

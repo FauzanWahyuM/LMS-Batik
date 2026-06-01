@@ -72,8 +72,9 @@
                             @endif
                             @if (!empty($facility->image_path))
                                 <img src="{{ route('public-file', ['path' => $facility->image_path]) }}"
-                                    alt="{{ $facility->name }}"
-                                    class="mt-2 h-20 w-32 rounded-lg object-cover border border-slate-200">
+                                    alt="{{ $facility->name }}" width="128" height="80"
+                                    class="mt-2 h-20 w-32 rounded-lg object-cover border border-slate-200" loading="lazy"
+                                    decoding="async">
                             @endif
                             <p
                                 class="text-xs font-semibold {{ $facility->is_active ? 'text-emerald-700' : 'text-slate-500' }}">

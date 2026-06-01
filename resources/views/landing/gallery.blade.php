@@ -1,20 +1,21 @@
 @extends('layouts.landing')
 
 @section('title', 'Galeri - LMS Batik')
+@section('meta_description', 'Galeri karya peserta, prestasi alumni, dan inspirasi hasil pelatihan batik di LMS Batik.')
 
 @section('content')
 
     <section class="relative bg-cover bg-center h-screen flex items-center justify-center"
-        style="background-image: linear-gradient(to bottom, rgba(40, 25, 15, 0.3), rgba(40, 25, 15, 0.8)), url('{{ asset('img/Batik4.jpg') }}');">
+        style="background-image: linear-gradient(to bottom, rgba(20, 12, 8, 0.82), rgba(20, 12, 8, 0.96)), url('{{ asset('img/Batik4.jpg') }}');">
 
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center mt-10 relative z-10">
-            <h1 class="text-4xl md:text-6xl lg:text-7xl font-bold text-white leading-tight tracking-wide drop-shadow-lg"
-                style="font-family: 'Georgia', serif;">
+            <h1 class="text-4xl md:text-6xl lg:text-7xl font-bold leading-tight tracking-wide drop-shadow-lg"
+                style="font-family: 'Georgia', serif; color: #fff;">
                 Galeri Kami
             </h1>
             <div class="w-20 h-1 bg-amber-500 mx-auto my-6 rounded-full opacity-90"></div>
-            <p class="text-xl md:text-2xl text-gray-200 font-light tracking-widest drop-shadow-md"
-                style="font-family: 'Georgia', serif;">
+            <p class="text-xl md:text-2xl font-light tracking-widest drop-shadow-md"
+                style="font-family: 'Georgia', serif; color: #ffffff;">
                 LPK Kama Praja Madiun
             </p>
         </div>
@@ -53,10 +54,12 @@
                                     @foreach ($galleryPage as $artwork)
                                         <article
                                             class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-lg">
-                                            <div class="h-56 overflow-hidden bg-slate-100">
+                                            <div class="overflow-hidden bg-slate-100" style="aspect-ratio: 2 / 1;">
                                                 <img src="{{ route('public-file', ['path' => ltrim($artwork->image_path, '/')]) }}"
                                                     alt="{{ $artwork->title }}"
-                                                    class="h-full w-full object-cover transition-transform duration-500 hover:scale-105">
+                                                    class="h-full w-full object-cover transition-transform duration-500 hover:scale-105"
+                                                    width="448" height="336"
+                                                    loading="lazy" decoding="async">
                                             </div>
                                             <div class="p-4">
                                                 <h3 class="text-lg font-bold text-slate-900"
@@ -65,7 +68,8 @@
                                                 <p class="mt-2 text-sm text-slate-600 leading-relaxed">
                                                     {{ \Illuminate\Support\Str::limit($artwork->description, 120) }}
                                                 </p>
-                                                <p class="mt-4 text-xs font-semibold uppercase tracking-wide text-amber-700">
+                                                <p
+                                                    class="mt-4 text-xs font-semibold uppercase tracking-wide text-amber-700">
                                                     Karya:
                                                     {{ $artwork->creator_name }}</p>
                                             </div>
@@ -78,10 +82,12 @@
                                     @foreach ($galleryPage as $artwork)
                                         <article
                                             class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-lg">
-                                            <div class="h-56 overflow-hidden bg-slate-100">
+                                            <div class="overflow-hidden bg-slate-100" style="aspect-ratio: 2 / 1;">
                                                 <img src="{{ route('public-file', ['path' => ltrim($artwork->image_path, '/')]) }}"
                                                     alt="{{ $artwork->title }}"
-                                                    class="h-full w-full object-cover transition-transform duration-500 hover:scale-105">
+                                                    class="h-full w-full object-cover transition-transform duration-500 hover:scale-105"
+                                                    width="448" height="336"
+                                                    loading="lazy" decoding="async">
                                             </div>
                                             <div class="p-4">
                                                 <h3 class="text-lg font-bold text-slate-900"
@@ -90,7 +96,8 @@
                                                 <p class="mt-2 text-sm text-slate-600 leading-relaxed">
                                                     {{ \Illuminate\Support\Str::limit($artwork->description, 120) }}
                                                 </p>
-                                                <p class="mt-4 text-xs font-semibold uppercase tracking-wide text-amber-700">
+                                                <p
+                                                    class="mt-4 text-xs font-semibold uppercase tracking-wide text-amber-700">
                                                     Karya:
                                                     {{ $artwork->creator_name }}</p>
                                             </div>
@@ -150,8 +157,7 @@
                             $isTwoItems = $pageCount === 2;
                         @endphp
 
-                        <div data-achievement-page="{{ $pageIndex + 1 }}"
-                            class="{{ $pageIndex === 0 ? '' : 'hidden' }}">
+                        <div data-achievement-page="{{ $pageIndex + 1 }}" class="{{ $pageIndex === 0 ? '' : 'hidden' }}">
                             @if ($isSingleItem)
                                 <div class="max-w-2xl mx-auto">
                                     @foreach ($achievementPage as $achievement)
@@ -191,7 +197,8 @@
                                             <p class="text-gray-600 mb-2 text-sm">
                                                 {{ $achievement->event_name }}{{ $achievement->year ? ' - ' . $achievement->year : '' }}
                                             </p>
-                                            <p class="text-sm text-amber-600 font-semibold">{{ $achievement->winner_name }}</p>
+                                            <p class="text-sm text-amber-600 font-semibold">{{ $achievement->winner_name }}
+                                            </p>
                                             @if (!empty($achievement->description))
                                                 <p class="mt-3 text-xs text-slate-500">
                                                     {{ \Illuminate\Support\Str::limit($achievement->description, 90) }}</p>
@@ -239,7 +246,8 @@
                                             <p class="text-gray-600 mb-2 text-sm">
                                                 {{ $achievement->event_name }}{{ $achievement->year ? ' - ' . $achievement->year : '' }}
                                             </p>
-                                            <p class="text-sm text-amber-600 font-semibold">{{ $achievement->winner_name }}</p>
+                                            <p class="text-sm text-amber-600 font-semibold">{{ $achievement->winner_name }}
+                                            </p>
                                             @if (!empty($achievement->description))
                                                 <p class="mt-3 text-xs text-slate-500">
                                                     {{ \Illuminate\Support\Str::limit($achievement->description, 90) }}</p>
@@ -275,7 +283,6 @@
             @endif
 
         </div>
-        </div>
     </section>
 
     <section class="relative overflow-hidden py-20">
@@ -284,7 +291,8 @@
         <div class="absolute -right-10 bottom-0 h-52 w-52 rounded-full bg-sky-400/20 blur-2xl"></div>
 
         <div class="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="rounded-3xl bg-blue-950 border border-white/10 p-8 md:p-12 text-center backdrop-blur-sm shadow-2xl">
+            <div
+                class="rounded-3xl bg-blue-950 border border-white/10 p-8 md:p-12 text-center backdrop-blur-sm shadow-2xl">
                 <h2 class="text-3xl md:text-4xl font-bold text-white mb-5" style="font-family: 'Georgia', serif;">
                     Ciptakan Karya Batik Anda Sendiri
                 </h2>

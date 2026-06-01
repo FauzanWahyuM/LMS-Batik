@@ -31,8 +31,8 @@
                     <!-- Cover Image -->
                     <div class="relative h-40 w-full overflow-hidden bg-linear-to-br from-slate-100 to-slate-200 sm:h-48">
                         @if ($module['cover'])
-                            <img src="{{ $module['cover'] }}" alt="{{ $module['title'] }}"
-                                class="h-full w-full object-cover">
+                            <img src="{{ $module['cover'] }}" alt="{{ $module['title'] }}" width="800" height="450"
+                                class="h-full w-full object-cover" loading="lazy" decoding="async">
                         @else
                             <div class="flex h-full items-center justify-center">
                                 <div class="text-center">
