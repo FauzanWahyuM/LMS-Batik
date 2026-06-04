@@ -125,7 +125,7 @@
                         <button type="button" id="mark-read-btn"
                             data-read-url="{{ route('api.v1.participant.modules.materials.read', ['moduleSlug' => $moduleSlug, 'materialSlug' => $selectedMaterial->slug]) }}"
                             data-read="{{ !empty($selectedMaterial->is_read) ? '1' : '0' }}"
-                            class="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-emerald-700">
+                            class="rounded-lg px-3 py-2 text-xs font-semibold transition {{ !empty($selectedMaterial->is_read) ? 'border border-blue-600 bg-blue-600 text-white hover:bg-blue-700' : 'border border-slate-300 bg-white text-black hover:bg-slate-100' }}">
                             {{ !empty($selectedMaterial->is_read) ? 'Bab Selesai' : 'Bab Belum Selesai' }}
                         </button>
                     </div>
@@ -218,7 +218,7 @@
                             <button type="button" id="mark-watched-btn"
                                 data-watch-url="{{ route('api.v1.participant.modules.materials.watch', ['moduleSlug' => $moduleSlug, 'materialSlug' => $selectedMaterial->slug]) }}"
                                 data-watched="{{ !empty($selectedMaterial->is_video_watched) ? '1' : '0' }}"
-                                class="rounded-lg bg-blue-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-blue-700">
+                                class="rounded-lg px-3 py-2 text-xs font-semibold transition {{ !empty($selectedMaterial->is_video_watched) ? 'border border-blue-600 bg-blue-600 text-white hover:bg-blue-700' : 'border border-slate-300 bg-white text-black hover:bg-slate-100' }}">
                                 {{ !empty($selectedMaterial->is_video_watched) ? 'Video Selesai Ditonton' : 'Tandai Sudah Ditonton' }}
                             </button>
                         </div>
@@ -450,6 +450,66 @@
             }
         }
 
+        function updateReadButtonState(isRead) {
+            if (!markReadBtn) {
+                return;
+            }
+
+            markReadBtn.dataset.read = isRead ? '1' : '0';
+            markReadBtn.textContent = isRead ? 'Bab Selesai' : 'Bab Belum Selesai';
+            markReadBtn.classList.remove(
+                'border-slate-300',
+                'bg-white',
+                'text-black',
+                'hover:bg-slate-100',
+                'border-blue-600',
+                'bg-blue-600',
+                'text-white',
+                'hover:bg-blue-700',
+            );
+
+            if (isRead) {
+                markReadBtn.classList.add(
+                    'border-blue-600',
+                    'bg-blue-600',
+                    'text-white',
+                    'hover:bg-blue-700',
+                );
+            } else {
+                markReadBtn.classList.add('border-slate-300', 'bg-white', 'text-black', 'hover:bg-slate-100');
+            }
+        }
+
+        function updateWatchedButtonState(isWatched) {
+            if (!markWatchedBtn) {
+                return;
+            }
+
+            markWatchedBtn.dataset.watched = isWatched ? '1' : '0';
+            markWatchedBtn.textContent = isWatched ? 'Video Selesai Ditonton' : 'Tandai Sudah Ditonton';
+            markWatchedBtn.classList.remove(
+                'border-slate-300',
+                'bg-white',
+                'text-black',
+                'hover:bg-slate-100',
+                'border-blue-600',
+                'bg-blue-600',
+                'text-white',
+                'hover:bg-blue-700',
+            );
+
+            if (isWatched) {
+                markWatchedBtn.classList.add(
+                    'border-blue-600',
+                    'bg-blue-600',
+                    'text-white',
+                    'hover:bg-blue-700',
+                );
+            } else {
+                markWatchedBtn.classList.add('border-slate-300', 'bg-white', 'text-black', 'hover:bg-slate-100');
+            }
+        }
+
         async function submitProgressAction(url) {
             if (!url) {
                 return;
@@ -477,15 +537,11 @@
                 const payload = data?.data ?? {};
 
                 if (markReadBtn && payload?.material?.is_read !== undefined) {
-                    const isRead = Boolean(payload.material.is_read);
-                    markReadBtn.dataset.read = isRead ? '1' : '0';
-                    markReadBtn.textContent = isRead ? 'Bab Selesai' : 'Bab Belum Selesai';
+                    updateReadButtonState(Boolean(payload.material.is_read));
                 }
 
                 if (markWatchedBtn && payload?.material?.is_video_watched !== undefined) {
-                    const isWatched = Boolean(payload.material.is_video_watched);
-                    markWatchedBtn.dataset.watched = isWatched ? '1' : '0';
-                    markWatchedBtn.textContent = isWatched ? 'Video Selesai Ditonton' : 'Tandai Sudah Ditonton';
+                    updateWatchedButtonState(Boolean(payload.material.is_video_watched));
                 }
 
                 updateSelectedMaterialStatus(Boolean(payload?.material?.is_completed));
@@ -523,6 +579,9 @@
 
             this.disabled = false;
         });
+
+        updateReadButtonState(markReadBtn?.dataset.read === '1');
+        updateWatchedButtonState(markWatchedBtn?.dataset.watched === '1');
 
         function setAssignmentFeedback(form, type, message) {
             const feedback = form.querySelector('.assignment-upload-feedback');
@@ -577,7 +636,7 @@
                     }
 
                     setAssignmentFeedback(form, 'success', result.message ||
-                    'Tugas berhasil diunggah.');
+                        'Tugas berhasil diunggah.');
                     window.location.reload();
                 } catch (error) {
                     setAssignmentFeedback(form, 'error', error.message || 'Gagal mengunggah tugas.');

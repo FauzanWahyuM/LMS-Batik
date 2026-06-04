@@ -1,16 +1,24 @@
 <section class="max-w-8xl">
+    @php
+        $artworkModel = isset($artwork) && !empty($artwork) ? $artwork : null;
+        $isEditMode = !empty($artworkModel);
+    @endphp
     <!-- Form Card -->
     <div class="rounded-xl border border-slate-200 bg-white shadow-sm">
-        <form method="POST" action="{{ route('dashboard.participant.gallery.store') }}" enctype="multipart/form-data"
-            class="p-6 sm:p-8 space-y-6">
+        <form method="POST"
+            action="{{ $isEditMode ? route('dashboard.participant.gallery.update', ['artwork' => $artworkModel->id]) : route('dashboard.participant.gallery.store') }}"
+            enctype="multipart/form-data" class="p-6 sm:p-8 space-y-6">
             @csrf
+            @if ($isEditMode)
+                @method('PUT')
+            @endif
             <!-- Nama Pembuat -->
             <div>
                 <label for="nama-pembuat" class="block text-sm font-semibold text-slate-900 mb-2">
                     Nama Pembuat
                 </label>
                 <input type="text" id="nama-pembuat" name="nama_pembuat" placeholder="Masukkan nama Anda"
-                    value="{{ old('nama_pembuat', $user['name'] ?? '') }}"
+                    value="{{ old('nama_pembuat', $artworkModel?->creator_name ?? ($user['name'] ?? '')) }}"
                     class="w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm placeholder-slate-400 transition focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
                     required>
                 @error('nama_pembuat')
@@ -24,7 +32,7 @@
                     Judul Karya
                 </label>
                 <input type="text" id="judul-karya" name="judul_karya" placeholder="Masukkan judul karya Anda"
-                    value="{{ old('judul_karya') }}"
+                    value="{{ old('judul_karya', $artworkModel?->title ?? '') }}"
                     class="w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm placeholder-slate-400 transition focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
                     required>
                 @error('judul_karya')
@@ -40,7 +48,7 @@
                 <textarea id="deskripsi" name="deskripsi"
                     placeholder="Deskripsikan karya Anda, teknik yang digunakan, inspirasi, dll..." rows="6"
                     class="w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm placeholder-slate-400 transition focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100 resize-none"
-                    required>{{ old('deskripsi') }}</textarea>
+                    required>{{ old('deskripsi', $artworkModel?->description ?? '') }}</textarea>
                 @error('deskripsi')
                     <p class="mt-2 text-xs font-semibold text-red-600">{{ $message }}</p>
                 @enderror
@@ -49,11 +57,22 @@
             <!-- Gambar/Foto Karya -->
             <div>
                 <label for="gambar-karya" class="block text-sm font-semibold text-slate-900 mb-2">
-                    Gambar/Foto Karya
+                    {{ $isEditMode ? 'Gambar/Foto Karya Baru' : 'Gambar/Foto Karya' }}
                 </label>
                 <div class="relative">
                     <input type="file" id="gambar-karya" name="gambar_karya" accept="image/*" class="sr-only"
-                        required>
+                        @if (!$isEditMode) required @endif>
+
+                    @if ($isEditMode && !empty($artworkModel?->image_path))
+                        <div class="mb-3 rounded-lg border border-slate-200 bg-slate-50 p-4">
+                            <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                Gambar Saat Ini
+                            </p>
+                            <img src="{{ route('public-file', ['path' => ltrim($artworkModel->image_path, '/')]) }}"
+                                alt="{{ $artworkModel->title }}" class="max-h-64 w-full rounded-md object-cover">
+                            <p class="mt-2 text-xs text-slate-500">Biarkan kosong jika tidak ingin mengganti gambar.</p>
+                        </div>
+                    @endif
 
                     <!-- Upload Area (Hidden when file is selected) -->
                     <label id="upload-area" for="gambar-karya"
@@ -101,7 +120,7 @@
             <div class="flex gap-3 pt-4">
                 <button type="submit"
                     class="flex-1 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700 active:bg-blue-800">
-                    Simpan Karya
+                    {{ $isEditMode ? 'Perbarui Karya' : 'Simpan Karya' }}
                 </button>
                 <a href="{{ route('dashboard.participant.gallery') }}"
                     class="flex-1 rounded-lg border border-slate-300 px-4 py-2.5 text-center text-sm font-semibold text-slate-700 transition hover:bg-slate-50">

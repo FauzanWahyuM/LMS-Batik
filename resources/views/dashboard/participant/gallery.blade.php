@@ -37,6 +37,24 @@
                         <span
                             class="rounded-full border border-slate-300 px-3 py-1 text-xs font-semibold text-slate-700">{{ $artwork->creator_name }}</span>
                     </div>
+                    @if (!empty($user['email']) && $artwork->creator_email === $user['email'])
+                        <div class="mt-4 flex items-center gap-2">
+                            <a href="{{ route('dashboard.participant.gallery.edit', ['artwork' => $artwork->id]) }}"
+                                class="flex-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-center text-xs font-semibold text-slate-700 transition hover:bg-slate-100">
+                                Edit
+                            </a>
+                            <form method="POST"
+                                action="{{ route('dashboard.participant.gallery.delete', ['artwork' => $artwork->id]) }}"
+                                class="flex-1 delete-artwork-form">
+                                @csrf
+                                @method('DELETE')
+                                <button type="button" data-delete-name="{{ $artwork->title }}"
+                                    class="delete-artwork-btn w-full rounded-lg border border-rose-300 bg-white px-3 py-2 text-xs font-semibold text-rose-600 transition hover:bg-rose-50">
+                                    Hapus
+                                </button>
+                            </form>
+                        </div>
+                    @endif
                 </article>
             @empty
                 <div
@@ -45,5 +63,110 @@
                 </div>
             @endforelse
         </div>
+
+        <div id="delete-artwork-modal" class="fixed inset-0 z-50 hidden items-center justify-center px-4">
+            <div class="absolute inset-0 bg-slate-900/60" id="delete-artwork-backdrop"></div>
+            <div class="relative w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+                <div class="flex items-start gap-4">
+                    <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-rose-100 text-rose-600">
+                        <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"
+                                d="M12 9v4m0 4h.01M10.29 3.86l-7.4 12.75A2 2 0 004.63 20h14.74a2 2 0 001.74-3.39l-7.4-12.75a2 2 0 00-3.48 0z" />
+                        </svg>
+                    </div>
+                    <div class="min-w-0 flex-1">
+                        <h3 id="delete-artwork-title" class="text-lg font-bold text-slate-900">Hapus Karya</h3>
+                        <p id="delete-artwork-message" class="mt-2 text-sm leading-relaxed text-slate-600">
+                            Apakah Anda yakin ingin menghapus karya ini? Tindakan ini tidak dapat dibatalkan.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="mt-6 flex flex-col gap-3 sm:flex-row">
+                    <button type="button" id="cancel-delete-artwork-btn"
+                        class="flex-1 rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
+                        Batal
+                    </button>
+                    <button type="button" id="confirm-delete-artwork-btn"
+                        class="flex-1 rounded-lg border border-rose-600 bg-rose-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-rose-700">
+                        Hapus
+                    </button>
+                </div>
+            </div>
+        </div>
+
     </section>
+
+    <script>
+        const deleteArtworkModal = document.getElementById('delete-artwork-modal');
+        const deleteArtworkBackdrop = document.getElementById('delete-artwork-backdrop');
+        const deleteArtworkTitle = document.getElementById('delete-artwork-title');
+        const deleteArtworkMessage = document.getElementById('delete-artwork-message');
+        const confirmDeleteArtworkBtn = document.getElementById('confirm-delete-artwork-btn');
+        const cancelDeleteArtworkBtn = document.getElementById('cancel-delete-artwork-btn');
+
+        let deleteArtworkForm = null;
+
+        function showDeleteArtworkModal(name, form) {
+            if (!deleteArtworkModal) {
+                return;
+            }
+
+            deleteArtworkTitle.textContent = `Hapus Karya: ${name}`;
+            deleteArtworkMessage.textContent =
+                `Apakah Anda yakin ingin menghapus karya "${name}"? Tindakan ini tidak dapat dibatalkan.`;
+            deleteArtworkForm = form;
+            deleteArtworkModal.classList.remove('hidden');
+            deleteArtworkModal.classList.add('flex');
+            document.body.classList.add('overflow-hidden');
+        }
+
+        function hideDeleteArtworkModal() {
+            if (!deleteArtworkModal) {
+                return;
+            }
+
+            deleteArtworkModal.classList.add('hidden');
+            deleteArtworkModal.classList.remove('flex');
+            document.body.classList.remove('overflow-hidden');
+            deleteArtworkForm = null;
+        }
+
+        document.querySelectorAll('.delete-artwork-btn').forEach(function(button) {
+            button.addEventListener('click', function() {
+                const name = button.getAttribute('data-delete-name') || 'karya ini';
+                const form = button.closest('form');
+
+                if (form) {
+                    showDeleteArtworkModal(name, form);
+                }
+            });
+        });
+
+        if (confirmDeleteArtworkBtn) {
+            confirmDeleteArtworkBtn.addEventListener('click', function() {
+                if (deleteArtworkForm) {
+                    deleteArtworkForm.submit();
+                }
+            });
+        }
+
+        if (cancelDeleteArtworkBtn) {
+            cancelDeleteArtworkBtn.addEventListener('click', function() {
+                hideDeleteArtworkModal();
+            });
+        }
+
+        if (deleteArtworkBackdrop) {
+            deleteArtworkBackdrop.addEventListener('click', function() {
+                hideDeleteArtworkModal();
+            });
+        }
+
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape' && deleteArtworkModal && !deleteArtworkModal.classList.contains('hidden')) {
+                hideDeleteArtworkModal();
+            }
+        });
+    </script>
 @endsection

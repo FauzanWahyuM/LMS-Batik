@@ -117,5 +117,8 @@ Route::middleware('simple.auth')->group(function (): void {
 		Route::get('/galeri', [AuthController::class, 'participantGallery'])->name('gallery');
 		Route::get('/galeri/upload', [AuthController::class, 'participantGalleryUpload'])->name('gallery.upload');
 		Route::post('/galeri/upload', [AuthController::class, 'participantGalleryStore'])->name('gallery.store');
+		Route::get('/galeri/{artwork}/edit', [AuthController::class, 'participantGalleryEdit'])->name('gallery.edit');
+		Route::put('/galeri/{artwork}', [AuthController::class, 'participantGalleryUpdate'])->name('gallery.update');
+		Route::delete('/galeri/{artwork}', [AuthController::class, 'participantGalleryDestroy'])->name('gallery.delete');
 	});
 });

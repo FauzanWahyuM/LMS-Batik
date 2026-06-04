@@ -3020,6 +3020,95 @@ class AuthController extends Controller
             ->with('status', 'Karya berhasil diunggah dan tersimpan.');
     }
 
+    public function participantGalleryEdit(Request $request, Artwork $artwork): View|RedirectResponse
+    {
+        $guard = $this->ensureParticipantRole($request);
+
+        if ($guard) {
+            return $guard;
+        }
+
+        $currentUserEmail = (string) data_get($request->session()->get('auth_user', []), 'email', '');
+
+        if ($currentUserEmail === '' || $artwork->creator_email !== $currentUserEmail) {
+            abort(403);
+        }
+
+        return $this->renderParticipantPage($request, 'gallery-upload', [
+            'artwork' => $artwork,
+        ]);
+    }
+
+    public function participantGalleryUpdate(Request $request, Artwork $artwork): RedirectResponse
+    {
+        $guard = $this->ensureParticipantRole($request);
+
+        if ($guard) {
+            return $guard;
+        }
+
+        $currentUserEmail = (string) data_get($request->session()->get('auth_user', []), 'email', '');
+
+        if ($currentUserEmail === '' || $artwork->creator_email !== $currentUserEmail) {
+            abort(403);
+        }
+
+        $validated = $request->validate([
+            'nama_pembuat' => ['required', 'string', 'max:255'],
+            'judul_karya' => ['required', 'string', 'max:255'],
+            'deskripsi' => ['required', 'string', 'max:2000'],
+            'gambar_karya' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:10240'],
+        ]);
+
+        $imagePath = $artwork->image_path;
+
+        if ($request->hasFile('gambar_karya')) {
+            $newImagePath = $request->file('gambar_karya')->store('artworks', 'public');
+
+            if (!empty($imagePath)) {
+                Storage::disk('public')->delete($imagePath);
+            }
+
+            $imagePath = $newImagePath;
+        }
+
+        $artwork->update([
+            'title' => $validated['judul_karya'],
+            'description' => $validated['deskripsi'],
+            'image_path' => $imagePath,
+            'creator_name' => $validated['nama_pembuat'],
+        ]);
+
+        return redirect()
+            ->route('dashboard.participant.gallery')
+            ->with('status', 'Karya berhasil diperbarui.');
+    }
+
+    public function participantGalleryDestroy(Request $request, Artwork $artwork): RedirectResponse
+    {
+        $guard = $this->ensureParticipantRole($request);
+
+        if ($guard) {
+            return $guard;
+        }
+
+        $currentUserEmail = (string) data_get($request->session()->get('auth_user', []), 'email', '');
+
+        if ($currentUserEmail === '' || $artwork->creator_email !== $currentUserEmail) {
+            abort(403);
+        }
+
+        if (!empty($artwork->image_path)) {
+            Storage::disk('public')->delete($artwork->image_path);
+        }
+
+        $artwork->delete();
+
+        return redirect()
+            ->route('dashboard.participant.gallery')
+            ->with('status', 'Karya berhasil dihapus.');
+    }
+
     private function renderParticipantPage(Request $request, string $page, array $extraData = []): View
     {
         $user = $this->resolveSidebarUser($request);
