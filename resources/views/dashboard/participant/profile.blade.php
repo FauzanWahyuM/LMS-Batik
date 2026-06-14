@@ -166,12 +166,6 @@
                             readonly class="w-full rounded-lg border border-slate-300 bg-slate-100 px-3 py-2 text-sm">
                     </div>
                 </div>
-
-                <div class="sm:col-span-2">
-                    <label class="mb-1 block text-xs font-semibold text-slate-600">Role</label>
-                    <input type="text" name="role_label" value="{{ old('role_label', $profile['role_label']) }}"
-                        required class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
-                </div>
             </div>
 
             <div class="flex flex-col gap-2 sm:flex-row sm:justify-end">
