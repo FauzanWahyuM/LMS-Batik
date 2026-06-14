@@ -31,6 +31,7 @@ class User extends Authenticatable
         'certificate',
         'motivation',
         'group_name',
+        'program_id',
         'status',
         'forgot_password_enabled',
         'current_password',
@@ -75,5 +76,10 @@ class User extends Authenticatable
     public function isManager(): bool
     {
         return $this->role === 'pengelola';
+    }
+
+    public function program(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(Program::class);
     }
 }

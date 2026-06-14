@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Models\Program;
 use App\Models\RegistrationGroup;
 use App\Models\RegistrationIndividual;
 use Illuminate\Http\JsonResponse;
@@ -9,6 +10,15 @@ use Illuminate\Http\Request;
 
 class LandingRegistrationApiController extends BaseApiController
 {
+    public function getPrograms(): JsonResponse
+    {
+        $programs = Program::where('is_active', true)
+            ->select('id', 'name')
+            ->get();
+
+        return $this->successResponse('Data program berhasil diambil.', $programs);
+    }
+
     public function submitIndividu(Request $request): JsonResponse
     {
         $validated = $request->validate([
@@ -18,6 +28,7 @@ class LandingRegistrationApiController extends BaseApiController
             'alamat' => ['required', 'string', 'max:500'],
             'pendidikan_terakhir' => ['required', 'string', 'max:100'],
             'motivasi' => ['required', 'string', 'max:1000'],
+            'program_id' => ['required', 'integer', 'exists:programs,id'],
         ]);
 
         $registration = RegistrationIndividual::create($validated + [
@@ -36,6 +47,7 @@ class LandingRegistrationApiController extends BaseApiController
             'no_handphone_pic' => ['required', 'string', 'max:20'],
             'nama_pic' => ['required', 'string', 'max:255'],
             'jumlah_peserta' => ['required', 'integer', 'min:1'],
+            'program_id' => ['required', 'integer', 'exists:programs,id'],
             'surat_resmi' => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:5120'],
         ]);
 
@@ -46,6 +58,7 @@ class LandingRegistrationApiController extends BaseApiController
             'no_handphone_pic' => $validated['no_handphone_pic'],
             'nama_pic' => $validated['nama_pic'],
             'jumlah_peserta' => $validated['jumlah_peserta'],
+            'program_id' => $validated['program_id'],
             'status' => 'pending',
         ];
 
@@ -56,5 +69,27 @@ class LandingRegistrationApiController extends BaseApiController
         $registration = RegistrationGroup::create($payload);
 
         return $this->successResponse('Pendaftaran kelompok berhasil dikirim. Kami akan menghubungi Anda segera.', $registration, 201);
+    }
+
+    public function updateIndividuProgram(Request $request, RegistrationIndividual $registration): JsonResponse
+    {
+        $validated = $request->validate([
+            'program_id' => ['required', 'integer', 'exists:programs,id'],
+        ]);
+
+        $registration->update($validated);
+
+        return $this->successResponse('Program peserta berhasil diperbarui.', $registration);
+    }
+
+    public function updateKelompokProgram(Request $request, RegistrationGroup $registration): JsonResponse
+    {
+        $validated = $request->validate([
+            'program_id' => ['required', 'integer', 'exists:programs,id'],
+        ]);
+
+        $registration->update($validated);
+
+        return $this->successResponse('Program peserta berhasil diperbarui.', $registration);
     }
 }

@@ -7,6 +7,7 @@ use App\Http\Controllers\ForumController;
 use App\Http\Controllers\InstructorModuleController;
 use App\Http\Controllers\LandingController;
 use App\Http\Controllers\ParticipantModuleController;
+use App\Http\Controllers\RegistrationProgramController;
 
 Route::get('/files/{path}', function (string $path) {
 	if (! Storage::disk('public')->exists($path)) {

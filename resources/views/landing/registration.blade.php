@@ -240,6 +240,15 @@
                                     <input type="hidden" name="_token" value="{{ csrf_token() }}">
                                     <div class="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4 lg:gap-5">
                                         <div class="md:col-span-2">
+                                            <label class="block text-sm font-medium text-white mb-1">Program <span
+                                                    class="text-red-300">*</span></label>
+                                            <select name="program_id" id="program_id_individu"
+                                                class="w-full border border-gray-300 text-gray-900 rounded-md px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent transition"
+                                                required>
+                                                <option value="">-- Pilih Program --</option>
+                                            </select>
+                                        </div>
+                                        <div class="md:col-span-2">
                                             <label class="block text-sm font-medium text-white mb-1">Nama Lengkap</label>
                                             <input type="text" name="nama_lengkap" placeholder="Nama Lengkap Anda"
                                                 class="w-full border border-gray-300 text-gray-900 rounded-md px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent transition"
@@ -297,6 +306,15 @@
                                     <form enctype="multipart/form-data" id="form-kelompok" class="w-full">
                                         <input type="hidden" name="_token" value="{{ csrf_token() }}">
                                         <div class="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4 lg:gap-5">
+                                            <div class="md:col-span-2">
+                                                <label class="block text-sm font-medium text-white mb-1">Program <span
+                                                        class="text-red-300">*</span></label>
+                                                <select name="program_id" id="program_id_kelompok"
+                                                    class="w-full border border-gray-300 text-gray-900 rounded-md px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent transition"
+                                                    required>
+                                                    <option value="">-- Pilih Program --</option>
+                                                </select>
+                                            </div>
                                             <div class="md:col-span-2">
                                                 <label class="block text-sm font-medium text-white mb-1">Nama
                                                     Lembaga/Kelompok</label>
@@ -412,6 +430,41 @@
         const successMessage = document.getElementById('registration-success-message');
         const initialSuccessMessage = @json(session('success'));
 
+        // Fetch programs on page load
+        async function loadPrograms() {
+            try {
+                const response = await fetch('/api/v1/registrations/programs');
+                const result = await response.json();
+
+                if (result.success && result.data) {
+                    const programs = result.data;
+                    const selectIndividu = document.getElementById('program_id_individu');
+                    const selectKelompok = document.getElementById('program_id_kelompok');
+
+                    // Clear existing options except placeholder
+                    const clearSelect = (select) => {
+                        while (select.options.length > 1) {
+                            select.remove(1);
+                        }
+                    };
+
+                    clearSelect(selectIndividu);
+                    clearSelect(selectKelompok);
+
+                    // Add programs to both selects
+                    programs.forEach(program => {
+                        const option = document.createElement('option');
+                        option.value = program.id;
+                        option.textContent = program.name;
+                        selectIndividu.appendChild(option.cloneNode(true));
+                        selectKelompok.appendChild(option);
+                    });
+                }
+            } catch (error) {
+                console.error('Failed to load programs:', error);
+            }
+        }
+
         function closeRegistrationSuccessModal() {
             if (!successModal) {
                 return;
@@ -481,6 +534,7 @@
 
         // Jalankan penyesuaian tinggi saat halaman pertama kali diload
         window.addEventListener('DOMContentLoaded', () => {
+            loadPrograms();
             setTimeout(() => updateHeight('individu'), 50);
 
             if (initialSuccessMessage) {
@@ -590,6 +644,7 @@
                     alamat: formData.get('alamat') || '',
                     pendidikan_terakhir: formData.get('pendidikan_terakhir') || '',
                     motivasi: formData.get('motivasi') || '',
+                    program_id: parseInt(formData.get('program_id')) || null,
                 };
 
                 try {
@@ -615,6 +670,9 @@
                 event.preventDefault();
 
                 const formData = new FormData(formKelompok);
+
+                // Append program_id for JSON payload but keep FormData as is for file upload
+                const programId = formData.get('program_id');
 
                 try {
                     const result = await submitRegistration('/api/v1/registrations/group', formData, true);

@@ -139,6 +139,12 @@
                     <textarea name="address" rows="3" required class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">{{ old('address', $profile['address']) }}</textarea>
                 </div>
 
+                <div class="sm:col-span-2">
+                    <label class="mb-1 block text-xs font-semibold text-slate-600">Program</label>
+                    <input type="text" value="{{ old('program', $profile['program'] ?? 'Program Belum Dipilih') }}"
+                        disabled class="w-full rounded-lg border border-slate-300 bg-slate-100 px-3 py-2 text-sm">
+                </div>
+
                 <div id="individual-fields" class="sm:col-span-2 space-y-4">
                     <div>
                         <label class="mb-1 block text-xs font-semibold text-slate-600">Motivasi Singkat Anda Mengikuti

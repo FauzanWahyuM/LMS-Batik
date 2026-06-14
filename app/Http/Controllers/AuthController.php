@@ -154,6 +154,8 @@ class AuthController extends Controller
             'motivation' => 'Ingin memperdalam teknik membatik untuk usaha mandiri.',
             'group_name' => '',
             'pic_name' => '',
+            'program_id' => null,
+            'program' => 'Program Belum Dipilih',
             'role_label' => 'Peserta Individu',
         ];
 
@@ -227,6 +229,7 @@ class AuthController extends Controller
                 'institution_name' => $groupName,
                 'pic_name' => $picName,
                 'pic_email' => $picEmail,
+                'program' => $dbUser->program?->name ?? 'Program Belum Dipilih',
                 'role_label' => $participantType === 'group' ? 'Peserta Kelompok' : 'Peserta Individu',
             ]);
         }
@@ -299,10 +302,17 @@ class AuthController extends Controller
             $request->session()->regenerate();
 
             // Check if participant needs to change password
-            if ($dbUser->role === 'peserta' && !$dbUser->password_changed) {
+            if ($dbUser->role === 'peserta') {
+            if (!$dbUser->password_changed) {
                 return redirect()->route('dashboard.participant.profile')
                     ->with('force_password_change', true);
             }
+
+            if (!$dbUser->program_id) {
+                return redirect()->route('dashboard.participant.profile')
+                    ->with('force_program_selection', true);
+            }
+        }
 
             return redirect()->route('dashboard.index');
         }
@@ -555,6 +565,7 @@ class AuthController extends Controller
             'address' => $registration->alamat,
             'education' => $registration->pendidikan_terakhir,
             'motivation' => $registration->motivasi,
+            'program_id' => $registration->program_id,
             'status' => 'active',
             'password_changed' => false,
         ];
@@ -2739,6 +2750,7 @@ class AuthController extends Controller
             'motivation' => ['nullable', 'string', 'max:255'],
             'group_name' => ['nullable', 'string', 'max:120'],
             'pic_name' => ['nullable', 'string', 'max:120'],
+            'program_id' => ['nullable', 'integer', 'exists:programs,id'],
             'role_label' => ['required', 'string', 'min:3', 'max:40'],
         ];
 
@@ -2782,12 +2794,17 @@ class AuthController extends Controller
             }
         }
 
+        if ($dbUser->program_id === null && empty($validated['program_id'])) {
+            return back()->withErrors(['program_id' => 'Program harus dipilih sebelum Anda dapat melanjutkan.'])->withInput();
+        }
+
         // Update user data
         $dbUser->name = $validated['full_name'];
         $dbUser->username = $validated['username'];
         $dbUser->email = $validated['email'];
         $dbUser->password = Hash::make($validated['password']);
         $dbUser->phone = $validated['phone'];
+        $dbUser->program_id = $validated['program_id'] ?? $dbUser->program_id;
 
         // Only update personal_phone for group participants
         if ($participantType === 'group') {
@@ -3639,6 +3656,7 @@ class AuthController extends Controller
                 $query->whereNull('group_name')
                     ->orWhere('group_name', '');
             })
+            ->with('program')
             ->orderByRaw('LOWER(name) asc')
             ->get();
 
@@ -3648,7 +3666,7 @@ class AuthController extends Controller
             return [
                 'id' => $user->username ?: 'peserta-' . $user->id,
                 'name' => $user->name,
-                'program' => 'Program Individu',
+                'program' => $user->program?->name ?? 'Program Belum Dipilih',
                 'progress' => 0,
                 'status' => $status,
                 'status_label' => $this->buildParticipantRoleLabel($status),
@@ -3772,7 +3790,7 @@ class AuthController extends Controller
     private function getManagerPendingIndividualValidations(): array
     {
         $registrations = Schema::hasTable('registration_individuals')
-            ? RegistrationIndividual::where('status', 'pending')->orderByDesc('created_at')->get()
+            ? RegistrationIndividual::where('status', 'pending')->with('program')->orderByDesc('created_at')->get()
             : collect();
 
         return $registrations->map(function ($reg) {
@@ -3785,7 +3803,7 @@ class AuthController extends Controller
                 'address' => $reg->alamat,
                 'education' => $reg->pendidikan_terakhir,
                 'motivation' => $reg->motivasi,
-                'program' => 'Program Individu',
+                'program' => $reg->program?->name ?? 'Program Belum Dipilih',
                 'whatsapp' => $reg->no_handphone,
             ];
         })->toArray();
@@ -3876,7 +3894,7 @@ class AuthController extends Controller
     private function getManagerPendingGroupValidations(): array
     {
         $registrations = Schema::hasTable('registration_groups')
-            ? RegistrationGroup::where('status', 'pending')->orderByDesc('created_at')->get()
+            ? RegistrationGroup::where('status', 'pending')->with('program')->orderByDesc('created_at')->get()
             : collect();
 
         return $registrations->map(function ($reg) {
@@ -3891,7 +3909,7 @@ class AuthController extends Controller
                 'members' => $reg->jumlah_peserta,
                 'official_letter' => $reg->surat_resmi ? basename($reg->surat_resmi) : null,
                 'official_letter_path' => $reg->surat_resmi ? $reg->surat_resmi : null,
-                'program' => 'Program Kelompok',
+                'program' => $reg->program?->name ?? 'Program Belum Dipilih',
             ];
         })->toArray();
     }

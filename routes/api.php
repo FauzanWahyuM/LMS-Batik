@@ -20,8 +20,11 @@ Route::prefix('v1')
         });
 
         Route::prefix('registrations')->name('api.v1.registrations.')->group(function (): void {
+            Route::get('/programs', [LandingRegistrationApiController::class, 'getPrograms'])->name('programs.list');
             Route::post('/individual', [LandingRegistrationApiController::class, 'submitIndividu'])->name('individual.store');
             Route::post('/group', [LandingRegistrationApiController::class, 'submitKelompok'])->name('group.store');
+            Route::put('/individual/{registration}', [LandingRegistrationApiController::class, 'updateIndividuProgram'])->name('individual.update-program');
+            Route::put('/group/{registration}', [LandingRegistrationApiController::class, 'updateKelompokProgram'])->name('group.update-program');
         });
 
         Route::middleware(['simple.auth.api'])->group(function (): void {

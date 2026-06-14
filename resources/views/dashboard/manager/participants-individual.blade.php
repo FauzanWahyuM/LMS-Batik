@@ -177,7 +177,6 @@
                     <tr class="text-xs uppercase tracking-wider text-slate-500">
                         <th class="px-3 py-3">Nama</th>
                         <th class="px-3 py-3">Program</th>
-                        <th class="px-3 py-3">Progres</th>
                         <th class="px-3 py-3">Status</th>
                         <th class="px-3 py-3">Aksi</th>
                     </tr>
@@ -187,7 +186,6 @@
                         <tr>
                             <td class="px-3 py-3 font-semibold text-slate-900">{{ $participant['name'] }}</td>
                             <td class="px-3 py-3 text-slate-700">{{ $participant['program'] }}</td>
-                            <td class="px-3 py-3 text-slate-700">{{ $participant['progress'] }}%</td>
                             <td class="px-3 py-3">
                                 <span
                                     class="rounded-full bg-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-700">{{ $participant['status_label'] ?? $participant['status'] }}</span>

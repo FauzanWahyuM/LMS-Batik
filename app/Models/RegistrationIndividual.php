@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class RegistrationIndividual extends Model
 {
@@ -15,6 +16,12 @@ class RegistrationIndividual extends Model
         'alamat',
         'pendidikan_terakhir',
         'motivasi',
+        'program_id',
         'status',
     ];
+
+    public function program(): BelongsTo
+    {
+        return $this->belongsTo(Program::class);
+    }
 }
